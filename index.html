@@ -3,75 +3,189 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Unmatched Draft System</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <title>Unmatched Draft - Pass & Play</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --card-bg: #1e1e1e;
+            --text-color: #ffffff;
+            --accent-p1: #3498db;
+            --accent-p2: #e74c3c;
+            --selected-border: #2ecc71;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1, h2, h3 {
+            margin-bottom: 10px;
+        }
+
+        .screen {
+            display: none;
+            background: #1a1a1a;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            margin-top: 20px;
+        }
+
+        .btn-action {
+            background-color: #2f3542;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px;
+            transition: background 0.2s;
+            width: 80%;
+            max-width: 300px;
+        }
+
+        .btn-action:hover {
+            filter: brightness(1.2);
+        }
+
+        .btn-action:disabled {
+            background-color: #57606f;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        .cards-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border: 2px solid #333;
+            border-radius: 10px;
+            padding: 20px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 80px;
+        }
+
+        .card.selected {
+            border-color: var(--selected-border);
+            background-color: #1b3a24;
+            transform: scale(1.02);
+        }
+
+        .card.used {
+            opacity: 0.3;
+            cursor: not-allowed;
+            text-decoration: line-through;
+        }
+
+        .score-board {
+            display: flex;
+            justify-content: space-around;
+            background: #222;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 18px;
+        }
+
+        .matchup {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 30px 0;
+        }
+
+        .fighter-box {
+            background: #252525;
+            padding: 20px;
+            border-radius: 8px;
+            width: 40%;
+            font-size: 18px;
+            font-weight: bold;
+        }
+    </style>
 </head>
 <body>
 
     <div class="container">
-        <h1>⚔️ Unmatched Draft ⚔️</h1>
-
-        <div id="screen-connect" class="screen">
-            <h3>Escolha o seu número de jogador:</h3>
-            <div class="role-selection-buttons">
-                <button id="btn-select-p1" onclick="selectRole(1)">Ser Jogador 1</button>
-                <button id="btn-select-p2" onclick="selectRole(2)">Ser Jogador 2</button>
-            </div>
-            
-            <p id="status-message">Selecione um papel acima para começar...</p>
-            
-            <button id="btn-share-link" onclick="copyRoomLink()" style="display:none; background: linear-gradient(135deg, #1e90ff, #70a1ff); box-shadow: 0 4px 15px rgba(30, 144, 255, 0.3); margin-bottom: 15px;">
-                📋 Copiar Link do Convidado
-            </button>
-            
-            <button id="btn-start-draft" style="display:none; background: linear-gradient(135deg, #2ed573, #7bed9f); box-shadow: 0 4px 15px rgba(46, 213, 115, 0.3);">
-                Iniciar Sorteio (J1)
-            </button>
+        <!-- TELA DE INÍCIO -->
+        <div id="screen-connect" class="screen" style="display: block;">
+            <h1>⚔️ Unmatched Draft ⚔️</h1>
+            <p>Modo Pass-and-Play (Mesma Tela)</p>
+            <hr style="border-color: #333; margin: 20px 0;">
+            <!-- Ambos os botões antigos agora iniciam o jogo direto para evitar falhas -->
+            <button class="btn-action" style="background-color: var(--accent-p1);" onclick="selectRole(1)">Iniciar como Jogador 1</button>
+            <button class="btn-action" style="background-color: var(--accent-p2);" onclick="selectRole(2)">Iniciar como Jogador 2</button>
+            <button id="btn-start-draft" class="btn-action" style="background-color: #2ecc71;">Iniciar Direto</button>
         </div>
 
-        <div id="screen-draft" class="screen" style="display: none;">
+        <!-- TELA DO DRAFT (ESCOLHAS E BANIMENTOS) -->
+        <div id="screen-draft" class="screen">
             <h2 id="draft-phase-title">Fase de Seleção</h2>
-            <p id="draft-instructions">Escolha uma das opções abaixo.</p>
+            <p id="draft-instructions">Aguardando início...</p>
             
-            <div id="cards-container" class="cards-grid"></div>
-            
-            <button id="btn-confirm-choice" disabled>Confirmar Escolha</button>
-            <p id="wait-message" style="display: none; color: #ffa502; font-weight: bold; margin-top: 15px;">
-                ⏳ Decisão registrada! Aguardando a escolha do oponente...
-            </p>
+            <div id="cards-container" class="cards-grid">
+                <!-- Inserido dinamicamente pelo JS -->
+            </div>
+
+            <button id="btn-confirm-choice" class="btn-action" style="background-color: #2ecc71;" disabled>Confirmar Escolha</button>
         </div>
 
-        <div id="screen-combat" class="screen" style="display: none;">
-            <h2>Fase de Combate</h2>
-            
-            <div class="scoreboard">
-                <div class="score-box">Jogador 1: <span id="score-p1">0</span></div>
-                <div class="score-box">Jogador 2: <span id="score-p2">0</span></div>
+        <!-- TELA DE COMBATE (ROUNDS) -->
+        <div id="screen-combat" class="screen">
+            <div class="score-board">
+                <div>🔹 J1: <span id="score-p1">0</span></div>
+                <div>🔸 J2: <span id="score-p2">0</span></div>
             </div>
 
+            <!-- Seleção Secreta de quem vai para a Arena -->
             <div id="combat-selection-area">
-                <p>Selecione secretamente qual dos seus 2 heróis vai lutar esta partida:</p>
+                <h3 id="combat-title">Seleção Secreta de Combate</h3>
                 <div id="combat-choices" class="cards-grid"></div>
-                <button id="btn-confirm-combat" disabled>Confirmar Lutador</button>
+                <button id="btn-confirm-combat" class="btn-action" style="background-color: #2ecc71;" disabled>Confirmar Combatente</button>
             </div>
 
+            <!-- Revelação do Confronto -->
             <div id="combat-matchup-area" style="display: none;">
-                <div class="matchup-versus">
-                    <div id="fighter-p1" class="fighter-card">...</div>
-                    <div class="vs">VS</div>
-                    <div id="fighter-p2" class="fighter-card">...</div>
+                <h3>🔥 CONFRONTO DEFINIDO! 🔥</h3>
+                <div class="matchup">
+                    <div class="fighter-box" style="border-bottom: 4px solid var(--accent-p1);" id="fighter-p1">-</div>
+                    <div style="font-weight: bold; font-size: 24px;">VS</div>
+                    <div class="fighter-box" style="border-bottom: 4px solid var(--accent-p2);" id="fighter-p2">-</div>
                 </div>
-                
-                <h3>Painel do Juiz: Quem venceu o duelo?</h3>
-                <div class="judge-buttons">
-                    <button onclick="registerWinner(1)">🏆 Vitória do Jogador 1</button>
-                    <button onclick="registerWinner(2)">🏆 Vitória do Jogador 2</button>
-                </div>
+                <p>Quem venceu esse round?</p>
+                <button class="btn-action" style="background-color: var(--accent-p1); width: 45%; font-size: 14px;" onclick="registerWinner(1)">Vitória J1</button>
+                <button class="btn-action" style="background-color: var(--accent-p2); width: 45%; font-size: 14px;" onclick="registerWinner(2)">Vitória J2</button>
             </div>
         </div>
     </div>
 
+    <!-- Importa o arquivo script atualizado -->
     <script src="app.js"></script>
 </body>
 </html>
