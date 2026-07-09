@@ -5,62 +5,73 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Unmatched Draft System</title>
     <link rel="stylesheet" href="style.css">
-    <!-- Biblioteca Realtime do Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
+
     <div class="container">
         <h1>⚔️ Unmatched Draft ⚔️</h1>
-        
-        <!-- TELA 1: SELEÇÃO MANUAL DE JOGADOR -->
+
         <div id="screen-connect" class="screen">
             <h3>Escolha o seu número de jogador:</h3>
             <div class="role-selection-buttons">
                 <button id="btn-select-p1" onclick="selectRole(1)">Ser Jogador 1</button>
                 <button id="btn-select-p2" onclick="selectRole(2)">Ser Jogador 2</button>
             </div>
-            <p id="status-message" style="margin-top: 20px; color: #aaa;">Selecione um papel para começar...</p>
-            <button id="btn-start-draft" style="display:none; background-color: #2ed573;">Iniciar Sorteio (J1)</button>
-        </div>
-
-        <!-- TELA 2: FLUXO DE SELEÇÃO -->
-        <div id="screen-draft" class="screen" style="display:none;">
-            <h2 id="draft-phase-title">Fase de Escolha</h2>
-            <p id="draft-instructions">Selecione uma opção.</p>
-            <div id="cards-container" class="cards-grid"></div>
-            <button id="btn-confirm-choice" disabled>Confirmar Escolha</button>
-            <p id="wait-message" style="display:none; color: #ff9800;">Aguardando o outro jogador confirmar...</p>
-        </div>
-
-        <!-- TELA 3: COMBATE (MELHOR DE 3) -->
-        <div id="screen-combat" class="screen" style="display:none;">
-            <h2>Fase de Combate (Melhor de 3)</h2>
-            <div class="scoreboard">
-                <div class="score-box">👨‍💼 J1: <span id="score-p1">0</span></div>
-                <div class="score-box">🥷 J2: <span id="score-p2">0</span></div>
-            </div>
             
-            <div id="combat-selection-area">
-                <h3>Escolha seu herói para o combate:</h3>
-                <div id="combat-choices" class="cards-grid"></div>
-                <button id="btn-confirm-combat" disabled>Pronto para Combater</button>
+            <p id="status-message">Selecione um papel acima para começar...</p>
+            
+            <button id="btn-share-link" onclick="copyRoomLink()" style="display:none; background: linear-gradient(135deg, #1e90ff, #70a1ff); box-shadow: 0 4px 15px rgba(30, 144, 255, 0.3); margin-bottom: 15px;">
+                📋 Copiar Link do Convidado
+            </button>
+            
+            <button id="btn-start-draft" style="display:none; background: linear-gradient(135deg, #2ed573, #7bed9f); box-shadow: 0 4px 15px rgba(46, 213, 115, 0.3);">
+                Iniciar Sorteio (J1)
+            </button>
+        </div>
+
+        <div id="screen-draft" class="screen" style="display: none;">
+            <h2 id="draft-phase-title">Fase de Seleção</h2>
+            <p id="draft-instructions">Escolha uma das opções abaixo.</p>
+            
+            <div id="cards-container" class="cards-grid"></div>
+            
+            <button id="btn-confirm-choice" disabled>Confirmar Escolha</button>
+            <p id="wait-message" style="display: none; color: #ffa502; font-weight: bold; margin-top: 15px;">
+                ⏳ Decisão registrada! Aguardando a escolha do oponente...
+            </p>
+        </div>
+
+        <div id="screen-combat" class="screen" style="display: none;">
+            <h2>Fase de Combate</h2>
+            
+            <div class="scoreboard">
+                <div class="score-box">Jogador 1: <span id="score-p1">0</span></div>
+                <div class="score-box">Jogador 2: <span id="score-p2">0</span></div>
             </div>
 
-            <div id="combat-matchup-area" style="display:none;">
-                <h3>CONFRONTO!</h3>
+            <div id="combat-selection-area">
+                <p>Selecione secretamente qual dos seus 2 heróis vai lutar esta partida:</p>
+                <div id="combat-choices" class="cards-grid"></div>
+                <button id="btn-confirm-combat" disabled>Confirmar Lutador</button>
+            </div>
+
+            <div id="combat-matchup-area" style="display: none;">
                 <div class="matchup-versus">
-                    <div class="fighter-card" id="fighter-p1">?</div>
-                    <span class="vs">VS</span>
-                    <div class="fighter-card" id="fighter-p2">?</div>
+                    <div id="fighter-p1" class="fighter-card">...</div>
+                    <div class="vs">VS</div>
+                    <div id="fighter-p2" class="fighter-card">...</div>
                 </div>
-                <p>Quem venceu esse duelo?</p>
+                
+                <h3>Painel do Juiz: Quem venceu o duelo?</h3>
                 <div class="judge-buttons">
-                    <button onclick="registerWinner(1)">Jogador 1 Venceu</button>
-                    <button onclick="registerWinner(2)">Jogador 2 Venceu</button>
+                    <button onclick="registerWinner(1)">🏆 Vitória do Jogador 1</button>
+                    <button onclick="registerWinner(2)">🏆 Vitória do Jogador 2</button>
                 </div>
             </div>
         </div>
     </div>
+
     <script src="app.js"></script>
 </body>
 </html>
