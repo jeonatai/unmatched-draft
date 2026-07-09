@@ -13,10 +13,12 @@ const PERSONAGENS = [
 ];
 
 const SUPABASE_URL = "https://qgqxegskziqzqpnomthc.supabase.co";
+// Chave atualizada e sincronizada com as configurações corretas do banco realtime
 const SUPABASE_KEY = "EyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFncXhlZ3NremlxenFwbm9tdGhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MzQ0MTMsImV4cCI6MjA5OTExMDQxM30.42zo3MnIxUy_Ln10wtpeNvoKbL9DlzstfwyrCWvWfy8";
-const supabase = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 
-// Sala global padrão para conectar os dois que acessarem o link
+// CORREÇÃO CRUCIAL: Nome alterado para supabaseClient para sumir o SyntaxError do console
+const supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+
 let roomId = "sala_unica"; 
 let playerNumber = 0; 
 
@@ -32,22 +34,33 @@ let selectedCardIndex = null;
 let channel = null;
 
 async function init() {
-    if(!supabase) return;
-    
-    channel = supabase.channel(`room:${roomId}`);
-    
-    channel.on('broadcast', { event: 'state-update' }, ({ payload }) => {
-        gameState = payload;
-        renderGame();
-    }).on('broadcast', { event: 'req-sync' }, () => {
-        if(playerNumber !== 0) sendUpdate();
-    }).subscribe((status) => {
-        if(status === 'SUBSCRIBED') {
-            channel.send({ type: 'broadcast', event: 'req-sync' });
-        }
-    });
-
     renderGame();
+
+    if (!supabaseClient) {
+        console.error("Biblioteca do Supabase não carregou no HTML.");
+        document.getElementById('status-message').innerText = "Erro: Biblioteca do Supabase ausente.";
+        return;
+    }
+    
+    try {
+        channel = supabaseClient.channel(`room:${roomId}`);
+        
+        channel.on('broadcast', { event: 'state-update' }, ({ payload }) => {
+            gameState = payload;
+            renderGame();
+        }).on('broadcast', { event: 'req-sync' }, () => {
+            if(playerNumber !== 0) sendUpdate();
+        });
+
+        channel.subscribe((status) => {
+            console.log("Status da conexão Realtime:", status);
+            if(status === 'SUBSCRIBED') {
+                channel.send({ type: 'broadcast', event: 'req-sync' });
+            }
+        });
+    } catch (error) {
+        console.error("Erro ao conectar no Supabase:", error);
+    }
 }
 
 function sendUpdate() {
@@ -57,22 +70,29 @@ function sendUpdate() {
     renderGame();
 }
 
-// Função chamada ao clicar nos botões manuais de Jogador 1 ou 2
 window.selectRole = function(num) {
-    playerNumber = num;
-    
-    document.getElementById('btn-select-p1').classList.remove('active');
-    document.getElementById('btn-select-p2').classList.remove('active');
-    
-    if(num === 1) {
-        gameState.p1Connected = true;
-        document.getElementById('btn-select-p1').classList.add('active');
-    } else {
-        gameState.p2Connected = true;
-        document.getElementById('btn-select-p2').classList.add('active');
+    try {
+        playerNumber = num;
+        
+        document.getElementById('btn-select-p1').classList.remove('active');
+        document.getElementById('btn-select-p2').classList.remove('active');
+        
+        if(num === 1) {
+            gameState.p1Connected = true;
+            document.getElementById('btn-select-p1').classList.add('active');
+        } else {
+            gameState.p2Connected = true;
+            document.getElementById('btn-select-p2').classList.add('active');
+        }
+        
+        renderGame();
+        
+        if (channel) {
+            sendUpdate();
+        }
+    } catch (err) {
+        console.error("Erro ao executar selectRole:", err);
     }
-    
-    sendUpdate();
 };
 
 document.getElementById('btn-start-draft').addEventListener('click', () => {
@@ -84,7 +104,6 @@ document.getElementById('btn-start-draft').addEventListener('click', () => {
 });
 
 function renderGame() {
-    // Atualiza o estado visual dos botões de seleção baseado no banco
     if(gameState.p1Connected) document.getElementById('btn-select-p1').style.opacity = "0.5";
     if(gameState.p2Connected) document.getElementById('btn-select-p2').style.opacity = "0.5";
 
