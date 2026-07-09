@@ -1,3 +1,4 @@
+// Lista corrigida do Unmatched Game System (sem duplicatas)
 const PERSONAGENS = [
     "Alice | O Jaguadarte", "Chapeuzinho Vermelho & O Caçador", "Sherlock Holmes | Dr. Watson",
     "Drácula | As Três Irmãs", "Medusa | Harpias", "Robin Hood | Os Fora-da-lei",
@@ -15,17 +16,10 @@ const PERSONAGENS = [
 const SUPABASE_URL = "https://qgqxegskziqzqpnomthc.supabase.co";
 const SUPABASE_KEY = "EyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFncXhlZ3NremlxenFwbm9tdGhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MzQ0MTMsImV4cCI6MjA5OTExMDQxM30.42zo3MnIxUy_Ln10wtpeNvoKbL9DlzstfwyrCWvWfy8";
 
+// MUDANÇA AQUI: Alterado o nome para supabaseClient para não dar conflito global
 const supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 
-// Captura a sala pela URL
-const urlParams = new URLSearchParams(window.location.search);
-let roomId = urlParams.get('room'); 
-
-if (!roomId) {
-    roomId = "sala_" + Math.random().toString(36).substring(2, 9);
-    window.history.replaceState({}, '', `${window.location.pathname}?room=${roomId}`);
-}
-
+let roomId = "sala_unica"; 
 let playerNumber = 0; 
 
 let gameState = {
@@ -43,68 +37,62 @@ async function init() {
     renderGame();
 
     if (!supabaseClient) {
-        document.getElementById('status-message').innerText = "Erro: Banco offline.";
+        console.error("Biblioteca do Supabase não carregou no HTML.");
+        document.getElementById('status-message').innerText = "Erro: Biblioteca do Supabase ausente.";
         return;
     }
     
-    // Configuração com parâmetros de sincronização agressivos (config: broadcast ack)
-    channel = supabaseClient.channel(`room:${roomId}`, {
-        config: { broadcast: { ack: true } }
-    });
-    
-    channel.on('broadcast', { event: 'state-update' }, ({ payload }) => {
-        gameState = payload;
-        renderGame();
-    }).on('broadcast', { event: 'req-sync' }, () => {
-        // Se alguém pedir sincronização, quem tiver papel ativo responde com o estado atual da sala
-        if (playerNumber !== 0) {
-            sendUpdate();
-        }
-    });
+    try {
+        channel = supabaseClient.channel(`room:${roomId}`);
+        
+        channel.on('broadcast', { event: 'state-update' }, ({ payload }) => {
+            gameState = payload;
+            renderGame();
+        }).on('broadcast', { event: 'req-sync' }, () => {
+            if(playerNumber !== 0) sendUpdate();
+        });
 
-    channel.subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-            // Assim que conecta na sala, pede os dados atuais se houverem
-            channel.send({ type: 'broadcast', event: 'req-sync' });
-        }
-    });
+        channel.subscribe((status) => {
+            console.log("Status da conexão Realtime:", status);
+            if(status === 'SUBSCRIBED') {
+                channel.send({ type: 'broadcast', event: 'req-sync' });
+            }
+        });
+    } catch (error) {
+        console.error("Erro ao conectar no Supabase:", error);
+    }
 }
 
 function sendUpdate() {
-    if (channel) {
+    if(channel) {
         channel.send({ type: 'broadcast', event: 'state-update', payload: gameState });
     }
     renderGame();
 }
 
 window.selectRole = function(num) {
-    playerNumber = num;
-    
-    // Atualiza o estado localmente
-    if (num === 1) {
-        gameState.p1Connected = true;
-    } else {
-        gameState.gameState = true; // Segurança para o objeto
-        gameState.p2Connected = true;
+    try {
+        playerNumber = num;
+        
+        document.getElementById('btn-select-p1').classList.remove('active');
+        document.getElementById('btn-select-p2').classList.remove('active');
+        
+        if(num === 1) {
+            gameState.p1Connected = true;
+            document.getElementById('btn-select-p1').classList.add('active');
+        } else {
+            gameState.p2Connected = true;
+            document.getElementById('btn-select-p2').classList.add('active');
+        }
+        
+        renderGame();
+        
+        if (channel) {
+            sendUpdate();
+        }
+    } catch (err) {
+        console.error("Erro ao executar selectRole:", err);
     }
-    
-    // Envia imediatamente para o Supabase atualizar o outro jogador
-    sendUpdate();
-};
-
-window.copyRoomLink = function() {
-    const link = window.location.href;
-    navigator.clipboard.writeText(link).then(() => {
-        const btn = document.getElementById('btn-share-link');
-        btn.innerText = "🔗 Link Copiado para o WhatsApp!";
-        btn.style.background = "#2ed573";
-        setTimeout(() => {
-            btn.innerText = "📋 Copiar Link do Convidado";
-            btn.style.background = "#1e90ff";
-        }, 2000);
-    }).catch(() => {
-        alert("Copie este link completo: " + link);
-    });
 };
 
 document.getElementById('btn-start-draft').addEventListener('click', () => {
@@ -116,30 +104,17 @@ document.getElementById('btn-start-draft').addEventListener('click', () => {
 });
 
 function renderGame() {
-    // Controla opacidade dos botões se alguém já escolheu no banco
-    const btnP1 = document.getElementById('btn-select-p1');
-    const btnP2 = document.getElementById('btn-select-p2');
-    
-    if (gameState.p1Connected) { btnP1.style.opacity = "0.4"; btnP1.innerText = "J1 Ocupado"; }
-    else { btnP1.style.opacity = "1"; btnP1.innerText = "Ser Jogador 1"; }
-    
-    if (gameState.p2Connected) { btnP2.style.opacity = "0.4"; btnP2.innerText = "J2 Ocupado"; }
-    else { btnP2.style.opacity = "1"; btnP2.innerText = "Ser Jogador 2"; }
-
-    if (playerNumber === 1) btnP1.classList.add('active');
-    if (playerNumber === 2) btnP2.classList.add('active');
+    if(gameState.p1Connected) document.getElementById('btn-select-p1').style.opacity = "0.5";
+    if(gameState.p2Connected) document.getElementById('btn-select-p2').style.opacity = "0.5";
 
     const statusMsg = document.getElementById('status-message');
     const startBtn = document.getElementById('btn-start-draft');
-    const shareBtn = document.getElementById('btn-share-link');
 
     if (playerNumber === 0) {
         statusMsg.innerText = "Escolha um papel acima para entrar no jogo.";
         startBtn.style.display = 'none';
-        if (shareBtn) shareBtn.style.display = 'none';
     } else {
         if (gameState.p1Connected && gameState.p2Connected) {
-            if (shareBtn) shareBtn.style.display = 'none';
             if (playerNumber === 1) {
                 statusMsg.innerText = "Jogador 2 conectado! Você pode iniciar o sorteio.";
                 startBtn.style.display = 'inline-block';
@@ -148,19 +123,18 @@ function renderGame() {
                 startBtn.style.display = 'none';
             }
         } else {
-            statusMsg.innerText = `Você entrou como Jogador ${playerNumber}. Aguardando o oponente entrar na mesma sala...`;
+            statusMsg.innerText = `Você entrou como Jogador ${playerNumber}. Aguardando o outro jogador escolher papel...`;
             startBtn.style.display = 'none';
-            if (shareBtn) shareBtn.style.display = 'inline-block';
         }
     }
 
-    if (gameState.phase.startsWith('phase')) {
+    if(gameState.phase.startsWith('phase')) {
         document.getElementById('screen-connect').style.display = 'none';
         document.getElementById('screen-draft').style.display = 'block';
         buildDraftInterface();
     }
 
-    if (gameState.phase === 'combat') {
+    if(gameState.phase === 'combat') {
         document.getElementById('screen-draft').style.display = 'none';
         document.getElementById('screen-combat').style.display = 'block';
         buildCombatInterface();
@@ -224,10 +198,10 @@ document.getElementById('btn-confirm-choice').onclick = () => {
     let opCards = playerNumber === 1 ? gameState.p2Cards : gameState.p1Cards;
     
     let activeCards = myCards;
-    if (gameState.phase === 'phase2-ban') {
+    if(gameState.phase === 'phase2-ban') {
         let opSaved = playerNumber === 1 ? gameState.p2Saved : gameState.p1Saved;
         activeCards = opCards.filter(c => c !== opSaved);
-    } else if (gameState.phase === 'phase3-final') {
+    } else if(gameState.phase === 'phase3-final') {
         let mySaved = playerNumber === 1 ? gameState.p1Saved : gameState.p2Saved;
         let opBanned = playerNumber === 1 ? gameState.p2Banned : gameState.p1Banned;
         activeCards = myCards.filter(c => c !== mySaved && c !== opBanned);
@@ -236,15 +210,15 @@ document.getElementById('btn-confirm-choice').onclick = () => {
     let picked = activeCards[selectedCardIndex];
 
     if (gameState.phase === 'phase1-save') {
-        if (playerNumber === 1) gameState.p1Saved = picked; else gameState.p2Saved = picked;
-        if (gameState.p1Saved && gameState.p2Saved) gameState.phase = 'phase2-ban';
+        if(playerNumber === 1) gameState.p1Saved = picked; else gameState.p2Saved = picked;
+        if(gameState.p1Saved && gameState.p2Saved) gameState.phase = 'phase2-ban';
     } else if (gameState.phase === 'phase2-ban') {
-        if (playerNumber === 1) gameState.p1Banned = picked; else gameState.p2Banned = picked;
-        if (gameState.p1Banned && gameState.p2Banned) gameState.phase = 'phase3-final';
+        if(playerNumber === 1) gameState.p1Banned = picked; else gameState.p2Banned = picked;
+        if(gameState.p1Banned && gameState.p2Banned) gameState.phase = 'phase3-final';
     } else if (gameState.phase === 'phase3-final') {
-        if (playerNumber === 1) gameState.p1Final = [gameState.p1Saved, picked];
+        if(playerNumber === 1) gameState.p1Final = [gameState.p1Saved, picked];
         else gameState.p2Final = [gameState.p2Saved, picked];
-        if (gameState.p1Final.length === 2 && gameState.p2Final.length === 2) gameState.phase = 'combat';
+        if(gameState.p1Final.length === 2 && gameState.p2Final.length === 2) gameState.phase = 'combat';
     }
 
     selectedCardIndex = null;
@@ -256,7 +230,7 @@ function buildCombatInterface() {
     document.getElementById('score-p1').innerText = gameState.p1Score;
     document.getElementById('score-p2').innerText = gameState.p2Score;
 
-    if (gameState.p1Score >= 2 || gameState.p2Score >= 2) {
+    if(gameState.p1Score >= 2 || gameState.p2Score >= 2) {
         alert(`🏆 Fim de jogo! Campeão: ${gameState.p1Score >= 2 ? 'Jogador 1' : 'Jogador 2'}`);
         return;
     }
@@ -265,7 +239,7 @@ function buildCombatInterface() {
     let myUsed = playerNumber === 1 ? gameState.p1Used : gameState.p2Used;
     let hasChosen = playerNumber === 1 ? gameState.p1CombatChoice : gameState.p2CombatChoice;
 
-    if (!hasChosen) {
+    if(!hasChosen) {
         document.getElementById('combat-selection-area').style.display = 'block';
         document.getElementById('combat-matchup-area').style.display = 'none';
         const container = document.getElementById('combat-choices');
@@ -275,7 +249,7 @@ function buildCombatInterface() {
             let div = document.createElement('div');
             div.className = 'card' + (myUsed.includes(char) ? ' used' : '');
             div.innerText = char;
-            if (!myUsed.includes(char)) {
+            if(!myUsed.includes(char)) {
                 div.onclick = () => {
                     document.querySelectorAll('#combat-choices .card').forEach(c => c.classList.remove('selected'));
                     div.classList.add('selected');
@@ -289,7 +263,7 @@ function buildCombatInterface() {
         document.getElementById('combat-selection-area').style.display = 'none';
         document.getElementById('combat-matchup-area').style.display = 'block';
 
-        if (gameState.p1CombatChoice && gameState.p2CombatChoice) {
+        if(gameState.p1CombatChoice && gameState.p2CombatChoice) {
             document.getElementById('fighter-p1').innerText = gameState.p1CombatChoice;
             document.getElementById('fighter-p2').innerText = gameState.p2CombatChoice;
         } else {
@@ -300,14 +274,14 @@ function buildCombatInterface() {
 }
 
 document.getElementById('btn-confirm-combat').onclick = () => {
-    if (playerNumber === 1) gameState.p1CombatChoice = gameState.tempChoice;
+    if(playerNumber === 1) gameState.p1CombatChoice = gameState.tempChoice;
     else gameState.p2CombatChoice = gameState.tempChoice;
     document.getElementById('btn-confirm-combat').disabled = true;
     sendUpdate();
 };
 
 window.registerWinner = function(winnerNum) {
-    if (winnerNum === 1) {
+    if(winnerNum === 1) {
         gameState.p1Score++;
         gameState.p1Used.push(gameState.p1CombatChoice);
     } else {
