@@ -32,6 +32,7 @@ function init() {
     renderGame();
 }
 
+// Qualquer botão de jogador clicado inicia o draft local
 window.selectRole = function(num) {
     startLocalDraft();
 };
@@ -43,14 +44,20 @@ if (startBtnEl) {
     });
 }
 
-// CORREÇÃO AQUI: Garante a exclusividade matemática de cartas entre os jogadores
+// CORREÇÃO: Embaralhamento robusto usando o algoritmo de Fisher-Yates
 function startLocalDraft() {
-    // Cria uma cópia embaralhada de toda a lista única
-    let shuffled = [...PERSONAGENS].sort(() => 0.5 - Math.random());
+    // 1. Cria uma cópia da lista original de personagens
+    let shuffled = [...PERSONAGENS];
     
-    // J1 pega os índices 0, 1, 2, 3
+    // 2. Aplica o algoritmo de Fisher-Yates para embaralhar de verdade
+    for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        // Troca os elementos de lugar de forma puramente aleatória
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    
+    // 3. Distribui os heróis de forma exclusiva (J1 pega os 4 primeiros, J2 pega os 4 seguintes)
     gameState.p1Cards = shuffled.slice(0, 4);
-    // J2 pega os índices 4, 5, 6, 7 (Impossível repetir o que foi pro J1)
     gameState.p2Cards = shuffled.slice(4, 8);
     
     gameState.phase = 'phase1-j1-save'; 
