@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unmatched Draft System</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>⚔️ Unmatched Draft ⚔️</h1>
+        
+        <div id="screen-connect" class="screen">
+            <p id="player-role-text">Identificando jogador...</p>
+            <div id="link-area" style="display:none;">
+                <p>Envie este link para o Jogador 2:</p>
+                <input type="text" id="room-link" readonly onclick="this.select()">
+                <button onclick="navigator.clipboard.writeText(document.getElementById('room-link').value); alert('Link copiado!')">Copiar Link</button>
+            </div>
+            <p id="status-message">Aguardando oponente...</p>
+            <button id="btn-start-draft" style="display:none;">Iniciar Sorteio</button>
+        </div>
+
+        <div id="screen-draft" class="screen" style="display:none;">
+            <h2 id="draft-phase-title">Fase de Escolha</h2>
+            <p id="draft-instructions">Selecione uma opção.</p>
+            <div id="cards-container" class="cards-grid"></div>
+            <button id="btn-confirm-choice" disabled>Confirmar Escolha</button>
+            <p id="wait-message" style="display:none; color: #ff9800;">Aguardando o outro jogador confirmar...</p>
+        </div>
+
+        <div id="screen-combat" class="screen" style="display:none;">
+            <h2>Fase de Combate (Melhor de 3)</h2>
+            <div class="scoreboard">
+                <div class="score-box">👨‍💼 J1: <span id="score-p1">0</span></div>
+                <div class="score-box">🥷 J2: <span id="score-p2">0</span></div>
+            </div>
+            
+            <div id="combat-selection-area">
+                <h3>Escolha seu herói para o combate:</h3>
+                <div id="combat-choices" class="cards-grid"></div>
+                <button id="btn-confirm-combat" disabled>Pronto para Combater</button>
+            </div>
+
+            <div id="combat-matchup-area" style="display:none;">
+                <h3>CONFRONTO!</h3>
+                <div class="matchup-versus">
+                    <div class="fighter-card" id="fighter-p1">?</div>
+                    <span class="vs">VS</span>
+                    <div class="fighter-card" id="fighter-p2">?</div>
+                </div>
+                <p>Quem venceu esse duelo?</p>
+                <div class="judge-buttons">
+                    <button onclick="registerWinner(1)">Jogador 1 Venceu</button>
+                    <button onclick="registerWinner(2)">Jogador 2 Venceu</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
