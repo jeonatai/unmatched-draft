@@ -1,16 +1,45 @@
-// Lista limpa e sem duplicatas de nomes ou variações repetidas
+// Lista limpa e estruturada com objetos para suportar nome e imagem
 const PERSONAGENS = [
-    "Alice | O Jaguadarte", "Chapeuzinho Vermelho & O Caçador", "Sherlock Holmes | Dr. Watson",
-    "Drácula | As Três Irmãs", "Medusa | Harpias", "Robin Hood | Os Fora-da-lei",
-    "Aquiles | Pátroclo", "Beowulf & Wiglaf", "Maria Sangrenta", "O Gênio",
-    "Pé Grande | O Lebrílope", "Houdini | Bess", "Simbad | O Carregador", "Demolidor",
-    "Yennenga | Arqueiras", "Dr. Jekyll | Sr. Hyde", "Homem Invisível", "Annie Christmas | Charlie",
-    "Mercenário", "Raptores", "Rei Arthur | Merlin", "Robert Muldoon | Trabadores Ingen",
-    "Shakespeare | Atores", "Sun Wukong", "Tomoe Gozen", "Eletrika | O tentáculo",
-    "Titânia | Oberon", "As Irmãs Estranhas", "Darth Vader", "Deadpool",
-    "Dra. Ellie Sattler | Dr. Ian Malcolm", "Fantomas", "Hamlet", "Nicolas Tesla",
-    "Oda Nobunaga | Guarda de Honra", "T-Rex", "Homem-Mariposa | Sapo de Loveland",
-    "Invasor maciano", "Jill Trent | Daizy", "Lampião e Corisco"
+    { nome: "Alice | O Jaguadarte", img: "URL_DA_IMAGEM" },
+    { nome: "Chapeuzinho Vermelho & O Caçador", img: "URL_DA_IMAGEM" },
+    { nome: "Sherlock Holmes | Dr. Watson", img: "URL_DA_IMAGEM" },
+    { nome: "Drácula | As Três Irmãs", img: "URL_DA_IMAGEM" },
+    { nome: "Medusa | Harpias", img: "URL_DA_IMAGEM" },
+    { nome: "Robin Hood | Os Fora-da-lei", img: "URL_DA_IMAGEM" },
+    { nome: "Aquiles | Pátroclo", img: "URL_DA_IMAGEM" },
+    { nome: "Beowulf & Wiglaf", img: "URL_DA_IMAGEM" },
+    { nome: "Maria Sangrenta", img: "URL_DA_IMAGEM" },
+    { nome: "O Gênio", img: "URL_DA_IMAGEM" },
+    { nome: "Pé Grande | O Lebrílope", img: "URL_DA_IMAGEM" },
+    { nome: "Houdini | Bess", img: "URL_DA_IMAGEM" },
+    { nome: "Simbad | O Carregador", img: "URL_DA_IMAGEM" },
+    { nome: "Demolidor", img: "URL_DA_IMAGEM" },
+    { nome: "Yennenga | Arqueiras", img: "URL_DA_IMAGEM" },
+    { nome: "Dr. Jekyll | Sr. Hyde", img: "URL_DA_IMAGEM" },
+    { nome: "Homem Invisível", img: "URL_DA_IMAGEM" },
+    { nome: "Annie Christmas | Charlie", img: "URL_DA_IMAGEM" },
+    { nome: "Mercenário", img: "URL_DA_IMAGEM" },
+    { nome: "Raptores", img: "URL_DA_IMAGEM" },
+    { nome: "Rei Arthur | Merlin", img: "URL_DA_IMAGEM" },
+    { nome: "Robert Muldoon | Trabadores Ingen", img: "URL_DA_IMAGEM" },
+    { nome: "Shakespeare | Atores", img: "URL_DA_IMAGEM" },
+    { nome: "Sun Wukong", img: "URL_DA_IMAGEM" },
+    { nome: "Tomoe Gozen", img: "URL_DA_IMAGEM" },
+    { nome: "Eletrika | O tentáculo", img: "URL_DA_IMAGEM" },
+    { nome: "Titânia | Oberon", img: "URL_DA_IMAGEM" },
+    { nome: "As Irmãs Estranhas", img: "URL_DA_IMAGEM" },
+    { nome: "Darth Vader", img: "URL_DA_IMAGEM" },
+    { nome: "Deadpool", img: "URL_DA_IMAGEM" },
+    { nome: "Dra. Ellie Sattler | Dr. Ian Malcolm", img: "URL_DA_IMAGEM" },
+    { nome: "Fantomas", img: "URL_DA_IMAGEM" },
+    { nome: "Hamlet", img: "URL_DA_IMAGEM" },
+    { nome: "Nicolas Tesla", img: "URL_DA_IMAGEM" },
+    { nome: "Oda Nobunaga | Guarda de Honra", img: "URL_DA_IMAGEM" },
+    { nome: "T-Rex", img: "URL_DA_IMAGEM" },
+    { nome: "Homem-Mariposa | Sapo de Loveland", img: "URL_DA_IMAGEM" },
+    { nome: "Invasor maciano", img: "URL_DA_IMAGEM" },
+    { nome: "Jill Trent | Daizy", img: "URL_DA_IMAGEM" },
+    { nome: "Lampião e Corisco", img: "URL_DA_IMAGEM" }
 ];
 
 // Gerenciamento de Estado Local (Pass-and-Play)
@@ -46,17 +75,13 @@ if (startBtnEl) {
 
 // CORREÇÃO: Embaralhamento robusto usando o algoritmo de Fisher-Yates
 function startLocalDraft() {
-    // 1. Cria uma cópia da lista original de personagens
     let shuffled = [...PERSONAGENS];
     
-    // 2. Aplica o algoritmo de Fisher-Yates para embaralhar de verdade
     for (let i = shuffled.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
-        // Troca os elementos de lugar de forma puramente aleatória
         [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
     }
     
-    // 3. Distribui os heróis de forma exclusiva (J1 pega os 4 primeiros, J2 pega os 4 seguintes)
     gameState.p1Cards = shuffled.slice(0, 4);
     gameState.p2Cards = shuffled.slice(4, 8);
     
@@ -123,25 +148,25 @@ function buildDraftInterface() {
             activePlayerText = "JOGADOR 1";
             if (title) title.innerText = `${activePlayerText} - Fase 2: Banir do Oponente`;
             if (instr) instr.innerText = "Escolha 1 herói do Jogador 2 para BANIR.";
-            cardsToDisplay = gameState.p2Cards.filter(c => c !== gameState.p2Saved);
+            cardsToDisplay = gameState.p2Cards.filter(c => c.nome !== gameState.p2Saved.nome);
             break;
         case 'phase2-j2-ban':
             activePlayerText = "JOGADOR 2";
             if (title) title.innerText = `${activePlayerText} - Fase 2: Banir do Oponente`;
             if (instr) instr.innerText = "Escolha 1 herói do Jogador 1 para BANIR.";
-            cardsToDisplay = gameState.p1Cards.filter(c => c !== gameState.p1Saved);
+            cardsToDisplay = gameState.p1Cards.filter(c => c.nome !== gameState.p1Saved.nome);
             break;
         case 'phase3-j1-final':
             activePlayerText = "JOGADOR 1";
             if (title) title.innerText = `${activePlayerText} - Fase 3: Escolha Final`;
             if (instr) instr.innerText = "Escolha seu segundo herói para fechar seu deck de 2.";
-            cardsToDisplay = gameState.p1Cards.filter(c => c !== gameState.p1Saved && c !== gameState.p2Banned);
+            cardsToDisplay = gameState.p1Cards.filter(c => c.nome !== gameState.p1Saved.nome && c.nome !== gameState.p2Banned.nome);
             break;
         case 'phase3-j2-final':
             activePlayerText = "JOGADOR 2";
             if (title) title.innerText = `${activePlayerText} - Fase 3: Escolha Final`;
             if (instr) instr.innerText = "Escolha seu segundo herói para fechar seu deck de 2 e ir para o combate!";
-            cardsToDisplay = gameState.p2Cards.filter(c => c !== gameState.p2Saved && c !== gameState.p1Banned);
+            cardsToDisplay = gameState.p2Cards.filter(c => c.nome !== gameState.p2Saved.nome && c.nome !== gameState.p1Banned.nome);
             break;
     }
 
@@ -168,7 +193,22 @@ function buildDraftInterface() {
         cardsToDisplay.forEach((char, index) => {
             let div = document.createElement('div');
             div.className = 'card';
-            div.innerText = char;
+            
+            // Injeção da imagem do herói
+            let img = document.createElement('img');
+            img.src = char.img;
+            img.alt = char.nome;
+            img.className = 'card-image'; 
+            img.style.width = '100%';
+            img.style.height = 'auto';
+            img.style.display = 'block';
+
+            let textSpan = document.createElement('span');
+            textSpan.innerText = char.nome;
+
+            div.appendChild(img);
+            div.appendChild(textSpan);
+
             div.onclick = () => {
                 document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
                 div.classList.add('selected');
@@ -191,19 +231,19 @@ if (confirmChoiceBtnEl) {
             gameState.p2Saved = gameState.p2Cards[selectedCardIndex];
             gameState.phase = 'phase2-j1-ban';
         } else if (gameState.phase === 'phase2-j1-ban') {
-            let available = gameState.p2Cards.filter(c => c !== gameState.p2Saved);
+            let available = gameState.p2Cards.filter(c => c.nome !== gameState.p2Saved.nome);
             gameState.p1Banned = available[selectedCardIndex];
             gameState.phase = 'phase2-j2-ban';
         } else if (gameState.phase === 'phase2-j2-ban') {
-            let available = gameState.p1Cards.filter(c => c !== gameState.p1Saved);
+            let available = gameState.p1Cards.filter(c => c.nome !== gameState.p1Saved.nome);
             gameState.p2Banned = available[selectedCardIndex];
             gameState.phase = 'phase3-j1-final';
         } else if (gameState.phase === 'phase3-j1-final') {
-            let available = gameState.p1Cards.filter(c => c !== gameState.p1Saved && c !== gameState.p2Banned);
+            let available = gameState.p1Cards.filter(c => c.nome !== gameState.p1Saved.nome && c.nome !== gameState.p2Banned.nome);
             gameState.p1Final = [gameState.p1Saved, available[selectedCardIndex]];
             gameState.phase = 'phase3-j2-final';
         } else if (gameState.phase === 'phase3-j2-final') {
-            let available = gameState.p2Cards.filter(c => c !== gameState.p2Saved && c !== gameState.p1Banned);
+            let available = gameState.p2Cards.filter(c => c.nome !== gameState.p2Saved.nome && c.nome !== gameState.p1Banned.nome);
             gameState.p2Final = [gameState.p2Saved, available[selectedCardIndex]];
             gameState.phase = 'combat';
         }
@@ -263,10 +303,25 @@ function buildCombatInterface() {
             if (confirmCombatBtn) confirmCombatBtn.style.display = 'none';
         } else {
             pool.forEach((char) => {
+                let isUsed = used.some(u => u.nome === char.nome);
                 let div = document.createElement('div');
-                div.className = 'card' + (used.includes(char) ? ' used' : '');
-                div.innerText = char;
-                if (!used.includes(char)) {
+                div.className = 'card' + (isUsed ? ' used' : '');
+                
+                // Injeção da imagem do herói na seleção de combate
+                let img = document.createElement('img');
+                img.src = char.img;
+                img.alt = char.nome;
+                img.className = 'card-image';
+                img.style.width = '100%';
+                img.style.height = 'auto';
+
+                let textSpan = document.createElement('span');
+                textSpan.innerText = char.nome;
+
+                div.appendChild(img);
+                div.appendChild(textSpan);
+
+                if (!isUsed) {
                     div.onclick = () => {
                         document.querySelectorAll('#combat-choices .card').forEach(c => c.classList.remove('selected'));
                         div.classList.add('selected');
@@ -283,8 +338,10 @@ function buildCombatInterface() {
         if (matchupArea) matchupArea.style.display = 'block';
         const fP1 = document.getElementById('fighter-p1');
         const fP2 = document.getElementById('fighter-p2');
-        if (fP1) fP1.innerText = gameState.p1CombatChoice;
-        if (fP2) fP2.innerText = gameState.p2CombatChoice;
+        
+        // Exibe imagem + nome na tela de confronto direto
+        if (fP1) fP1.innerHTML = `<img src="${gameState.p1CombatChoice.img}" style="max-width:150px; height:auto; display:block; margin:0 auto;"><br>${gameState.p1CombatChoice.nome}`;
+        if (fP2) fP2.innerHTML = `<img src="${gameState.p2CombatChoice.img}" style="max-width:150px; height:auto; display:block; margin:0 auto;"><br>${gameState.p2CombatChoice.nome}`;
     }
 }
 
