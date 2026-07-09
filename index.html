@@ -76,19 +76,32 @@
             margin: 20px 0;
         }
 
+        /* CORREÇÃO: Ajustado para alinhar imagem e texto em coluna de forma organizada */
         .card {
             background-color: var(--card-bg);
             border: 2px solid #333;
             border-radius: 10px;
-            padding: 20px;
-            font-size: 16px;
+            padding: 12px;
+            font-size: 14px;
             font-weight: bold;
             cursor: pointer;
             transition: all 0.2s;
             display: flex;
+            flex-direction: column;
             align-items: center;
-            justify-content: center;
-            min-height: 80px;
+            justify-content: space-between;
+            gap: 10px;
+            min-height: 140px;
+            box-sizing: border-box;
+        }
+
+        /* NOVO: Estilização para as imagens internas dos cards */
+        .card-image {
+            width: 100%;
+            max-height: 120px;
+            object-fit: cover;
+            border-radius: 6px;
+            background-color: #2a2a2a; /* Fundo temporário caso a imagem falhe */
         }
 
         .card.selected {
@@ -100,6 +113,9 @@
         .card.used {
             opacity: 0.3;
             cursor: not-allowed;
+        }
+        
+        .card.used span {
             text-decoration: line-through;
         }
 
@@ -120,13 +136,18 @@
             margin: 30px 0;
         }
 
+        /* CORREÇÃO: Ajustado para acomodar imagem e texto na revelação do combate */
         .fighter-box {
             background: #252525;
-            padding: 20px;
+            padding: 15px;
             border-radius: 8px;
-            width: 40%;
-            font-size: 18px;
+            width: 42%;
+            font-size: 16px;
             font-weight: bold;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
         }
     </style>
 </head>
@@ -138,7 +159,6 @@
             <h1>⚔️ Unmatched Draft ⚔️</h1>
             <p>Modo Pass-and-Play (Mesma Tela)</p>
             <hr style="border-color: #333; margin: 20px 0;">
-            <!-- Ambos os botões antigos agora iniciam o jogo direto para evitar falhas -->
             <button class="btn-action" style="background-color: var(--accent-p1);" onclick="selectRole(1)">Iniciar como Jogador 1</button>
             <button class="btn-action" style="background-color: var(--accent-p2);" onclick="selectRole(2)">Iniciar como Jogador 2</button>
             <button id="btn-start-draft" class="btn-action" style="background-color: #2ecc71;">Iniciar Direto</button>
