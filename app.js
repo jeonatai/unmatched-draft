@@ -1,3 +1,4 @@
+// Lista limpa e sem duplicatas de nomes ou variações repetidas
 const PERSONAGENS = [
     "Alice | O Jaguadarte", "Chapeuzinho Vermelho & O Caçador", "Sherlock Holmes | Dr. Watson",
     "Drácula | As Três Irmãs", "Medusa | Harpias", "Robin Hood | Os Fora-da-lei",
@@ -6,9 +7,9 @@ const PERSONAGENS = [
     "Yennenga | Arqueiras", "Dr. Jekyll | Sr. Hyde", "Homem Invisível", "Annie Christmas | Charlie",
     "Mercenário", "Raptores", "Rei Arthur | Merlin", "Robert Muldoon | Trabadores Ingen",
     "Shakespeare | Atores", "Sun Wukong", "Tomoe Gozen", "Eletrika | O tentáculo",
-    "Titânia | Oberon", "As 3 irmãs", "As Irmãs Estranhas", "Darth Vader", "Deadpool",
+    "Titânia | Oberon", "As Irmãs Estranhas", "Darth Vader", "Deadpool",
     "Dra. Ellie Sattler | Dr. Ian Malcolm", "Fantomas", "Hamlet", "Nicolas Tesla",
-    "Oda Nobunaga | Guarda de Honra", "T-Rex", "Homem mariposa", "Homem-Mariposa | Sapo de Loveland",
+    "Oda Nobunaga | Guarda de Honra", "T-Rex", "Homem-Mariposa | Sapo de Loveland",
     "Invasor maciano", "Jill Trent | Daizy", "Lampião e Corisco"
 ];
 
@@ -31,7 +32,6 @@ function init() {
     renderGame();
 }
 
-// Adaptação para o seu HTML: Qualquer botão de jogador clicado inicia o draft local
 window.selectRole = function(num) {
     startLocalDraft();
 };
@@ -43,11 +43,17 @@ if (startBtnEl) {
     });
 }
 
+// CORREÇÃO AQUI: Garante a exclusividade matemática de cartas entre os jogadores
 function startLocalDraft() {
+    // Cria uma cópia embaralhada de toda a lista única
     let shuffled = [...PERSONAGENS].sort(() => 0.5 - Math.random());
+    
+    // J1 pega os índices 0, 1, 2, 3
     gameState.p1Cards = shuffled.slice(0, 4);
+    // J2 pega os índices 4, 5, 6, 7 (Impossível repetir o que foi pro J1)
     gameState.p2Cards = shuffled.slice(4, 8);
-    gameState.phase = 'phase1-j1-save'; // Começa com o J1 escolhendo
+    
+    gameState.phase = 'phase1-j1-save'; 
     privacyMode = true; 
     renderGame();
 }
@@ -57,7 +63,6 @@ function renderGame() {
     const screenDraft = document.getElementById('screen-draft');
     const screenCombat = document.getElementById('screen-combat');
 
-    // Esconde o botão de copiar link já que jogamos na mesma tela
     const shareBtn = document.getElementById('btn-share-link');
     if (shareBtn) shareBtn.style.display = 'none';
 
