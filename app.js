@@ -13,13 +13,20 @@ const PERSONAGENS = [
 ];
 
 const SUPABASE_URL = "https://qgqxegskziqzqpnomthc.supabase.co";
-// Chave atualizada e sincronizada com as configurações corretas do banco realtime
 const SUPABASE_KEY = "EyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFncXhlZ3NremlxenFwbm9tdGhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MzQ0MTMsImV4cCI6MjA5OTExMDQxM30.42zo3MnIxUy_Ln10wtpeNvoKbL9DlzstfwyrCWvWfy8";
 
-// CORREÇÃO CRUCIAL: Nome alterado para supabaseClient para sumir o SyntaxError do console
 const supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 
-let roomId = "sala_unica"; 
+// SISTEMA DE URL DINÂMICA
+const urlParams = new URLSearchParams(window.location.search);
+let roomId = urlParams.get('room'); 
+
+// Se não tiver 'room' na URL, significa que este é o criador da sala (Jogador 1)
+if (!roomId) {
+    roomId = "sala_" + Math.random().toString(36).substring(2, 9);
+    window.history.replaceState({}, '', `${window.location.pathname}?room=${roomId}`);
+}
+
 let playerNumber = 0; 
 
 let gameState = {
@@ -37,7 +44,6 @@ async function init() {
     renderGame();
 
     if (!supabaseClient) {
-        console.error("Biblioteca do Supabase não carregou no HTML.");
         document.getElementById('status-message').innerText = "Erro: Biblioteca do Supabase ausente.";
         return;
     }
@@ -53,7 +59,6 @@ async function init() {
         });
 
         channel.subscribe((status) => {
-            console.log("Status da conexão Realtime:", status);
             if(status === 'SUBSCRIBED') {
                 channel.send({ type: 'broadcast', event: 'req-sync' });
             }
@@ -91,8 +96,24 @@ window.selectRole = function(num) {
             sendUpdate();
         }
     } catch (err) {
-        console.error("Erro ao executar selectRole:", err);
+        console.error(err);
     }
+};
+
+// Função para copiar o link exclusivo da sala
+window.copyRoomLink = function() {
+    const link = window.location.href;
+    navigator.clipboard.writeText(link).then(() => {
+        const btn = document.getElementById('btn-share-link');
+        btn.innerText = "🔗 Link Copiado!";
+        btn.style.background = "#2ed573";
+        setTimeout(() => {
+            btn.innerText = "📋 Copiar Link do Convidado";
+            btn.style.background = "#1e90ff";
+        }, 2000);
+    }).catch(err => {
+        alert("Copie o link da barra de endereço: " + link);
+    });
 };
 
 document.getElementById('btn-start-draft').addEventListener('click', () => {
@@ -109,12 +130,15 @@ function renderGame() {
 
     const statusMsg = document.getElementById('status-message');
     const startBtn = document.getElementById('btn-start-draft');
+    const shareBtn = document.getElementById('btn-share-link');
 
     if (playerNumber === 0) {
         statusMsg.innerText = "Escolha um papel acima para entrar no jogo.";
         startBtn.style.display = 'none';
+        if(shareBtn) shareBtn.style.display = 'none';
     } else {
         if (gameState.p1Connected && gameState.p2Connected) {
+            if(shareBtn) shareBtn.style.display = 'none';
             if (playerNumber === 1) {
                 statusMsg.innerText = "Jogador 2 conectado! Você pode iniciar o sorteio.";
                 startBtn.style.display = 'inline-block';
@@ -125,6 +149,8 @@ function renderGame() {
         } else {
             statusMsg.innerText = `Você entrou como Jogador ${playerNumber}. Aguardando o outro jogador escolher papel...`;
             startBtn.style.display = 'none';
+            // Só exibe o botão de compartilhar se o jogador já escolheu um papel e o outro ainda não entrou
+            if(shareBtn) shareBtn.style.display = 'inline-block';
         }
     }
 
