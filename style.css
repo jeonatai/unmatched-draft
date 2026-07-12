@@ -5,7 +5,7 @@
     box-sizing: border-box;
     margin: 0;
     padding: 0;
-    -webkit-tap-highlight-color: transparent; /* Remove o flash azul ao tocar no celular */
+    -webkit-tap-highlight-color: transparent; /* Remove o flash azul ao tocar no telemóvel */
 }
 
 body {
@@ -85,13 +85,13 @@ button:disabled, .btn-action:disabled {
     transform: none;
 }
 
-/* Telas ocultas por padrão */
+/* Animação para transição de telas */
 .screen {
     animation: fadeIn 0.4s ease-in-out;
 }
 
 /* ==========================================================================
-   TELA 1: SELEÇÃO DE PAPEL (J1 E J2 LADO A LADO)
+   TELA 1: SELEÇÃO DE PAPEL (BOTÕES LADO A LADO)
    ========================================================================== */
 .role-selection-buttons {
     display: flex;
@@ -134,14 +134,14 @@ button:disabled, .btn-action:disabled {
     justify-content: space-between;
     gap: 8px;
     min-height: 160px; 
-    box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
     box-sizing: border-box;
 }
 
 .card-image {
     width: 100%;
     height: 95px;
-    object-fit: cover; 
+    object-fit: cover; /* Recorta a imagem proporcionalmente sem distorcer */
     border-radius: 8px;
     background-color: #16161a; 
 }
@@ -256,13 +256,13 @@ button:disabled, .btn-action:disabled {
 }
 
 .judge-buttons button:first-child {
-    background: linear-gradient(135deg, #2ed573, #7bed9f);
-    box-shadow: 0 4px 12px rgba(46, 213, 115, 0.3);
+    background: linear-gradient(135deg, #3498db, #5faee3);
+    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
 }
 
 .judge-buttons button:last-child {
-    background: linear-gradient(135deg, #1e90ff, #70a1ff);
-    box-shadow: 0 4px 12px rgba(30, 144, 255, 0.3);
+    background: linear-gradient(135deg, #e74c3c, #f17b6e);
+    box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
 }
 
 /* Animação suave de transição */
