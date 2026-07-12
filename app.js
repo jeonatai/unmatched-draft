@@ -61,14 +61,13 @@ function init() {
     renderGame();
 }
 
-// CORREÇÃO CRUCIAL: Torna a função visível globalmente para os botões do HTML funcionarem
+// Torna a função visível para o clique direto do HTML
 window.startLocalDraft = startLocalDraft;
 
 function startLocalDraft() {
     privacyMode = true; 
     selectedCardIndex = null;
     
-    // Algoritmo robusto de embaralhamento (Fisher-Yates)
     let shuffled = [...PERSONAGENS];
     for (let i = shuffled.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -179,15 +178,11 @@ function buildDraftInterface() {
             let div = document.createElement('div');
             div.className = 'card';
             
-            let img = document.createElement('img');
-            img.src = char.img;
-            img.alt = char.nome;
-            img.className = 'card-image'; 
-
+            // ADAPTADO: Não tenta carregar a imagem se a pasta estiver vazia
             let textSpan = document.createElement('span');
             textSpan.innerText = char.nome;
+            textSpan.style.margin = "auto"; // Centraliza o texto no card vazio
 
-            div.appendChild(img);
             div.appendChild(textSpan);
 
             div.onclick = () => {
@@ -205,7 +200,6 @@ function buildDraftInterface() {
     }
 }
 
-// Vincula os botões internos de confirmação assim que o DOM estiver pronto
 document.addEventListener('DOMContentLoaded', () => {
     const confirmChoiceBtnEl = document.getElementById('btn-confirm-choice');
     if (confirmChoiceBtnEl) {
@@ -305,16 +299,11 @@ function buildCombatInterface() {
                 let isUsed = used.some(u => u.nome === char.nome);
                 let div = document.createElement('div');
                 div.className = 'card' + (isUsed ? ' used' : '');
-                
-                let img = document.createElement('img');
-                img.src = char.img;
-                img.alt = char.nome;
-                img.className = 'card-image';
 
                 let textSpan = document.createElement('span');
                 textSpan.innerText = char.nome;
+                textSpan.style.margin = "auto";
 
-                div.appendChild(img);
                 div.appendChild(textSpan);
 
                 if (!isUsed) {
@@ -338,8 +327,9 @@ function buildCombatInterface() {
         const fP1 = document.getElementById('fighter-p1');
         const fP2 = document.getElementById('fighter-p2');
         
-        if (fP1) fP1.innerHTML = `<img src="${gameState.p1CombatChoice.img}" class="card-image"><br><span>${gameState.p1CombatChoice.nome}</span>`;
-        if (fP2) fP2.innerHTML = `<img src="${gameState.p2CombatChoice.img}" class="card-image"><br><span>${gameState.p2CombatChoice.nome}</span>`;
+        // ADAPTADO: Mostra apenas o nome no VS final
+        if (fP1) fP1.innerHTML = `<span>${gameState.p1CombatChoice.nome}</span>`;
+        if (fP2) fP2.innerHTML = `<span>${gameState.p2CombatChoice.nome}</span>`;
     }
 }
 
@@ -357,5 +347,4 @@ window.registerWinner = function(winnerNum) {
     renderGame();
 };
 
-// Inicializa o estado visual do app
 window.onload = init;
