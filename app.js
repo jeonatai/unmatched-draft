@@ -61,25 +61,14 @@ function init() {
     renderGame();
 }
 
-// Vincula o clique de qualquer um dos botões iniciais de papel para começar o draft
-window.selectRole = function(num) {
-    startLocalDraft();
-};
-
-// Monitora o botão de "Iniciar Direto" se ele existir
-document.addEventListener('DOMContentLoaded', () => {
-    const startBtnEl = document.getElementById('btn-start-draft');
-    if (startBtnEl) {
-        startBtnEl.addEventListener('click', () => {
-            startLocalDraft();
-        });
-    }
-});
+// CORREÇÃO CRUCIAL: Torna a função visível globalmente para os botões do HTML funcionarem
+window.startLocalDraft = startLocalDraft;
 
 function startLocalDraft() {
     privacyMode = true; 
     selectedCardIndex = null;
     
+    // Algoritmo robusto de embaralhamento (Fisher-Yates)
     let shuffled = [...PERSONAGENS];
     for (let i = shuffled.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -211,11 +200,12 @@ function buildDraftInterface() {
         });
         if (confirmBtn) {
             confirmBtn.style.display = 'inline-block';
-            confirmBtn.disabled = true; // Força selecionar antes de confirmar
+            confirmBtn.disabled = true; 
         }
     }
 }
 
+// Vincula os botões internos de confirmação assim que o DOM estiver pronto
 document.addEventListener('DOMContentLoaded', () => {
     const confirmChoiceBtnEl = document.getElementById('btn-confirm-choice');
     if (confirmChoiceBtnEl) {
@@ -367,5 +357,5 @@ window.registerWinner = function(winnerNum) {
     renderGame();
 };
 
-// Inicializa o jogo assim que o script carregar
+// Inicializa o estado visual do app
 window.onload = init;
