@@ -4,67 +4,45 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Unmatched Draft - Pass & Play</title>
-    <!-- Vincula o arquivo CSS externo correto -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
     <div class="container">
-        <!-- TELA DE INÍCIO -->
         <div id="screen-connect" class="screen" style="display: block;">
             <h1>⚔️ Unmatched Draft ⚔️</h1>
             <p>Modo Pass-and-Play (Mesma Tela)</p>
             <div class="role-selection-buttons">
-                <button style="background-color: #3498db;" onclick="selectRole(1)">Jogador 1</button>
-                <button style="background-color: #e74c3c;" onclick="selectRole(2)">Jogador 2</button>
+                <button style="background-color: #3498db;" onclick="startLocalDraft()">Iniciar J1</button>
+                <button style="background-color: #e74c3c;" onclick="startLocalDraft()">Iniciar J2</button>
             </div>
-            <button id="btn-start-draft" style="background-color: #2ecc71; margin-top: 15px;">Iniciar Direto</button>
+            <button id="btn-start-draft" style="background-color: #2ecc71; margin-top: 15px;" onclick="startLocalDraft()">Iniciar Direto</button>
         </div>
 
-        <!-- TELA DO DRAFT (ESCOLHAS E BANIMENTOS) -->
         <div id="screen-draft" class="screen" style="display: none;">
             <h2 id="draft-phase-title">Fase de Seleção</h2>
             <p id="draft-instructions">Aguardando início...</p>
             
             <div id="cards-container" class="cards-grid">
-                <!-- Inserido dinamicamente pelo JS -->
-            </div>
+                </div>
 
             <button id="btn-confirm-choice" disabled>Confirmar Escolha</button>
         </div>
 
-        <!-- TELA DE COMBATE (ROUNDS) -->
         <div id="screen-combat" class="screen" style="display: none;">
             <div class="scoreboard">
                 <div class="score-box">🔹 J1 <span id="score-p1">0</span></div>
                 <div class="score-box">🔸 J2 <span id="score-p2">0</span></div>
             </div>
 
-            <!-- Seleção Secreta de quem vai para a Arena -->
             <div id="combat-selection-area">
                 <h3 id="combat-title">Seleção Secreta de Combate</h3>
                 <div id="combat-choices" class="cards-grid"></div>
                 <button id="btn-confirm-combat" disabled>Confirmar Combatente</button>
             </div>
 
-            <!-- Revelação do Confronto -->
             <div id="combat-matchup-area" style="display: none;">
                 <h3>🔥 CONFRONTO DEFINIDO! 🔥</h3>
                 <div class="matchup-versus">
                     <div class="fighter-card" id="fighter-p1">-</div>
-                    <div class="vs">VS</div>
-                    <div class="fighter-card" id="fighter-p2">-</div>
-                </div>
-                <p>Quem venceu esse round?</p>
-                <div class="judge-buttons">
-                    <button onclick="registerWinner(1)">Vitória J1</button>
-                    <button onclick="registerWinner(2)">Vitória J2</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Importa o arquivo script de comportamento -->
-    <script src="app.js"></script>
-</body>
-</html>
+                    <div class
