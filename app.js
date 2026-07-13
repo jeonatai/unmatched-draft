@@ -357,7 +357,7 @@ function buildCombatInterface() {
         const container = document.getElementById('combat-choices');
         container.innerHTML = "";
         const pool = myRole === 1 ? gameState.p1Final : gameState.p2Final;
-        const used = myRole === 1 ? gameState.p1Used : gameState.p2Used;
+        const used = (myRole === 1 ? gameState.p1Used : gameState.p2Used) || [];
         const confirmCombatBtn = document.getElementById('btn-confirm-combat');
         confirmCombatBtn.disabled = true;
 
@@ -405,10 +405,10 @@ window.registerWinner = function(winnerNum) {
     };
     if (winnerNum === 1) {
         updates.p1Score = gameState.p1Score + 1;
-        updates.p1Used = [...gameState.p1Used, gameState.p1CombatChoice];
+        updates.p1Used = [...(gameState.p1Used || []), gameState.p1CombatChoice];
     } else {
         updates.p2Score = gameState.p2Score + 1;
-        updates.p2Used = [...gameState.p2Used, gameState.p2CombatChoice];
+        updates.p2Used = [...(gameState.p2Used || []), gameState.p2CombatChoice];
     }
     roomRef.update(updates);
 };
