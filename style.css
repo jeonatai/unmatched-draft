@@ -161,6 +161,14 @@ button:disabled, .btn-action:disabled {
     box-sizing: border-box;
 }
 
+.card-image {
+    width: 100%;
+    height: 95px;
+    object-fit: cover; /* Recorta a imagem proporcionalmente sem distorcer */
+    border-radius: 8px;
+    background-color: #16161a;
+}
+
 .card:hover:not(.used) {
     border-color: #57606f;
 }

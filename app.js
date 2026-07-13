@@ -1,45 +1,45 @@
-// Lista de personagens (sem imagens por enquanto - apenas texto)
+// Lista de personagens
 const PERSONAGENS = [
-    { nome: "Alice | O Jaguadarte" },
-    { nome: "Chapeuzinho Vermelho & O Caçador" },
-    { nome: "Sherlock Holmes | Dr. Watson" },
-    { nome: "Drácula | As Três Irmãs" },
-    { nome: "Medusa | Harpias" },
-    { nome: "Robin Hood | Os Fora-da-lei" },
-    { nome: "Aquiles | Pátroclo" },
-    { nome: "Beowulf & Wiglaf" },
-    { nome: "Maria Sangrenta" },
-    { nome: "O Gênio" },
-    { nome: "Pé Grande | O Lebrílope" },
-    { nome: "Houdini | Bess" },
-    { nome: "Simbad | O Carregador" },
-    { nome: "Demolidor" },
-    { nome: "Yennenga | Arqueiras" },
-    { nome: "Dr. Jekyll | Sr. Hyde" },
-    { nome: "Homem Invisível" },
-    { nome: "Annie Christmas | Charlie" },
-    { nome: "Mercenário" },
-    { nome: "Raptores" },
-    { nome: "Rei Arthur | Merlin" },
-    { nome: "Robert Muldoon | Trabalhadores Ingen" },
-    { nome: "Shakespeare | Atores" },
-    { nome: "Sun Wukong" },
-    { nome: "Tomoe Gozen" },
-    { nome: "Eletrika | O Tentáculo" },
-    { nome: "Titânia | Oberon" },
-    { nome: "As Irmãs Estranhas" },
-    { nome: "Darth Vader" },
-    { nome: "Deadpool" },
-    { nome: "Dra. Ellie Sattler | Dr. Ian Malcolm" },
-    { nome: "Fantomas" },
-    { nome: "Hamlet" },
-    { nome: "Nicolas Tesla" },
-    { nome: "Oda Nobunaga | Guarda de Honra" },
-    { nome: "T-Rex" },
-    { nome: "Homem-Mariposa | Sapo de Loveland" },
-    { nome: "Invasor Marciano" },
-    { nome: "Jill Trent | Daizy" },
-    { nome: "Lampião e Corisco" }
+    { nome: "Alice | O Jaguadarte", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/UyRTRFSeylTWqKpnkSIus.png" },
+    { nome: "Chapeuzinho Vermelho & O Caçador", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/xLyD7qzSKyz94f_F6QtEi.webp" },
+    { nome: "Sherlock Holmes | Dr. Watson", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/ZTs8B3IyqHabuE3aeXHF_.png" },
+    { nome: "Drácula | As Três Irmãs", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/vI43Lyv3aAGgUa9vfv-uT.png" },
+    { nome: "Medusa | Harpias", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/ROSMO3sRi6Jh1o7S_riGI.png" },
+    { nome: "Robin Hood | Os Fora-da-lei", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/nTLDla5Mkj_Hc2DfFQULj.jpg" },
+    { nome: "Aquiles | Pátroclo", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/INWx-zVx8tsyrlQD4gFE2.gif" },
+    { nome: "Beowulf & Wiglaf", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/UQLFTSR_LuIMa60bOFMPl.webp" },
+    { nome: "Maria Sangrenta", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/_R8K6Xw1JWJfBSOOfhB9t.gif" },
+    { nome: "O Gênio", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/iZi7oBFoZ34YyVa1Qg28u.webp" },
+    { nome: "Pé Grande | O Lebrílope", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/mbjF8pursj8AYkalODyXa.jpg" },
+    { nome: "Houdini | Bess", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/HkwPbbhKUMb_XWpndh6DN.webp" },
+    { nome: "Simbad | O Carregador", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/iX3R40hAP80XJ-UalPt6E.png" },
+    { nome: "Demolidor", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/B0qnKxZyoG3KLwRNvKsrG.webp" },
+    { nome: "Yennenga | Arqueiras", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/QQfafCmj_R9Qhz1-XKvhr.jpg" },
+    { nome: "Dr. Jekyll | Sr. Hyde", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/ALEF6sBXvEA3kUuJEb3gb.png" },
+    { nome: "Homem Invisível", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/UaF-LncvMygaqpZvmecew.png" },
+    { nome: "Annie Christmas | Charlie", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/tM1nfezImPsBo-Dnd6wNG.webp" },
+    { nome: "Mercenário", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/RBfXKmTmIQ_rAq7TjQ1bV.webp" },
+    { nome: "Raptores", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/591BE1ij7PVn6uzsqucd1.webp" },
+    { nome: "Rei Arthur | Merlin", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/WWzu16BEFGsEdu5NsMbMI.png" },
+    { nome: "Robert Muldoon | Trabalhadores Ingen", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/8TYpVxAqscVJYDfMuPeyk.webp" },
+    { nome: "Shakespeare | Atores", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/pqYPwbvPq9hp_RtpsQB5B.webp" },
+    { nome: "Sun Wukong", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/EoDLc4PNqSqST9akf5nVn.jpg" },
+    { nome: "Tomoe Gozen", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/8P9zI-HHRr-qgJASxttfi.webp" },
+    { nome: "Eletrika | O Tentáculo", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/BiC5iLlqu_RyyelKidLWp.webp" },
+    { nome: "Titânia | Oberon", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/hq3qeQJWxR1UIcSt9aIkw.webp" },
+    { nome: "As Irmãs Estranhas", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/epUAsiZCbo09Q_Tew3OxK.webp" },
+    { nome: "Darth Vader", img: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQGLmpFnjkvmn-NLbixmiel5H3davC2VTHxJAB8HiRCnxLTjmQdxGQ6npg&s=10" },
+    { nome: "Deadpool", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/mF-7XGbmp7eHQrbMSaX6v.webp" },
+    { nome: "Dra. Ellie Sattler | Dr. Ian Malcolm", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/xrt_5GcTzDQd9Bb0P2Z56.webp" },
+    { nome: "Fantomas", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/A891P2gL7IPp2_Kjk3P7b.webp" },
+    { nome: "Hamlet", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/bg3s8IEdB07YlbFJQSGS5.webp" },
+    { nome: "Nicolas Tesla", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/byq-c3l_HktvangjGc33q.webp" },
+    { nome: "Oda Nobunaga | Guarda de Honra", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/_hVP2Ah-uMSD_kH5-LUol.webp" },
+    { nome: "T-Rex", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/mURpEFDw_zxQRn19mYXgG.webp" },
+    { nome: "Homem-Mariposa | Sapo de Loveland", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/npcs/villains/card-covers/x83yAUgQGlJDoSWVi-CXQ.webp" },
+    { nome: "Invasor Marciano", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/npcs/villains/card-covers/XMvDZU9R1vCn5dT4Do6iZ.webp" },
+    { nome: "Jill Trent | Daizy", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/CvsgmaMFob3JNZ9OFOjgA.webp" },
+    { nome: "Lampião e Corisco", img: "https://storage.googleapis.com/ludopedia-imagens-jogo/3741e_230447.jpg" }
 ];
 
 // ============================================================
@@ -52,10 +52,18 @@ let roomRef = null;
 let gameState = null; // preenchido pelo listener do Firebase
 let selectedCardIndex = null;
 
+// Gera um número aleatório usando a API criptográfica do navegador,
+// que é uma fonte de aleatoriedade mais forte que Math.random().
+function secureRandomInt(maxExclusive) {
+    const arr = new Uint32Array(1);
+    crypto.getRandomValues(arr);
+    return arr[0] % maxExclusive;
+}
+
 function shuffleArray(arr) {
     let shuffled = [...arr];
     for (let i = shuffled.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
+        const j = secureRandomInt(i + 1);
         [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
     }
     return shuffled;
@@ -69,6 +77,21 @@ function showScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
     const el = document.getElementById(id);
     if (el) el.style.display = 'block';
+}
+
+// Monta o conteúdo visual de um card: imagem (se houver) + nome
+function fillCardContent(div, char) {
+    if (char.img) {
+        let img = document.createElement('img');
+        img.className = 'card-image';
+        img.src = char.img;
+        img.alt = char.nome;
+        div.appendChild(img);
+    }
+    let textSpan = document.createElement('span');
+    textSpan.innerText = char.nome;
+    if (!char.img) textSpan.style.margin = "auto";
+    div.appendChild(textSpan);
 }
 
 // ============================================================
@@ -267,10 +290,7 @@ function buildDraftInterface() {
     cardsToDisplay.forEach((char, index) => {
         let div = document.createElement('div');
         div.className = 'card';
-        let textSpan = document.createElement('span');
-        textSpan.innerText = char.nome;
-        textSpan.style.margin = "auto";
-        div.appendChild(textSpan);
+        fillCardContent(div, char);
 
         div.onclick = () => {
             document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
@@ -368,10 +388,7 @@ function buildCombatInterface() {
             let isUsed = used.some(u => u.nome === char.nome);
             let div = document.createElement('div');
             div.className = 'card' + (isUsed ? ' used' : '');
-            let textSpan = document.createElement('span');
-            textSpan.innerText = char.nome;
-            textSpan.style.margin = "auto";
-            div.appendChild(textSpan);
+            fillCardContent(div, char);
 
             if (!isUsed) {
                 div.onclick = () => {
@@ -393,8 +410,12 @@ function buildCombatInterface() {
         combatActive.style.display = 'none';
         combatWaiting.style.display = 'none';
         matchupArea.style.display = 'block';
-        document.getElementById('fighter-p1').innerHTML = `<span>${gameState.p1CombatChoice.nome}</span>`;
-        document.getElementById('fighter-p2').innerHTML = `<span>${gameState.p2CombatChoice.nome}</span>`;
+        const fP1 = document.getElementById('fighter-p1');
+        const fP2 = document.getElementById('fighter-p2');
+        fP1.innerHTML = "";
+        fP2.innerHTML = "";
+        fillCardContent(fP1, gameState.p1CombatChoice);
+        fillCardContent(fP2, gameState.p2CombatChoice);
     }
 }
 
