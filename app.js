@@ -1,83 +1,84 @@
-// Lista limpa e estruturada com objetos apontando para a pasta local img/
+// Lista de personagens (sem imagens por enquanto - apenas texto)
 const PERSONAGENS = [
-    { nome: "Alice | O Jaguadarte", img: "img/alice.png" },
-    { nome: "Chapeuzinho Vermelho & O Caçador", img: "img/chapeuzinho.png" },
-    { nome: "Sherlock Holmes | Dr. Watson", img: "img/sherlock.png" },
-    { nome: "Drácula | As Três Irmãs", img: "img/dracula.png" },
-    { nome: "Medusa | Harpias", img: "img/medusa.png" },
-    { nome: "Robin Hood | Os Fora-da-lei", img: "img/robin_hood.png" },
-    { nome: "Aquiles | Pátroclo", img: "img/aquiles.png" },
-    { nome: "Beowulf & Wiglaf", img: "img/beowulf.png" },
-    { nome: "Maria Sangrenta", img: "img/maria_sangrenta.png" },
-    { nome: "O Gênio", img: "img/genio.png" },
-    { nome: "Pé Grande | O Lebrílope", img: "img/pe_grande.png" },
-    { nome: "Houdini | Bess", img: "img/houdini.png" },
-    { nome: "Simbad | O Carregador", img: "img/simbad.png" },
-    { nome: "Demolidor", img: "img/demolidor.png" },
-    { nome: "Yennenga | Arqueiras", img: "img/yennenga.png" },
-    { nome: "Dr. Jekyll | Sr. Hyde", img: "img/jekyll_hyde.png" },
-    { nome: "Homem Invisível", img: "img/homem_invisivel.png" },
-    { nome: "Annie Christmas | Charlie", img: "img/annie_christmas.png" },
-    { nome: "Mercenário", img: "img/mercenario.png" },
-    { nome: "Raptores", img: "img/raptores.png" },
-    { nome: "Rei Arthur | Merlin", img: "img/rei_arthur.png" },
-    { nome: "Robert Muldoon | Trabadores Ingen", img: "img/robert_muldoon.png" },
-    { nome: "Shakespeare | Atores", img: "img/shakespeare.png" },
-    { nome: "Sun Wukong", img: "img/sun_wukong.png" },
-    { nome: "Tomoe Gozen", img: "img/tomoe_gozen.png" },
-    { nome: "Eletrika | O tentáculo", img: "img/eletrika.png" },
-    { nome: "Titânia | Oberon", img: "img/titania_oberon.png" },
-    { nome: "As Irmãs Estranhas", img: "img/irmas_estranhas.png" },
-    { nome: "Darth Vader", img: "img/darth_vader.png" },
-    { nome: "Deadpool", img: "img/deadpool.png" },
-    { nome: "Dra. Ellie Sattler | Dr. Ian Malcolm", img: "img/ellie_ian.png" },
-    { nome: "Fantomas", img: "img/fantomas.png" },
-    { nome: "Hamlet", img: "img/hamlet.png" },
-    { nome: "Nicolas Tesla", img: "img/nicolas_tesla.png" },
-    { nome: "Oda Nobunaga | Guarda de Honra", img: "img/oda_nobunaga.png" },
-    { nome: "T-Rex", img: "img/t_rex.png" },
-    { nome: "Homem-Mariposa | Sapo de Loveland", img: "img/homem_mariposa.png" },
-    { nome: "Invasor maciano", img: "img/invasor_marciano.png" },
-    { nome: "Jill Trent | Daizy", img: "img/jill_trent.png" },
-    { nome: "Lampião e Corisco", img: "img/lampiao_corisco.png" }
+    { nome: "Alice | O Jaguadarte" },
+    { nome: "Chapeuzinho Vermelho & O Caçador" },
+    { nome: "Sherlock Holmes | Dr. Watson" },
+    { nome: "Drácula | As Três Irmãs" },
+    { nome: "Medusa | Harpias" },
+    { nome: "Robin Hood | Os Fora-da-lei" },
+    { nome: "Aquiles | Pátroclo" },
+    { nome: "Beowulf & Wiglaf" },
+    { nome: "Maria Sangrenta" },
+    { nome: "O Gênio" },
+    { nome: "Pé Grande | O Lebrílope" },
+    { nome: "Houdini | Bess" },
+    { nome: "Simbad | O Carregador" },
+    { nome: "Demolidor" },
+    { nome: "Yennenga | Arqueiras" },
+    { nome: "Dr. Jekyll | Sr. Hyde" },
+    { nome: "Homem Invisível" },
+    { nome: "Annie Christmas | Charlie" },
+    { nome: "Mercenário" },
+    { nome: "Raptores" },
+    { nome: "Rei Arthur | Merlin" },
+    { nome: "Robert Muldoon | Trabalhadores Ingen" },
+    { nome: "Shakespeare | Atores" },
+    { nome: "Sun Wukong" },
+    { nome: "Tomoe Gozen" },
+    { nome: "Eletrika | O Tentáculo" },
+    { nome: "Titânia | Oberon" },
+    { nome: "As Irmãs Estranhas" },
+    { nome: "Darth Vader" },
+    { nome: "Deadpool" },
+    { nome: "Dra. Ellie Sattler | Dr. Ian Malcolm" },
+    { nome: "Fantomas" },
+    { nome: "Hamlet" },
+    { nome: "Nicolas Tesla" },
+    { nome: "Oda Nobunaga | Guarda de Honra" },
+    { nome: "T-Rex" },
+    { nome: "Homem-Mariposa | Sapo de Loveland" },
+    { nome: "Invasor Marciano" },
+    { nome: "Jill Trent | Daizy" },
+    { nome: "Lampião e Corisco" }
 ];
 
 // Gerenciamento de Estado Local (Pass-and-Play)
 let gameState = {
     phase: 'wait', // wait, phase1-j1-save, phase1-j2-save, phase2-j1-ban, phase2-j2-ban, phase3-j1-final, phase3-j2-final, combat
-    p1Cards: [], p2Cards: [], 
+    p1Cards: [], p2Cards: [],
     p1Saved: null, p2Saved: null,
-    p1Banned: null, p2Banned: null, 
+    p1Banned: null, p2Banned: null,
     p1Final: [], p2Final: [],
     p1CombatChoice: null, p2CombatChoice: null,
-    p1Used: [], p2Used: [], 
+    tempChoice: null,
+    p1Used: [], p2Used: [],
     p1Score: 0, p2Score: 0
 };
 
 let selectedCardIndex = null;
-let privacyMode = true; 
+let privacyMode = true;
 
 function init() {
     renderGame();
 }
 
-// Torna a função visível para o clique direto do HTML
+// Torna as funções visíveis para os cliques no HTML
 window.startLocalDraft = startLocalDraft;
 
 function startLocalDraft() {
-    privacyMode = true; 
+    privacyMode = true;
     selectedCardIndex = null;
-    
+
     let shuffled = [...PERSONAGENS];
     for (let i = shuffled.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
     }
-    
+
     gameState.p1Cards = shuffled.slice(0, 4);
     gameState.p2Cards = shuffled.slice(4, 8);
-    
-    gameState.phase = 'phase1-j1-save'; 
+
+    gameState.phase = 'phase1-j1-save';
     renderGame();
 }
 
@@ -118,7 +119,7 @@ function buildDraftInterface() {
 
     let activePlayerText = "";
     let cardsToDisplay = [];
-    
+
     switch (gameState.phase) {
         case 'phase1-j1-save':
             activePlayerText = "JOGADOR 1";
@@ -164,9 +165,7 @@ function buildDraftInterface() {
         let privacyBtn = document.createElement('button');
         privacyBtn.className = "btn-action";
         privacyBtn.style.background = "#ffa500";
-        privacyBtn.style.width = "100%";
-        privacyBtn.style.maxWidth = "none";
-        privacyBtn.innerText = `👁️ Vez do ${activePlayerText}.\nClique para revelar as opções na tela.`;
+        privacyBtn.innerText = `👁️ Vez do ${activePlayerText}. Clique para revelar as opções na tela.`;
         privacyBtn.onclick = () => {
             privacyMode = false;
             buildDraftInterface();
@@ -177,11 +176,10 @@ function buildDraftInterface() {
         cardsToDisplay.forEach((char, index) => {
             let div = document.createElement('div');
             div.className = 'card';
-            
-            // ADAPTADO: Não tenta carregar a imagem se a pasta estiver vazia
+
             let textSpan = document.createElement('span');
             textSpan.innerText = char.nome;
-            textSpan.style.margin = "auto"; // Centraliza o texto no card vazio
+            textSpan.style.margin = "auto";
 
             div.appendChild(textSpan);
 
@@ -195,7 +193,7 @@ function buildDraftInterface() {
         });
         if (confirmBtn) {
             confirmBtn.style.display = 'inline-block';
-            confirmBtn.disabled = true; 
+            confirmBtn.disabled = true;
         }
     }
 }
@@ -229,7 +227,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             selectedCardIndex = null;
-            privacyMode = true; 
+            privacyMode = true;
             confirmChoiceBtnEl.disabled = true;
             renderGame();
         };
@@ -269,7 +267,7 @@ function buildCombatInterface() {
     if (!gameState.p1CombatChoice || !gameState.p2CombatChoice) {
         if (selectArea) selectArea.style.display = 'block';
         if (matchupArea) matchupArea.style.display = 'none';
-        
+
         const container = document.getElementById('combat-choices');
         if (!container) return;
         container.innerHTML = "";
@@ -285,9 +283,7 @@ function buildCombatInterface() {
             let privacyBtn = document.createElement('button');
             privacyBtn.className = "btn-action";
             privacyBtn.style.background = "#ff4757";
-            privacyBtn.style.width = "100%";
-            privacyBtn.style.maxWidth = "none";
-            privacyBtn.innerText = `👁️ Vez do ${activePlayerText}.\nClique para escolher o Herói deste Round.`;
+            privacyBtn.innerText = `👁️ Vez do ${activePlayerText}. Clique para escolher o Herói deste Round.`;
             privacyBtn.onclick = () => {
                 privacyMode = false;
                 buildCombatInterface();
@@ -326,8 +322,7 @@ function buildCombatInterface() {
         if (matchupArea) matchupArea.style.display = 'block';
         const fP1 = document.getElementById('fighter-p1');
         const fP2 = document.getElementById('fighter-p2');
-        
-        // ADAPTADO: Mostra apenas o nome no VS final
+
         if (fP1) fP1.innerHTML = `<span>${gameState.p1CombatChoice.nome}</span>`;
         if (fP2) fP2.innerHTML = `<span>${gameState.p2CombatChoice.nome}</span>`;
     }

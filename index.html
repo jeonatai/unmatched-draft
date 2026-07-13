@@ -9,22 +9,18 @@
 <body>
 
     <div class="container">
+
         <div id="screen-connect" class="screen" style="display: block;">
             <h1>⚔️ Unmatched Draft ⚔️</h1>
             <p>Modo Pass-and-Play (Mesma Tela)</p>
-            <div class="role-selection-buttons">
-                <button style="background-color: #3498db;" onclick="startLocalDraft()">Iniciar J1</button>
-                <button style="background-color: #e74c3c;" onclick="startLocalDraft()">Iniciar J2</button>
-            </div>
-            <button id="btn-start-draft" style="background-color: #2ecc71; margin-top: 15px;" onclick="startLocalDraft()">Iniciar Direto</button>
+            <button id="btn-start-draft" style="background-color: #2ecc71;" onclick="startLocalDraft()">Iniciar Draft</button>
         </div>
 
         <div id="screen-draft" class="screen" style="display: none;">
             <h2 id="draft-phase-title">Fase de Seleção</h2>
             <p id="draft-instructions">Aguardando início...</p>
-            
-            <div id="cards-container" class="cards-grid">
-                </div>
+
+            <div id="cards-container" class="cards-grid"></div>
 
             <button id="btn-confirm-choice" disabled>Confirmar Escolha</button>
         </div>
@@ -45,4 +41,20 @@
                 <h3>🔥 CONFRONTO DEFINIDO! 🔥</h3>
                 <div class="matchup-versus">
                     <div class="fighter-card" id="fighter-p1">-</div>
-                    <div class
+                    <div class="vs">VS</div>
+                    <div class="fighter-card" id="fighter-p2">-</div>
+                </div>
+
+                <p>Quem venceu este combate?</p>
+                <div class="judge-buttons">
+                    <button onclick="registerWinner(1)">Venceu J1</button>
+                    <button onclick="registerWinner(2)">Venceu J2</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
