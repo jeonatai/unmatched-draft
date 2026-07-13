@@ -42,304 +42,373 @@ const PERSONAGENS = [
     { nome: "Lampião e Corisco" }
 ];
 
-// Gerenciamento de Estado Local (Pass-and-Play)
-let gameState = {
-    phase: 'wait', // wait, phase1-j1-save, phase1-j2-save, phase2-j1-ban, phase2-j2-ban, phase3-j1-final, phase3-j2-final, combat
-    p1Cards: [], p2Cards: [],
-    p1Saved: null, p2Saved: null,
-    p1Banned: null, p2Banned: null,
-    p1Final: [], p2Final: [],
-    p1CombatChoice: null, p2CombatChoice: null,
-    tempChoice: null,
-    p1Used: [], p2Used: [],
-    p1Score: 0, p2Score: 0
-};
-
+// ============================================================
+// ESTADO LOCAL DESTE DISPOSITIVO (não é o estado do jogo em si,
+// que fica no Firebase e é compartilhado entre os 2 jogadores)
+// ============================================================
+let roomId = null;
+let myRole = null; // 1 ou 2
+let roomRef = null;
+let gameState = null; // preenchido pelo listener do Firebase
 let selectedCardIndex = null;
-let privacyMode = true;
 
-function init() {
-    renderGame();
-}
-
-// Torna as funções visíveis para os cliques no HTML
-window.startLocalDraft = startLocalDraft;
-
-function startLocalDraft() {
-    privacyMode = true;
-    selectedCardIndex = null;
-
-    let shuffled = [...PERSONAGENS];
+function shuffleArray(arr) {
+    let shuffled = [...arr];
     for (let i = shuffled.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
     }
-
-    gameState.p1Cards = shuffled.slice(0, 4);
-    gameState.p2Cards = shuffled.slice(4, 8);
-
-    gameState.phase = 'phase1-j1-save';
-    renderGame();
+    return shuffled;
 }
 
-function renderGame() {
-    const screenConnect = document.getElementById('screen-connect');
-    const screenDraft = document.getElementById('screen-draft');
-    const screenCombat = document.getElementById('screen-combat');
+function generateRoomId() {
+    return Math.random().toString(36).substring(2, 8).toUpperCase();
+}
 
-    if (gameState.phase === 'wait') {
-        if (screenConnect) screenConnect.style.display = 'block';
-        if (screenDraft) screenDraft.style.display = 'none';
-        if (screenCombat) screenCombat.style.display = 'none';
+function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'block';
+}
+
+// ============================================================
+// INICIALIZAÇÃO: decide se cria sala nova ou entra em uma existente
+// ============================================================
+window.addEventListener('DOMContentLoaded', () => {
+    const params = new URLSearchParams(window.location.search);
+    const urlRoom = params.get('room');
+
+    document.getElementById('btn-create-room').onclick = createRoom;
+    document.getElementById('btn-copy-link').onclick = copyRoomLink;
+
+    if (!urlRoom) {
+        // Ninguém ainda: mostra tela de criar sala
+        showScreen('screen-connect');
+        return;
+    }
+
+    roomId = urlRoom;
+    const savedRole = localStorage.getItem('unmatched_role_' + roomId);
+
+    if (savedRole) {
+        // Já é um jogador conhecido desta sala (ex: deu refresh na página)
+        myRole = parseInt(savedRole, 10);
+        attachRoomListener();
+        return;
+    }
+
+    // Dispositivo novo entrando por um link -> tenta virar Jogador 2
+    tryJoinAsPlayer2();
+});
+
+function createRoom() {
+    roomId = generateRoomId();
+    myRole = 1;
+    localStorage.setItem('unmatched_role_' + roomId, '1');
+
+    const shuffled = shuffleArray(PERSONAGENS);
+    const initialState = {
+        phase: 'lobby',
+        player2Joined: false,
+        p1Cards: shuffled.slice(0, 4),
+        p2Cards: shuffled.slice(4, 8),
+        p1Saved: null, p2Saved: null,
+        p1Banned: null, p2Banned: null,
+        p1Final: null, p2Final: null,
+        p1CombatChoice: null, p2CombatChoice: null,
+        p1Used: [], p2Used: [],
+        p1Score: 0, p2Score: 0
+    };
+
+    roomRef = db.ref('rooms/' + roomId);
+    roomRef.set(initialState).then(() => {
+        const link = window.location.origin + window.location.pathname + '?room=' + roomId;
+        document.getElementById('room-link-input').value = link;
+        showScreen('screen-waiting-room');
+        window.history.replaceState({}, '', link);
+        attachRoomListener();
+    });
+}
+
+function copyRoomLink() {
+    const input = document.getElementById('room-link-input');
+    input.select();
+    navigator.clipboard.writeText(input.value).then(() => {
+        const btn = document.getElementById('btn-copy-link');
+        const original = btn.innerText;
+        btn.innerText = 'Copiado! ✅';
+        setTimeout(() => { btn.innerText = original; }, 1500);
+    });
+}
+
+function tryJoinAsPlayer2() {
+    const ref = db.ref('rooms/' + roomId);
+    ref.get().then(snapshot => {
+        if (!snapshot.exists()) {
+            document.getElementById('join-error-message').innerText =
+                'Essa sala não existe (ou o link está errado).';
+            showScreen('screen-join-error');
+            return;
+        }
+        const data = snapshot.val();
+        if (data.player2Joined) {
+            document.getElementById('join-error-message').innerText =
+                'Essa sala já está cheia. Peça ao Jogador 1 para criar uma nova sala.';
+            showScreen('screen-join-error');
+            return;
+        }
+
+        myRole = 2;
+        localStorage.setItem('unmatched_role_' + roomId, '2');
+        roomRef = ref;
+        roomRef.update({ player2Joined: true, phase: 'phase1-j1-save' }).then(() => {
+            attachRoomListener();
+        });
+    }).catch(() => {
+        document.getElementById('join-error-message').innerText =
+            'Não foi possível conectar à sala. Verifique sua internet e o firebase-config.js.';
+        showScreen('screen-join-error');
+    });
+}
+
+function attachRoomListener() {
+    roomRef = db.ref('rooms/' + roomId);
+    roomRef.on('value', snapshot => {
+        gameState = snapshot.val();
+        if (gameState) renderGame();
+    });
+}
+
+// ============================================================
+// RENDERIZAÇÃO PRINCIPAL
+// ============================================================
+function renderGame() {
+    if (gameState.phase === 'lobby') {
+        showScreen('screen-waiting-room');
         return;
     }
 
     if (gameState.phase.startsWith('phase')) {
-        if (screenConnect) screenConnect.style.display = 'none';
-        if (screenDraft) screenDraft.style.display = 'block';
-        if (screenCombat) screenCombat.style.display = 'none';
+        showScreen('screen-draft');
+        const roleLabel = document.getElementById('my-role-label');
+        if (roleLabel) roleLabel.innerText = 'JOGADOR ' + myRole;
         buildDraftInterface();
         return;
     }
 
     if (gameState.phase === 'combat') {
-        if (screenConnect) screenConnect.style.display = 'none';
-        if (screenDraft) screenDraft.style.display = 'none';
-        if (screenCombat) screenCombat.style.display = 'block';
+        showScreen('screen-combat');
         buildCombatInterface();
     }
 }
 
+function isMyDraftTurn(phase) {
+    if (phase.includes('j1')) return myRole === 1;
+    if (phase.includes('j2')) return myRole === 2;
+    return false;
+}
+
 function buildDraftInterface() {
+    const draftActive = document.getElementById('draft-active');
+    const draftWaiting = document.getElementById('draft-waiting');
+
+    if (!isMyDraftTurn(gameState.phase)) {
+        draftActive.style.display = 'none';
+        draftWaiting.style.display = 'block';
+        return;
+    }
+    draftActive.style.display = 'block';
+    draftWaiting.style.display = 'none';
+
     const title = document.getElementById('draft-phase-title');
     const instr = document.getElementById('draft-instructions');
     const container = document.getElementById('cards-container');
-    if (!container) return;
     container.innerHTML = "";
+    selectedCardIndex = null;
 
-    let activePlayerText = "";
     let cardsToDisplay = [];
 
     switch (gameState.phase) {
         case 'phase1-j1-save':
-            activePlayerText = "JOGADOR 1";
-            if (title) title.innerText = `${activePlayerText} - Fase 1: Salvar Herói`;
-            if (instr) instr.innerText = "Escolha 1 herói para SALVAR secretamente. Depois, passe o aparelho.";
+            title.innerText = "Fase 1: Salvar Herói";
+            instr.innerText = "Escolha 1 herói para SALVAR secretamente.";
             cardsToDisplay = gameState.p1Cards;
             break;
         case 'phase1-j2-save':
-            activePlayerText = "JOGADOR 2";
-            if (title) title.innerText = `${activePlayerText} - Fase 1: Salvar Herói`;
-            if (instr) instr.innerText = "Escolha 1 herói para SALVAR secretamente. Depois, passe o aparelho.";
+            title.innerText = "Fase 1: Salvar Herói";
+            instr.innerText = "Escolha 1 herói para SALVAR secretamente.";
             cardsToDisplay = gameState.p2Cards;
             break;
         case 'phase2-j1-ban':
-            activePlayerText = "JOGADOR 1";
-            if (title) title.innerText = `${activePlayerText} - Fase 2: Banir do Oponente`;
-            if (instr) instr.innerText = "Escolha 1 herói do Jogador 2 para BANIR.";
+            title.innerText = "Fase 2: Banir do Oponente";
+            instr.innerText = "Escolha 1 herói do Jogador 2 para BANIR.";
             cardsToDisplay = gameState.p2Cards.filter(c => c.nome !== gameState.p2Saved.nome);
             break;
         case 'phase2-j2-ban':
-            activePlayerText = "JOGADOR 2";
-            if (title) title.innerText = `${activePlayerText} - Fase 2: Banir do Oponente`;
-            if (instr) instr.innerText = "Escolha 1 herói do Jogador 1 para BANIR.";
+            title.innerText = "Fase 2: Banir do Oponente";
+            instr.innerText = "Escolha 1 herói do Jogador 1 para BANIR.";
             cardsToDisplay = gameState.p1Cards.filter(c => c.nome !== gameState.p1Saved.nome);
             break;
         case 'phase3-j1-final':
-            activePlayerText = "JOGADOR 1";
-            if (title) title.innerText = `${activePlayerText} - Fase 3: Escolha Final`;
-            if (instr) instr.innerText = "Escolha seu segundo herói para fechar seu deck de 2.";
+            title.innerText = "Fase 3: Escolha Final";
+            instr.innerText = "Escolha seu segundo herói para fechar seu deck de 2.";
             cardsToDisplay = gameState.p1Cards.filter(c => c.nome !== gameState.p1Saved.nome && c.nome !== gameState.p2Banned.nome);
             break;
         case 'phase3-j2-final':
-            activePlayerText = "JOGADOR 2";
-            if (title) title.innerText = `${activePlayerText} - Fase 3: Escolha Final`;
-            if (instr) instr.innerText = "Escolha seu segundo herói para fechar seu deck de 2 e ir para o combate!";
+            title.innerText = "Fase 3: Escolha Final";
+            instr.innerText = "Escolha seu segundo herói e vá para o combate!";
             cardsToDisplay = gameState.p2Cards.filter(c => c.nome !== gameState.p2Saved.nome && c.nome !== gameState.p1Banned.nome);
             break;
     }
 
     const confirmBtn = document.getElementById('btn-confirm-choice');
+    confirmBtn.disabled = true;
 
-    if (privacyMode) {
-        let privacyBtn = document.createElement('button');
-        privacyBtn.className = "btn-action";
-        privacyBtn.style.background = "#ffa500";
-        privacyBtn.innerText = `👁️ Vez do ${activePlayerText}. Clique para revelar as opções na tela.`;
-        privacyBtn.onclick = () => {
-            privacyMode = false;
-            buildDraftInterface();
+    cardsToDisplay.forEach((char, index) => {
+        let div = document.createElement('div');
+        div.className = 'card';
+        let textSpan = document.createElement('span');
+        textSpan.innerText = char.nome;
+        textSpan.style.margin = "auto";
+        div.appendChild(textSpan);
+
+        div.onclick = () => {
+            document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
+            div.classList.add('selected');
+            selectedCardIndex = index;
+            confirmBtn.disabled = false;
         };
-        container.appendChild(privacyBtn);
-        if (confirmBtn) confirmBtn.style.display = 'none';
-    } else {
-        cardsToDisplay.forEach((char, index) => {
-            let div = document.createElement('div');
-            div.className = 'card';
-
-            let textSpan = document.createElement('span');
-            textSpan.innerText = char.nome;
-            textSpan.style.margin = "auto";
-
-            div.appendChild(textSpan);
-
-            div.onclick = () => {
-                document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
-                div.classList.add('selected');
-                selectedCardIndex = index;
-                if (confirmBtn) confirmBtn.disabled = false;
-            };
-            container.appendChild(div);
-        });
-        if (confirmBtn) {
-            confirmBtn.style.display = 'inline-block';
-            confirmBtn.disabled = true;
-        }
-    }
+        container.appendChild(div);
+    });
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    const confirmChoiceBtnEl = document.getElementById('btn-confirm-choice');
-    if (confirmChoiceBtnEl) {
-        confirmChoiceBtnEl.onclick = () => {
-            if (gameState.phase === 'phase1-j1-save') {
-                gameState.p1Saved = gameState.p1Cards[selectedCardIndex];
-                gameState.phase = 'phase1-j2-save';
-            } else if (gameState.phase === 'phase1-j2-save') {
-                gameState.p2Saved = gameState.p2Cards[selectedCardIndex];
-                gameState.phase = 'phase2-j1-ban';
-            } else if (gameState.phase === 'phase2-j1-ban') {
-                let available = gameState.p2Cards.filter(c => c.nome !== gameState.p2Saved.nome);
-                gameState.p1Banned = available[selectedCardIndex];
-                gameState.phase = 'phase2-j2-ban';
-            } else if (gameState.phase === 'phase2-j2-ban') {
-                let available = gameState.p1Cards.filter(c => c.nome !== gameState.p1Saved.nome);
-                gameState.p2Banned = available[selectedCardIndex];
-                gameState.phase = 'phase3-j1-final';
-            } else if (gameState.phase === 'phase3-j1-final') {
-                let available = gameState.p1Cards.filter(c => c.nome !== gameState.p1Saved.nome && c.nome !== gameState.p2Banned.nome);
-                gameState.p1Final = [gameState.p1Saved, available[selectedCardIndex]];
-                gameState.phase = 'phase3-j2-final';
-            } else if (gameState.phase === 'phase3-j2-final') {
-                let available = gameState.p2Cards.filter(c => c.nome !== gameState.p2Saved.nome && c.nome !== gameState.p1Banned.nome);
-                gameState.p2Final = [gameState.p2Saved, available[selectedCardIndex]];
-                gameState.phase = 'combat';
-            }
+document.getElementById('btn-confirm-choice')?.addEventListener('click', () => {
+    if (selectedCardIndex === null) return;
+    const phase = gameState.phase;
+    let updates = {};
 
-            selectedCardIndex = null;
-            privacyMode = true;
-            confirmChoiceBtnEl.disabled = true;
-            renderGame();
-        };
+    if (phase === 'phase1-j1-save') {
+        updates.p1Saved = gameState.p1Cards[selectedCardIndex];
+        updates.phase = 'phase1-j2-save';
+    } else if (phase === 'phase1-j2-save') {
+        updates.p2Saved = gameState.p2Cards[selectedCardIndex];
+        updates.phase = 'phase2-j1-ban';
+    } else if (phase === 'phase2-j1-ban') {
+        let available = gameState.p2Cards.filter(c => c.nome !== gameState.p2Saved.nome);
+        updates.p1Banned = available[selectedCardIndex];
+        updates.phase = 'phase2-j2-ban';
+    } else if (phase === 'phase2-j2-ban') {
+        let available = gameState.p1Cards.filter(c => c.nome !== gameState.p1Saved.nome);
+        updates.p2Banned = available[selectedCardIndex];
+        updates.phase = 'phase3-j1-final';
+    } else if (phase === 'phase3-j1-final') {
+        let available = gameState.p1Cards.filter(c => c.nome !== gameState.p1Saved.nome && c.nome !== gameState.p2Banned.nome);
+        updates.p1Final = [gameState.p1Saved, available[selectedCardIndex]];
+        updates.phase = 'phase3-j2-final';
+    } else if (phase === 'phase3-j2-final') {
+        let available = gameState.p2Cards.filter(c => c.nome !== gameState.p2Saved.nome && c.nome !== gameState.p1Banned.nome);
+        updates.p2Final = [gameState.p2Saved, available[selectedCardIndex]];
+        updates.phase = 'combat';
     }
 
-    const confirmCombatBtnEl = document.getElementById('btn-confirm-combat');
-    if (confirmCombatBtnEl) {
-        confirmCombatBtnEl.onclick = () => {
-            if (!gameState.p1CombatChoice) {
-                gameState.p1CombatChoice = gameState.tempChoice;
-            } else {
-                gameState.p2CombatChoice = gameState.tempChoice;
-            }
-            gameState.tempChoice = null;
-            privacyMode = true;
-            confirmCombatBtnEl.disabled = true;
-            buildCombatInterface();
-        };
-    }
+    selectedCardIndex = null;
+    roomRef.update(updates);
 });
 
+// ============================================================
+// COMBATE
+// ============================================================
+function currentCombatTurn() {
+    if (!gameState.p1CombatChoice) return 1;
+    if (!gameState.p2CombatChoice) return 2;
+    return null;
+}
+
 function buildCombatInterface() {
-    const p1ScoreEl = document.getElementById('score-p1');
-    const p2ScoreEl = document.getElementById('score-p2');
-    if (p1ScoreEl) p1ScoreEl.innerText = gameState.p1Score;
-    if (p2ScoreEl) p2ScoreEl.innerText = gameState.p2Score;
+    document.getElementById('score-p1').innerText = gameState.p1Score;
+    document.getElementById('score-p2').innerText = gameState.p2Score;
+
+    const combatActive = document.getElementById('combat-active');
+    const combatWaiting = document.getElementById('combat-waiting');
+    const matchupArea = document.getElementById('combat-matchup-area');
 
     if (gameState.p1Score >= 2 || gameState.p2Score >= 2) {
+        combatActive.style.display = 'none';
+        combatWaiting.style.display = 'none';
+        matchupArea.style.display = 'none';
         alert(`🏆 Fim de jogo! Campeão: ${gameState.p1Score >= 2 ? 'Jogador 1' : 'Jogador 2'}`);
         return;
     }
 
-    const selectArea = document.getElementById('combat-selection-area');
-    const matchupArea = document.getElementById('combat-matchup-area');
-    const confirmCombatBtn = document.getElementById('btn-confirm-combat');
+    const turn = currentCombatTurn();
 
-    if (!gameState.p1CombatChoice || !gameState.p2CombatChoice) {
-        if (selectArea) selectArea.style.display = 'block';
-        if (matchupArea) matchupArea.style.display = 'none';
+    if (turn !== null) {
+        matchupArea.style.display = 'none';
+
+        if (turn !== myRole) {
+            combatActive.style.display = 'none';
+            combatWaiting.style.display = 'block';
+            return;
+        }
+
+        combatActive.style.display = 'block';
+        combatWaiting.style.display = 'none';
 
         const container = document.getElementById('combat-choices');
-        if (!container) return;
         container.innerHTML = "";
+        const pool = myRole === 1 ? gameState.p1Final : gameState.p2Final;
+        const used = myRole === 1 ? gameState.p1Used : gameState.p2Used;
+        const confirmCombatBtn = document.getElementById('btn-confirm-combat');
+        confirmCombatBtn.disabled = true;
 
-        let activePlayerText = !gameState.p1CombatChoice ? "JOGADOR 1" : "JOGADOR 2";
-        let pool = !gameState.p1CombatChoice ? gameState.p1Final : gameState.p2Final;
-        let used = !gameState.p1CombatChoice ? gameState.p1Used : gameState.p2Used;
+        document.getElementById('combat-title').innerText = `Sua vez, Jogador ${myRole} - Escolha secretamente`;
 
-        const combatTitle = document.getElementById('combat-title');
-        if (combatTitle) combatTitle.innerText = `${activePlayerText} - Seleção Secreta de Combate`;
+        let tempChoice = null;
+        pool.forEach((char) => {
+            let isUsed = used.some(u => u.nome === char.nome);
+            let div = document.createElement('div');
+            div.className = 'card' + (isUsed ? ' used' : '');
+            let textSpan = document.createElement('span');
+            textSpan.innerText = char.nome;
+            textSpan.style.margin = "auto";
+            div.appendChild(textSpan);
 
-        if (privacyMode) {
-            let privacyBtn = document.createElement('button');
-            privacyBtn.className = "btn-action";
-            privacyBtn.style.background = "#ff4757";
-            privacyBtn.innerText = `👁️ Vez do ${activePlayerText}. Clique para escolher o Herói deste Round.`;
-            privacyBtn.onclick = () => {
-                privacyMode = false;
-                buildCombatInterface();
-            };
-            container.appendChild(privacyBtn);
-            if (confirmCombatBtn) confirmCombatBtn.style.display = 'none';
-        } else {
-            pool.forEach((char) => {
-                let isUsed = used.some(u => u.nome === char.nome);
-                let div = document.createElement('div');
-                div.className = 'card' + (isUsed ? ' used' : '');
-
-                let textSpan = document.createElement('span');
-                textSpan.innerText = char.nome;
-                textSpan.style.margin = "auto";
-
-                div.appendChild(textSpan);
-
-                if (!isUsed) {
-                    div.onclick = () => {
-                        document.querySelectorAll('#combat-choices .card').forEach(c => c.classList.remove('selected'));
-                        div.classList.add('selected');
-                        gameState.tempChoice = char;
-                        if (confirmCombatBtn) confirmCombatBtn.disabled = false;
-                    };
-                }
-                container.appendChild(div);
-            });
-            if (confirmCombatBtn) {
-                confirmCombatBtn.style.display = 'inline-block';
-                confirmCombatBtn.disabled = true;
+            if (!isUsed) {
+                div.onclick = () => {
+                    document.querySelectorAll('#combat-choices .card').forEach(c => c.classList.remove('selected'));
+                    div.classList.add('selected');
+                    tempChoice = char;
+                    confirmCombatBtn.disabled = false;
+                };
             }
-        }
-    } else {
-        if (selectArea) selectArea.style.display = 'none';
-        if (matchupArea) matchupArea.style.display = 'block';
-        const fP1 = document.getElementById('fighter-p1');
-        const fP2 = document.getElementById('fighter-p2');
+            container.appendChild(div);
+        });
 
-        if (fP1) fP1.innerHTML = `<span>${gameState.p1CombatChoice.nome}</span>`;
-        if (fP2) fP2.innerHTML = `<span>${gameState.p2CombatChoice.nome}</span>`;
+        confirmCombatBtn.onclick = () => {
+            if (!tempChoice) return;
+            const field = myRole === 1 ? 'p1CombatChoice' : 'p2CombatChoice';
+            roomRef.update({ [field]: tempChoice });
+        };
+    } else {
+        combatActive.style.display = 'none';
+        combatWaiting.style.display = 'none';
+        matchupArea.style.display = 'block';
+        document.getElementById('fighter-p1').innerHTML = `<span>${gameState.p1CombatChoice.nome}</span>`;
+        document.getElementById('fighter-p2').innerHTML = `<span>${gameState.p2CombatChoice.nome}</span>`;
     }
 }
 
 window.registerWinner = function(winnerNum) {
+    let updates = {
+        p1CombatChoice: null,
+        p2CombatChoice: null
+    };
     if (winnerNum === 1) {
-        gameState.p1Score++;
-        gameState.p1Used.push(gameState.p1CombatChoice);
+        updates.p1Score = gameState.p1Score + 1;
+        updates.p1Used = [...gameState.p1Used, gameState.p1CombatChoice];
     } else {
-        gameState.p2Score++;
-        gameState.p2Used.push(gameState.p2CombatChoice);
+        updates.p2Score = gameState.p2Score + 1;
+        updates.p2Used = [...gameState.p2Used, gameState.p2CombatChoice];
     }
-    gameState.p1CombatChoice = null;
-    gameState.p2CombatChoice = null;
-    privacyMode = true;
-    renderGame();
+    roomRef.update(updates);
 };
-
-window.onload = init;

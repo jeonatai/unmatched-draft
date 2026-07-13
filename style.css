@@ -91,20 +91,43 @@ button:disabled, .btn-action:disabled {
 }
 
 /* ==========================================================================
-   TELA 1: SELEÇÃO DE PAPEL (BOTÕES LADO A LADO)
+   TELA DE SALA (CRIAR / AGUARDAR / LINK)
    ========================================================================== */
-.role-selection-buttons {
+.room-link-box {
     display: flex;
-    gap: 15px;
-    justify-content: center;
-    margin-top: 10px;
+    gap: 8px;
+    margin-bottom: 20px;
 }
 
-.role-selection-buttons button {
-    margin-top: 0;
+.room-link-box input {
+    flex: 1;
+    background: #1e1e24;
     border: 2px solid #2f3542;
-    box-shadow: none;
+    border-radius: 10px;
     color: #f1f2f6;
+    padding: 12px;
+    font-size: 13px;
+    min-width: 0;
+}
+
+.room-link-box button {
+    width: auto;
+    white-space: nowrap;
+    padding: 12px 16px;
+}
+
+.waiting-text {
+    color: #ffa500;
+    font-weight: 600;
+}
+
+.scoreboard-small {
+    margin-bottom: 10px;
+}
+
+.scoreboard-small .score-box {
+    color: #f1f2f6;
+    font-size: 14px;
 }
 
 /* ==========================================================================

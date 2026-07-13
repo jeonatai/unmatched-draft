@@ -3,38 +3,73 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Unmatched Draft - Pass & Play</title>
+    <title>Unmatched Draft - Online</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
     <div class="container">
 
-        <div id="screen-connect" class="screen" style="display: block;">
+        <!-- TELA 1: Criar sala -->
+        <div id="screen-connect" class="screen" style="display: none;">
             <h1>⚔️ Unmatched Draft ⚔️</h1>
-            <p>Modo Pass-and-Play (Mesma Tela)</p>
-            <button id="btn-start-draft" style="background-color: #2ecc71;" onclick="startLocalDraft()">Iniciar Draft</button>
+            <p>Crie uma sala e envie o link para o outro jogador.</p>
+            <button id="btn-create-room" style="background-color: #2ecc71;">Criar Sala</button>
         </div>
 
+        <!-- TELA 2: Esperando o oponente entrar -->
+        <div id="screen-waiting-room" class="screen" style="display: none;">
+            <h1>⚔️ Sala Criada! ⚔️</h1>
+            <p>Envie este link para o Jogador 2 entrar na partida:</p>
+            <div class="room-link-box">
+                <input type="text" id="room-link-input" readonly>
+                <button id="btn-copy-link">Copiar Link</button>
+            </div>
+            <p class="waiting-text">⏳ Aguardando o Jogador 2 entrar...</p>
+        </div>
+
+        <!-- TELA 3: Erro ao entrar na sala -->
+        <div id="screen-join-error" class="screen" style="display: none;">
+            <h1>⚠️ Ops!</h1>
+            <p id="join-error-message">Não foi possível entrar nessa sala.</p>
+            <button onclick="window.location.href = window.location.pathname">Voltar ao início</button>
+        </div>
+
+        <!-- TELA 4: Draft -->
         <div id="screen-draft" class="screen" style="display: none;">
-            <h2 id="draft-phase-title">Fase de Seleção</h2>
-            <p id="draft-instructions">Aguardando início...</p>
+            <div class="scoreboard scoreboard-small">
+                <div class="score-box">Você é <span id="my-role-label">-</span></div>
+            </div>
 
-            <div id="cards-container" class="cards-grid"></div>
+            <div id="draft-active">
+                <h2 id="draft-phase-title">Fase de Seleção</h2>
+                <p id="draft-instructions">Aguardando início...</p>
+                <div id="cards-container" class="cards-grid"></div>
+                <button id="btn-confirm-choice" disabled>Confirmar Escolha</button>
+            </div>
 
-            <button id="btn-confirm-choice" disabled>Confirmar Escolha</button>
+            <div id="draft-waiting" style="display: none;">
+                <h2>⏳ Aguardando...</h2>
+                <p id="draft-waiting-text">É a vez do outro jogador. Aguarde a notificação.</p>
+            </div>
         </div>
 
+        <!-- TELA 5: Combate -->
         <div id="screen-combat" class="screen" style="display: none;">
             <div class="scoreboard">
                 <div class="score-box">🔹 J1 <span id="score-p1">0</span></div>
                 <div class="score-box">🔸 J2 <span id="score-p2">0</span></div>
             </div>
 
-            <div id="combat-selection-area">
+            <div id="combat-active">
                 <h3 id="combat-title">Seleção Secreta de Combate</h3>
                 <div id="combat-choices" class="cards-grid"></div>
                 <button id="btn-confirm-combat" disabled>Confirmar Combatente</button>
+            </div>
+
+            <div id="combat-waiting" style="display: none;">
+                <h3>⏳ Aguardando...</h3>
+                <p id="combat-waiting-text">O outro jogador está escolhendo secretamente.</p>
             </div>
 
             <div id="combat-matchup-area" style="display: none;">
@@ -55,6 +90,11 @@
 
     </div>
 
+    <!-- Firebase (compat SDK, mais simples de usar direto no navegador) -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+
+    <script src="firebase-config.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
