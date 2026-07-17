@@ -42,18 +42,24 @@ const PERSONAGENS = [
     { nome: "Lampião e Corisco", img: "https://storage.googleapis.com/ludopedia-imagens-jogo/3741e_230447.jpg" }
 ];
 
+const PLAYER_COLORS = {
+    1: { name: 'Jogador 1', color: '#3498db', class: 'player-1' },
+    2: { name: 'Jogador 2', color: '#e74c3c', class: 'player-2' },
+    3: { name: 'Jogador 3', color: '#2ecc71', class: 'player-3' },
+    4: { name: 'Jogador 4', color: '#f39c12', class: 'player-4' }
+};
+
 // ============================================================
-// ESTADO LOCAL DESTE DISPOSITIVO (não é o estado do jogo em si,
-// que fica no Firebase e é compartilhado entre os 2 jogadores)
+// ESTADO LOCAL
 // ============================================================
 let roomId = null;
-let myRole = null; // 1 ou 2
+let myRole = null;
+let myNameIndex = null;
 let roomRef = null;
-let gameState = null; // preenchido pelo listener do Firebase
+let gameState = null;
 let selectedCardIndex = null;
+let pendingConfig = null;
 
-// Gera um número aleatório usando a API criptográfica do navegador,
-// que é uma fonte de aleatoriedade mais forte que Math.random().
 function secureRandomInt(maxExclusive) {
     const arr = new Uint32Array(1);
     crypto.getRandomValues(arr);
@@ -73,13 +79,31 @@ function generateRoomId() {
     return Math.random().toString(36).substring(2, 8).toUpperCase();
 }
 
+function getDeviceId() {
+    let id = localStorage.getItem('unmatched_device_id');
+    if (!id) {
+        id = Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
+        localStorage.setItem('unmatched_device_id', id);
+    }
+    return id;
+}
+
 function showScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
     const el = document.getElementById(id);
     if (el) el.style.display = 'block';
 }
 
-// Monta o conteúdo visual de um card: imagem (se houver) + nome
+function updateRoomHeader() {
+    const header = document.getElementById('room-code-header');
+    if (roomId) {
+        header.style.display = 'flex';
+        document.getElementById('room-code-display').innerText = roomId;
+    } else {
+        header.style.display = 'none';
+    }
+}
+
 function fillCardContent(div, char) {
     if (char.img) {
         let img = document.createElement('img');
@@ -94,45 +118,109 @@ function fillCardContent(div, char) {
     div.appendChild(textSpan);
 }
 
-// ============================================================
-// INICIALIZAÇÃO: decide se cria sala nova ou entra em uma existente
-// ============================================================
-window.addEventListener('DOMContentLoaded', () => {
-    const params = new URLSearchParams(window.location.search);
-    const urlRoom = params.get('room');
-
-    document.getElementById('btn-create-room').onclick = createRoom;
-    document.getElementById('btn-copy-link').onclick = copyRoomLink;
-
-    if (!urlRoom) {
-        // Ninguém ainda: mostra tela de criar sala
-        showScreen('screen-connect');
-        return;
+function getPlayerDisplayName(role) {
+    if (!gameState || !gameState.playerNames) return 'J' + role;
+    if (gameState.mode === 'team' && gameState.slotAssignments) {
+        const nameIdx = gameState.slotAssignments[role];
+        return gameState.playerNames[nameIdx] || ('Jogador ' + role);
     }
+    const idx = role - 1;
+    return gameState.playerNames[idx] || ('Jogador ' + role);
+}
 
-    roomId = urlRoom;
-    const savedRole = localStorage.getItem('unmatched_role_' + roomId);
-
-    if (savedRole) {
-        // Já é um jogador conhecido desta sala (ex: deu refresh na página)
-        myRole = parseInt(savedRole, 10);
-        attachRoomListener();
-        return;
+function getMySlotFromNameIndex(nameIndex) {
+    if (!gameState.slotAssignments) return null;
+    for (const [slot, idx] of Object.entries(gameState.slotAssignments)) {
+        if (parseInt(idx) === nameIndex) return parseInt(slot);
     }
+    return null;
+}
 
-    // Dispositivo novo entrando por um link -> tenta virar Jogador 2
-    tryJoinAsPlayer2();
-});
+function goHome() {
+    if (roomRef) roomRef.off();
+    roomId = null;
+    myRole = null;
+    myNameIndex = null;
+    roomRef = null;
+    gameState = null;
+    updateRoomHeader();
+    window.history.replaceState({}, '', window.location.pathname);
+    showScreen('screen-home');
+}
 
-function createRoom() {
+// ============================================================
+// CONFIGURAÇÃO DE SALA
+// ============================================================
+function buildNameInputs(count) {
+    const container = document.getElementById('player-names-inputs');
+    container.innerHTML = '';
+    for (let i = 0; i < count; i++) {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'text-input name-input';
+        input.placeholder = 'Jogador ' + (i + 1);
+        input.value = 'Jogador ' + (i + 1);
+        input.dataset.index = i;
+        container.appendChild(input);
+    }
+}
+
+function getSelectedMode() {
+    const checked = document.querySelector('input[name="game-mode"]:checked');
+    return checked ? checked.value : 'single';
+}
+
+function getNameInputs() {
+    return Array.from(document.querySelectorAll('.name-input')).map(inp => inp.value.trim() || inp.placeholder);
+}
+
+// ============================================================
+// CRIAÇÃO E ENTRADA NA SALA
+// ============================================================
+function createRoomFromConfig() {
+    const mode = pendingConfig.mode;
+    const playerNames = pendingConfig.playerNames;
     roomId = generateRoomId();
-    myRole = 1;
-    localStorage.setItem('unmatched_role_' + roomId, '1');
+    myRole = mode === 'team' ? null : 1;
+    localStorage.setItem('unmatched_role_' + roomId, mode === 'team' ? 'creator' : '1');
 
-    const shuffled = shuffleArray(PERSONAGENS);
     const initialState = {
+        mode,
         phase: 'lobby',
+        playerNames,
         player2Joined: false,
+        nameClaims: {},
+        slotAssignments: null,
+        winner: null,
+        winnerTeam: null
+    };
+
+    if (mode === 'single') {
+        Object.assign(initialState, {
+            p1Cards: null, p2Cards: null,
+            p1Pick: null, p2Pick: null
+        });
+    } else if (mode === 'bestof3') {
+        Object.assign(initialState, buildBestOf3State());
+    } else if (mode === 'team') {
+        Object.assign(initialState, buildTeamDraftState());
+    }
+
+    roomRef = db.ref('rooms/' + roomId);
+    roomRef.set(initialState).then(() => {
+        const link = window.location.origin + window.location.pathname + '?room=' + roomId;
+        document.getElementById('room-link-input').value = link;
+        document.getElementById('waiting-room-code').innerText = roomId;
+        updateRoomHeader();
+        window.history.replaceState({}, '', link);
+        showScreen('screen-waiting-room');
+        attachRoomListener();
+    });
+}
+
+function buildBestOf3State() {
+    const shuffled = shuffleArray(PERSONAGENS);
+    return {
         p1Cards: shuffled.slice(0, 4),
         p2Cards: shuffled.slice(4, 8),
         p1Saved: null, p2Saved: null,
@@ -142,15 +230,79 @@ function createRoom() {
         p1Used: [], p2Used: [],
         p1Score: 0, p2Score: 0
     };
+}
 
-    roomRef = db.ref('rooms/' + roomId);
-    roomRef.set(initialState).then(() => {
-        const link = window.location.origin + window.location.pathname + '?room=' + roomId;
-        document.getElementById('room-link-input').value = link;
-        showScreen('screen-waiting-room');
-        window.history.replaceState({}, '', link);
+function buildTeamDraftState() {
+    return {
+        teamPool: shuffleArray(PERSONAGENS).slice(0, 12),
+        teamPicks: { 1: null, 2: null, 3: null, 4: null },
+        teamBans: []
+    };
+}
+
+function joinRoomByCode(code) {
+    roomId = code.toUpperCase().trim();
+    const link = window.location.origin + window.location.pathname + '?room=' + roomId;
+    window.history.replaceState({}, '', link);
+    tryJoinRoom();
+}
+
+function tryJoinRoom() {
+    updateRoomHeader();
+    const savedRole = localStorage.getItem('unmatched_role_' + roomId);
+    const savedNameIdx = localStorage.getItem('unmatched_nameidx_' + roomId);
+
+    if (savedRole === 'creator' || savedRole) {
+        if (savedRole !== 'creator') myRole = parseInt(savedRole, 10);
+        if (savedNameIdx !== null) myNameIndex = parseInt(savedNameIdx, 10);
         attachRoomListener();
+        return;
+    }
+
+    const ref = db.ref('rooms/' + roomId);
+    ref.get().then(snapshot => {
+        if (!snapshot.exists()) {
+            showJoinError('Essa sala não existe. Verifique o código.');
+            return;
+        }
+        const data = snapshot.val();
+
+        if (data.mode === 'team') {
+            roomRef = ref;
+            attachRoomListener();
+            return;
+        }
+
+        if (data.player2Joined) {
+            showJoinError('Essa sala já está cheia.');
+            return;
+        }
+
+        myRole = 2;
+        localStorage.setItem('unmatched_role_' + roomId, '2');
+        roomRef = ref;
+
+        const updates = { player2Joined: true };
+        if (data.mode === 'single') {
+            const shuffled = shuffleArray(PERSONAGENS);
+            updates.phase = 'single-pick';
+            updates.p1Cards = shuffled.slice(0, 2);
+            updates.p2Cards = shuffled.slice(2, 4);
+            updates.p1Pick = null;
+            updates.p2Pick = null;
+        } else if (data.mode === 'bestof3') {
+            updates.phase = 'phase1-j1-save';
+        }
+
+        roomRef.update(updates).then(() => attachRoomListener());
+    }).catch(() => {
+        showJoinError('Não foi possível conectar. Verifique sua internet.');
     });
+}
+
+function showJoinError(msg) {
+    document.getElementById('join-error-message').innerText = msg;
+    showScreen('screen-join-error');
 }
 
 function copyRoomLink() {
@@ -164,67 +316,309 @@ function copyRoomLink() {
     });
 }
 
-function tryJoinAsPlayer2() {
-    const ref = db.ref('rooms/' + roomId);
-    ref.get().then(snapshot => {
-        if (!snapshot.exists()) {
-            document.getElementById('join-error-message').innerText =
-                'Essa sala não existe (ou o link está errado).';
-            showScreen('screen-join-error');
-            return;
-        }
-        const data = snapshot.val();
-        if (data.player2Joined) {
-            document.getElementById('join-error-message').innerText =
-                'Essa sala já está cheia. Peça ao Jogador 1 para criar uma nova sala.';
-            showScreen('screen-join-error');
-            return;
-        }
-
-        myRole = 2;
-        localStorage.setItem('unmatched_role_' + roomId, '2');
-        roomRef = ref;
-        roomRef.update({ player2Joined: true, phase: 'phase1-j1-save' }).then(() => {
-            attachRoomListener();
-        });
-    }).catch(() => {
-        document.getElementById('join-error-message').innerText =
-            'Não foi possível conectar à sala. Verifique sua internet e o firebase-config.js.';
-        showScreen('screen-join-error');
+function copyRoomCode() {
+    navigator.clipboard.writeText(roomId).then(() => {
+        const btn = document.getElementById('btn-copy-code');
+        const original = btn.innerText;
+        btn.innerText = '✓';
+        setTimeout(() => { btn.innerText = original; }, 1500);
     });
 }
 
+// ============================================================
+// LISTENER E RENDERIZAÇÃO PRINCIPAL
+// ============================================================
 function attachRoomListener() {
     roomRef = db.ref('rooms/' + roomId);
     roomRef.on('value', snapshot => {
         gameState = snapshot.val();
-        if (gameState) renderGame();
+        if (!gameState) {
+            goHome();
+            return;
+        }
+        syncMyRole();
+        renderGame();
+    });
+}
+
+function syncMyRole() {
+    const deviceId = getDeviceId();
+    if (gameState.mode === 'team' && gameState.nameClaims) {
+        for (const [idx, claimDevice] of Object.entries(gameState.nameClaims)) {
+            if (claimDevice === deviceId) {
+                myNameIndex = parseInt(idx, 10);
+                localStorage.setItem('unmatched_nameidx_' + roomId, idx);
+                if (gameState.slotAssignments) {
+                    myRole = getMySlotFromNameIndex(myNameIndex);
+                    if (myRole) localStorage.setItem('unmatched_role_' + roomId, String(myRole));
+                }
+            }
+        }
+    }
+}
+
+function renderGame() {
+    updateRoomHeader();
+
+    const phase = gameState.phase;
+
+    if (phase === 'lobby') {
+        renderWaitingRoom();
+        return;
+    }
+
+    if (phase === 'name-claim') {
+        renderNameClaim();
+        return;
+    }
+
+    if (phase === 'team-assignment') {
+        renderTeamAssignment();
+        return;
+    }
+
+    if (phase === 'single-pick') {
+        if (gameState.p1Pick && gameState.p2Pick) {
+            roomRef.update({ phase: 'single-combat' });
+            return;
+        }
+        showScreen('screen-single-pick');
+        buildSinglePickInterface();
+        return;
+    }
+
+    if (phase.startsWith('phase') || phase.startsWith('team-')) {
+        showScreen('screen-draft');
+        const roleLabel = document.getElementById('my-role-label');
+        if (roleLabel) {
+            const label = myRole ? getPlayerDisplayName(myRole) : '-';
+            roleLabel.innerText = myRole ? (PLAYER_COLORS[myRole].name + ' (' + label + ')') : '-';
+        }
+        if (phase.startsWith('team-')) buildTeamDraftInterface();
+        else buildDraftInterface();
+        return;
+    }
+
+    if (phase === 'combat' || phase === 'single-combat' || phase === 'team-combat') {
+        showScreen('screen-combat');
+        buildCombatInterface();
+        return;
+    }
+
+    if (phase === 'post-game') {
+        renderPostGame();
+        return;
+    }
+}
+
+// ============================================================
+// SALA DE ESPERA
+// ============================================================
+function renderWaitingRoom() {
+    showScreen('screen-waiting-room');
+    const link = window.location.origin + window.location.pathname + '?room=' + roomId;
+    document.getElementById('room-link-input').value = link;
+    document.getElementById('waiting-room-code').innerText = roomId;
+
+    const list = document.getElementById('waiting-players-list');
+    list.innerHTML = '';
+
+    if (gameState.mode === 'team') {
+        document.getElementById('waiting-title').innerText = '⚔️ Sala de Equipe ⚔️';
+        document.getElementById('waiting-subtitle').innerText = 'Clique no seu nome e envie o código para os outros.';
+
+        gameState.playerNames.forEach((name, idx) => {
+            const claimed = gameState.nameClaims && gameState.nameClaims[idx];
+            const isMe = claimed === getDeviceId();
+            const div = document.createElement('div');
+            div.className = 'name-claim-item' + (claimed ? ' claimed' : '') + (isMe ? ' is-me' : '');
+            div.innerHTML = '<span class="player-tag player-' + ((idx % 4) + 1) + '">Nome ' + (idx + 1) + '</span><span>' + name + '</span>';
+            if (!claimed) {
+                div.onclick = () => claimName(idx);
+            } else if (isMe) {
+                div.innerHTML += ' <span class="you-badge">(Você)</span>';
+            } else {
+                div.innerHTML += ' <span class="taken-badge">✓</span>';
+            }
+            list.appendChild(div);
+        });
+
+        const claimedCount = gameState.nameClaims ? Object.keys(gameState.nameClaims).length : 0;
+        if (claimedCount < 4) {
+            document.getElementById('waiting-status').innerText = '⏳ ' + claimedCount + '/4 jogadores entraram...';
+        } else {
+            document.getElementById('waiting-status').innerText = '✅ Todos entraram! Sorteando equipes...';
+        }
+    } else {
+        document.getElementById('waiting-title').innerText = '⚔️ Sala Criada! ⚔️';
+        document.getElementById('waiting-subtitle').innerText = 'Envie o link ou código para o Jogador 2.';
+
+        const p1Name = gameState.playerNames[0] || 'Jogador 1';
+        const p2Name = gameState.playerNames[1] || 'Jogador 2';
+        list.innerHTML = '<div class="waiting-player"><span class="player-tag player-1">J1</span> ' + p1Name + ' ✓</div>' +
+            '<div class="waiting-player"><span class="player-tag player-2">J2</span> ' + p2Name + (gameState.player2Joined ? ' ✓' : ' ⏳') + '</div>';
+
+        document.getElementById('waiting-status').innerText = gameState.player2Joined
+            ? '✅ Jogador 2 entrou! Iniciando...'
+            : '⏳ Aguardando o Jogador 2 entrar...';
+    }
+}
+
+function claimName(nameIndex) {
+    const deviceId = getDeviceId();
+    const claims = gameState.nameClaims || {};
+
+    for (const [idx, dev] of Object.entries(claims)) {
+        if (dev === deviceId) return;
+    }
+
+    if (claims[nameIndex]) return;
+
+    myNameIndex = nameIndex;
+    localStorage.setItem('unmatched_nameidx_' + roomId, String(nameIndex));
+    localStorage.setItem('unmatched_role_' + roomId, 'creator');
+
+    const updates = {};
+    updates['nameClaims/' + nameIndex] = deviceId;
+
+    const newClaimCount = Object.keys(claims).length + 1;
+    if (newClaimCount >= 4) {
+        const shuffledIndices = shuffleArray([0, 1, 2, 3]);
+        updates.slotAssignments = {
+            1: shuffledIndices[0],
+            2: shuffledIndices[1],
+            3: shuffledIndices[2],
+            4: shuffledIndices[3]
+        };
+        updates.phase = 'team-assignment';
+        updates.teamPool = shuffleArray(PERSONAGENS).slice(0, 12);
+        updates.teamPicks = { 1: null, 2: null, 3: null, 4: null };
+        updates.teamBans = [];
+    }
+
+    roomRef.update(updates);
+}
+
+// ============================================================
+// NOME (modo equipe - jogadores que entram depois)
+// ============================================================
+function renderNameClaim() {
+    showScreen('screen-name-claim');
+    const list = document.getElementById('name-claim-list');
+    list.innerHTML = '';
+
+    gameState.playerNames.forEach((name, idx) => {
+        const claimed = gameState.nameClaims && gameState.nameClaims[idx];
+        const isMe = claimed === getDeviceId();
+        const div = document.createElement('div');
+        div.className = 'name-claim-item' + (claimed ? ' claimed' : '') + (isMe ? ' is-me' : '');
+        div.innerHTML = '<span class="player-tag player-' + ((idx % 4) + 1) + '">Nome ' + (idx + 1) + '</span><span>' + name + '</span>';
+        if (!claimed) {
+            div.onclick = () => claimName(idx);
+        } else if (isMe) {
+            div.innerHTML += ' <span class="you-badge">(Você)</span>';
+        } else {
+            div.innerHTML += ' <span class="taken-badge">✓ Ocupado</span>';
+        }
+        list.appendChild(div);
     });
 }
 
 // ============================================================
-// RENDERIZAÇÃO PRINCIPAL
+// EQUIPES DEFINIDAS
 // ============================================================
-function renderGame() {
-    if (gameState.phase === 'lobby') {
-        showScreen('screen-waiting-room');
-        return;
-    }
+function renderTeamAssignment() {
+    showScreen('screen-team-assignment');
+    syncMyRole();
 
-    if (gameState.phase.startsWith('phase')) {
-        showScreen('screen-draft');
-        const roleLabel = document.getElementById('my-role-label');
-        if (roleLabel) roleLabel.innerText = 'JOGADOR ' + myRole;
-        buildDraftInterface();
-        return;
-    }
+    const display = document.getElementById('team-display');
+    display.innerHTML = '';
 
-    if (gameState.phase === 'combat') {
-        showScreen('screen-combat');
-        buildCombatInterface();
-    }
+    const slots = gameState.slotAssignments;
+    const teamA = [1, 3].map(s => ({ slot: s, name: gameState.playerNames[slots[s]] }));
+    const teamB = [2, 4].map(s => ({ slot: s, name: gameState.playerNames[slots[s]] }));
+
+    const teamADiv = document.createElement('div');
+    teamADiv.className = 'team-box team-a-box';
+    teamADiv.innerHTML = '<h3>Equipe A</h3>';
+    teamA.forEach(p => {
+        const el = document.createElement('div');
+        el.className = 'team-member ' + PLAYER_COLORS[p.slot].class;
+        el.innerHTML = '<span class="player-tag ' + PLAYER_COLORS[p.slot].class + '">J' + p.slot + '</span> ' + p.name;
+        if (myRole === p.slot) el.innerHTML += ' <span class="you-badge">(Você)</span>';
+        teamADiv.appendChild(el);
+    });
+
+    const teamBDiv = document.createElement('div');
+    teamBDiv.className = 'team-box team-b-box';
+    teamBDiv.innerHTML = '<h3>Equipe B</h3>';
+    teamB.forEach(p => {
+        const el = document.createElement('div');
+        el.className = 'team-member ' + PLAYER_COLORS[p.slot].class;
+        el.innerHTML = '<span class="player-tag ' + PLAYER_COLORS[p.slot].class + '">J' + p.slot + '</span> ' + p.name;
+        if (myRole === p.slot) el.innerHTML += ' <span class="you-badge">(Você)</span>';
+        teamBDiv.appendChild(el);
+    });
+
+    display.appendChild(teamADiv);
+    display.appendChild(teamBDiv);
 }
 
+document.getElementById('btn-continue-team')?.addEventListener('click', () => {
+    roomRef.update({ phase: 'team-ban-j4' });
+});
+
+// ============================================================
+// COMBATE ÚNICO - ESCOLHA SIMULTÂNEA
+// ============================================================
+function buildSinglePickInterface() {
+    const myCards = myRole === 1 ? gameState.p1Cards : gameState.p2Cards;
+    const myPick = myRole === 1 ? gameState.p1Pick : gameState.p2Pick;
+    const container = document.getElementById('single-pick-cards');
+    const confirmBtn = document.getElementById('btn-confirm-single-pick');
+    const waitingDiv = document.getElementById('single-pick-waiting');
+
+    if (myPick) {
+        container.style.display = 'none';
+        confirmBtn.style.display = 'none';
+        waitingDiv.style.display = 'block';
+        document.getElementById('single-pick-instructions').innerText = 'Escolha confirmada! Aguardando o oponente...';
+        return;
+    }
+
+    container.style.display = 'grid';
+    confirmBtn.style.display = 'block';
+    waitingDiv.style.display = 'none';
+    container.innerHTML = '';
+    selectedCardIndex = null;
+    confirmBtn.disabled = true;
+
+    myCards.forEach((char, index) => {
+        let div = document.createElement('div');
+        div.className = 'card';
+        fillCardContent(div, char);
+        div.onclick = () => {
+            document.querySelectorAll('#single-pick-cards .card').forEach(c => c.classList.remove('selected'));
+            div.classList.add('selected');
+            selectedCardIndex = index;
+            confirmBtn.disabled = false;
+        };
+        container.appendChild(div);
+    });
+}
+
+document.getElementById('btn-confirm-single-pick')?.addEventListener('click', () => {
+    if (selectedCardIndex === null) return;
+    const myCards = myRole === 1 ? gameState.p1Cards : gameState.p2Cards;
+    const field = myRole === 1 ? 'p1Pick' : 'p2Pick';
+    const pick = myCards[selectedCardIndex];
+
+    roomRef.update({ [field]: pick });
+});
+
+// ============================================================
+// DRAFT MELHOR DE 3
+// ============================================================
 function isMyDraftTurn(phase) {
     if (phase.includes('j1')) return myRole === 1;
     if (phase.includes('j2')) return myRole === 2;
@@ -238,6 +632,7 @@ function buildDraftInterface() {
     if (!isMyDraftTurn(gameState.phase)) {
         draftActive.style.display = 'none';
         draftWaiting.style.display = 'block';
+        document.getElementById('draft-waiting-text').innerText = 'Aguardando ' + getPlayerDisplayName(gameState.phase.includes('j1') ? 1 : 2) + '...';
         return;
     }
     draftActive.style.display = 'block';
@@ -264,12 +659,12 @@ function buildDraftInterface() {
             break;
         case 'phase2-j1-ban':
             title.innerText = "Fase 2: Banir do Oponente";
-            instr.innerText = "Escolha 1 herói do Jogador 2 para BANIR.";
+            instr.innerText = "Escolha 1 herói do oponente para BANIR.";
             cardsToDisplay = gameState.p2Cards.filter(c => c.nome !== gameState.p2Saved.nome);
             break;
         case 'phase2-j2-ban':
             title.innerText = "Fase 2: Banir do Oponente";
-            instr.innerText = "Escolha 1 herói do Jogador 1 para BANIR.";
+            instr.innerText = "Escolha 1 herói do oponente para BANIR.";
             cardsToDisplay = gameState.p1Cards.filter(c => c.nome !== gameState.p1Saved.nome);
             break;
         case 'phase3-j1-final':
@@ -284,6 +679,58 @@ function buildDraftInterface() {
             break;
     }
 
+    renderCardGrid(container, cardsToDisplay);
+}
+
+// ============================================================
+// DRAFT MODO EQUIPE
+// ============================================================
+const TEAM_DRAFT_PHASES = {
+    'team-ban-j4': { actor: 4, action: 'ban', next: 'team-pick-j1', title: 'Banir Herói', instr: 'Banir 1 herói antes da escolha do Jogador 1.' },
+    'team-pick-j1': { actor: 1, action: 'pick', next: 'team-ban-j3', title: 'Escolher Herói', instr: 'Escolha 1 herói para sua equipe.' },
+    'team-ban-j3': { actor: 3, action: 'ban', next: 'team-pick-j2', title: 'Banir Herói', instr: 'Banir 1 herói antes da escolha do Jogador 2.' },
+    'team-pick-j2': { actor: 2, action: 'pick', next: 'team-ban-j2', title: 'Escolher Herói', instr: 'Escolha 1 herói para sua equipe.' },
+    'team-ban-j2': { actor: 2, action: 'ban', next: 'team-pick-j3', title: 'Banir Herói', instr: 'Banir 1 herói antes da escolha do Jogador 3.' },
+    'team-pick-j3': { actor: 3, action: 'pick', next: 'team-ban-j1', title: 'Escolher Herói', instr: 'Escolha 1 herói para sua equipe.' },
+    'team-ban-j1': { actor: 1, action: 'ban', next: 'team-pick-j4', title: 'Banir Herói', instr: 'Banir 1 herói antes da escolha do Jogador 4.' },
+    'team-pick-j4': { actor: 4, action: 'pick', next: 'team-combat', title: 'Escolher Herói', instr: 'Escolha 1 herói para sua equipe.' }
+};
+
+function getAvailableTeamPool() {
+    const banned = gameState.teamBans || [];
+    const picked = Object.values(gameState.teamPicks || {}).filter(Boolean);
+    const removed = [...banned, ...picked].map(c => c.nome);
+    return (gameState.teamPool || []).filter(c => !removed.includes(c.nome));
+}
+
+function buildTeamDraftInterface() {
+    const phaseInfo = TEAM_DRAFT_PHASES[gameState.phase];
+    if (!phaseInfo) return;
+
+    const draftActive = document.getElementById('draft-active');
+    const draftWaiting = document.getElementById('draft-waiting');
+
+    if (myRole !== phaseInfo.actor) {
+        draftActive.style.display = 'none';
+        draftWaiting.style.display = 'block';
+        document.getElementById('draft-waiting-text').innerText = 'Aguardando ' + getPlayerDisplayName(phaseInfo.actor) + ' (' + PLAYER_COLORS[phaseInfo.actor].name + ')...';
+        return;
+    }
+
+    draftActive.style.display = 'block';
+    draftWaiting.style.display = 'none';
+
+    document.getElementById('draft-phase-title').innerText = phaseInfo.title + ' — ' + PLAYER_COLORS[phaseInfo.actor].name;
+    document.getElementById('draft-instructions').innerText = phaseInfo.instr;
+
+    const container = document.getElementById('cards-container');
+    container.innerHTML = "";
+    selectedCardIndex = null;
+
+    renderCardGrid(container, getAvailableTeamPool());
+}
+
+function renderCardGrid(container, cardsToDisplay) {
     const confirmBtn = document.getElementById('btn-confirm-choice');
     confirmBtn.disabled = true;
 
@@ -291,9 +738,8 @@ function buildDraftInterface() {
         let div = document.createElement('div');
         div.className = 'card';
         fillCardContent(div, char);
-
         div.onclick = () => {
-            document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
+            document.querySelectorAll('#cards-container .card').forEach(c => c.classList.remove('selected'));
             div.classList.add('selected');
             selectedCardIndex = index;
             confirmBtn.disabled = false;
@@ -304,8 +750,15 @@ function buildDraftInterface() {
 
 document.getElementById('btn-confirm-choice')?.addEventListener('click', () => {
     if (selectedCardIndex === null) return;
+
+    if (gameState.phase.startsWith('team-')) {
+        handleTeamDraftConfirm();
+        return;
+    }
+
     const phase = gameState.phase;
     let updates = {};
+    const pool = getAvailableTeamPool();
 
     if (phase === 'phase1-j1-save') {
         updates.p1Saved = gameState.p1Cards[selectedCardIndex];
@@ -335,6 +788,26 @@ document.getElementById('btn-confirm-choice')?.addEventListener('click', () => {
     roomRef.update(updates);
 });
 
+function handleTeamDraftConfirm() {
+    const phaseInfo = TEAM_DRAFT_PHASES[gameState.phase];
+    const available = getAvailableTeamPool();
+    const chosen = available[selectedCardIndex];
+    let updates = { phase: phaseInfo.next };
+
+    if (phaseInfo.action === 'ban') {
+        updates.teamBans = [...(gameState.teamBans || []), chosen];
+    } else {
+        updates['teamPicks/' + phaseInfo.actor] = chosen;
+    }
+
+    if (phaseInfo.next === 'team-combat') {
+        updates.phase = 'team-combat';
+    }
+
+    selectedCardIndex = null;
+    roomRef.update(updates);
+}
+
 // ============================================================
 // COMBATE
 // ============================================================
@@ -345,18 +818,93 @@ function currentCombatTurn() {
 }
 
 function buildCombatInterface() {
-    document.getElementById('score-p1').innerText = gameState.p1Score;
-    document.getElementById('score-p2').innerText = gameState.p2Score;
+    const isTeam = gameState.phase === 'team-combat';
+    const isSingle = gameState.phase === 'single-combat';
+
+    document.getElementById('combat-scoreboard').style.display = isTeam || isSingle ? 'none' : 'flex';
+    document.getElementById('matchup-1v1').style.display = isTeam ? 'none' : 'flex';
+    document.getElementById('matchup-teams').style.display = isTeam ? 'flex' : 'none';
+    document.getElementById('judge-1v1').style.display = isTeam ? 'none' : 'flex';
+    document.getElementById('judge-teams').style.display = isTeam ? 'flex' : 'none';
+
+    if (!isSingle && !isTeam) {
+        document.getElementById('score-p1').innerText = gameState.p1Score;
+        document.getElementById('score-p2').innerText = gameState.p2Score;
+        document.getElementById('score-p1-name').innerText = getPlayerDisplayName(1);
+        document.getElementById('score-p2-name').innerText = getPlayerDisplayName(2);
+
+        if ((gameState.p1Score >= 2 || gameState.p2Score >= 2) && phase !== 'post-game') {
+            const winner = gameState.p1Score >= 2 ? 1 : 2;
+            roomRef.update({
+                phase: 'post-game',
+                winner,
+                winnerTeam: null
+            });
+            return;
+        }
+    }
 
     const combatActive = document.getElementById('combat-active');
     const combatWaiting = document.getElementById('combat-waiting');
     const matchupArea = document.getElementById('combat-matchup-area');
 
-    if (gameState.p1Score >= 2 || gameState.p2Score >= 2) {
+    if (isSingle) {
         combatActive.style.display = 'none';
         combatWaiting.style.display = 'none';
-        matchupArea.style.display = 'none';
-        alert(`🏆 Fim de jogo! Campeão: ${gameState.p1Score >= 2 ? 'Jogador 1' : 'Jogador 2'}`);
+        matchupArea.style.display = 'block';
+        document.getElementById('combat-matchup-title').innerText = '🔥 CONFRONTO! 🔥';
+        document.getElementById('combat-judge-text').innerText = 'Quem venceu este combate?';
+
+        const fP1 = document.getElementById('fighter-p1');
+        const fP2 = document.getElementById('fighter-p2');
+        fP1.innerHTML = "";
+        fP2.innerHTML = "";
+        fillCardContent(fP1, gameState.p1Pick);
+        fillCardContent(fP2, gameState.p2Pick);
+
+        document.getElementById('judge-1v1').innerHTML =
+            '<button onclick="registerWinner(1)">' + getPlayerDisplayName(1) + ' Venceu</button>' +
+            '<button onclick="registerWinner(2)">' + getPlayerDisplayName(2) + ' Venceu</button>';
+        return;
+    }
+
+    if (isTeam) {
+        combatActive.style.display = 'none';
+        combatWaiting.style.display = 'none';
+        matchupArea.style.display = 'block';
+        document.getElementById('combat-matchup-title').innerText = '🔥 CONFRONTO DE EQUIPES! 🔥';
+        document.getElementById('combat-judge-text').innerText = 'Qual equipe venceu?';
+
+        const picks = gameState.teamPicks;
+        const teamAFighters = document.getElementById('team-a-fighters');
+        const teamBFighters = document.getElementById('team-b-fighters');
+        teamAFighters.innerHTML = '';
+        teamBFighters.innerHTML = '';
+
+        [1, 3].forEach(slot => {
+            const div = document.createElement('div');
+            div.className = 'fighter-card ' + PLAYER_COLORS[slot].class;
+            fillCardContent(div, picks[slot]);
+            const label = document.createElement('small');
+            label.innerText = getPlayerDisplayName(slot);
+            div.appendChild(label);
+            teamAFighters.appendChild(div);
+        });
+
+        [2, 4].forEach(slot => {
+            const div = document.createElement('div');
+            div.className = 'fighter-card ' + PLAYER_COLORS[slot].class;
+            fillCardContent(div, picks[slot]);
+            const label = document.createElement('small');
+            label.innerText = getPlayerDisplayName(slot);
+            div.appendChild(label);
+            teamBFighters.appendChild(div);
+        });
+
+        const teamANames = [1, 3].map(s => getPlayerDisplayName(s)).join(' + ');
+        const teamBNames = [2, 4].map(s => getPlayerDisplayName(s)).join(' + ');
+        document.getElementById('team-a-label').innerText = 'Equipe A: ' + teamANames;
+        document.getElementById('team-b-label').innerText = 'Equipe B: ' + teamBNames;
         return;
     }
 
@@ -381,7 +929,7 @@ function buildCombatInterface() {
         const confirmCombatBtn = document.getElementById('btn-confirm-combat');
         confirmCombatBtn.disabled = true;
 
-        document.getElementById('combat-title').innerText = `Sua vez, Jogador ${myRole} - Escolha secretamente`;
+        document.getElementById('combat-title').innerText = getPlayerDisplayName(myRole) + ' — Escolha secretamente';
 
         let tempChoice = null;
         pool.forEach((char) => {
@@ -410,16 +958,27 @@ function buildCombatInterface() {
         combatActive.style.display = 'none';
         combatWaiting.style.display = 'none';
         matchupArea.style.display = 'block';
+        document.getElementById('combat-judge-text').innerText = 'Quem venceu este combate?';
+
         const fP1 = document.getElementById('fighter-p1');
         const fP2 = document.getElementById('fighter-p2');
         fP1.innerHTML = "";
         fP2.innerHTML = "";
         fillCardContent(fP1, gameState.p1CombatChoice);
         fillCardContent(fP2, gameState.p2CombatChoice);
+
+        document.getElementById('judge-1v1').innerHTML =
+            '<button onclick="registerWinner(1)">' + getPlayerDisplayName(1) + ' Venceu</button>' +
+            '<button onclick="registerWinner(2)">' + getPlayerDisplayName(2) + ' Venceu</button>';
     }
 }
 
 window.registerWinner = function(winnerNum) {
+    if (gameState.mode === 'single') {
+        roomRef.update({ phase: 'post-game', winner: winnerNum });
+        return;
+    }
+
     let updates = {
         p1CombatChoice: null,
         p2CombatChoice: null
@@ -433,3 +992,122 @@ window.registerWinner = function(winnerNum) {
     }
     roomRef.update(updates);
 };
+
+window.registerTeamWinner = function(team) {
+    roomRef.update({ phase: 'post-game', winnerTeam: team });
+};
+
+// ============================================================
+// PÓS-JOGO: REVANCHE E FECHAR SALA
+// ============================================================
+function renderPostGame() {
+    showScreen('screen-post-game');
+
+    let msg = '';
+    if (gameState.mode === 'team' && gameState.winnerTeam) {
+        const teamName = gameState.winnerTeam === 'A'
+            ? [1, 3].map(s => getPlayerDisplayName(s)).join(' + ')
+            : [2, 4].map(s => getPlayerDisplayName(s)).join(' + ');
+        msg = '🏆 Equipe ' + gameState.winnerTeam + ' venceu! (' + teamName + ')';
+    } else if (gameState.winner) {
+        msg = '🏆 Campeão: ' + getPlayerDisplayName(gameState.winner);
+    } else if (gameState.mode === 'bestof3') {
+        const w = gameState.p1Score >= 2 ? 1 : 2;
+        msg = '🏆 Campeão: ' + getPlayerDisplayName(w);
+    }
+
+    document.getElementById('post-game-message').innerText = msg;
+}
+
+document.getElementById('btn-rematch')?.addEventListener('click', () => {
+    if (!roomRef) return;
+    let updates = { phase: null, winner: null, winnerTeam: null };
+
+    if (gameState.mode === 'single') {
+        const shuffled = shuffleArray(PERSONAGENS);
+        updates.phase = 'single-pick';
+        updates.p1Cards = shuffled.slice(0, 2);
+        updates.p2Cards = shuffled.slice(2, 4);
+        updates.p1Pick = null;
+        updates.p2Pick = null;
+    } else if (gameState.mode === 'bestof3') {
+        Object.assign(updates, buildBestOf3State());
+        updates.phase = 'phase1-j1-save';
+    } else if (gameState.mode === 'team') {
+        const shuffledIndices = shuffleArray([0, 1, 2, 3]);
+        updates.slotAssignments = {
+            1: shuffledIndices[0],
+            2: shuffledIndices[1],
+            3: shuffledIndices[2],
+            4: shuffledIndices[3]
+        };
+        updates.teamPool = shuffleArray(PERSONAGENS).slice(0, 12);
+        updates.teamPicks = { 1: null, 2: null, 3: null, 4: null };
+        updates.teamBans = [];
+        updates.phase = 'team-assignment';
+    }
+
+    roomRef.update(updates);
+});
+
+document.getElementById('btn-close-room')?.addEventListener('click', () => {
+    if (!roomRef) return;
+    roomRef.remove().then(() => {
+        localStorage.removeItem('unmatched_role_' + roomId);
+        localStorage.removeItem('unmatched_nameidx_' + roomId);
+        goHome();
+    });
+});
+
+// ============================================================
+// INICIALIZAÇÃO
+// ============================================================
+window.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('btn-go-create').onclick = () => {
+        pendingConfig = null;
+        buildNameInputs(2);
+        showScreen('screen-configure');
+    };
+
+    document.getElementById('btn-go-join').onclick = () => showScreen('screen-enter-code');
+
+    document.getElementById('btn-back-home').onclick = goHome;
+    document.getElementById('btn-back-config').onclick = () => showScreen('screen-home');
+
+    document.getElementById('btn-join-room').onclick = () => {
+        const code = document.getElementById('input-room-code').value.trim();
+        if (!code) return;
+        joinRoomByCode(code);
+    };
+
+    document.querySelectorAll('input[name="game-mode"]').forEach(radio => {
+        radio.addEventListener('change', () => {
+            const mode = getSelectedMode();
+            buildNameInputs(mode === 'team' ? 4 : 2);
+        });
+    });
+
+    document.getElementById('btn-confirm-create').onclick = () => {
+        pendingConfig = {
+            mode: getSelectedMode(),
+            playerNames: getNameInputs()
+        };
+        createRoomFromConfig();
+    };
+
+    document.getElementById('btn-copy-link').onclick = copyRoomLink;
+    document.getElementById('btn-copy-code').onclick = copyRoomCode;
+
+    const params = new URLSearchParams(window.location.search);
+    const urlRoom = params.get('room');
+
+    if (urlRoom) {
+        roomId = urlRoom.toUpperCase();
+        updateRoomHeader();
+        tryJoinRoom();
+    } else {
+        showScreen('screen-home');
+    }
+});
+
+window.goHome = goHome;

@@ -8,57 +8,139 @@
 </head>
 <body>
 
+    <!-- Código da sala (visível quando dentro de uma sala) -->
+    <div id="room-code-header" class="room-code-header" style="display: none;">
+        <span>Sala: <strong id="room-code-display">-</strong></span>
+        <button id="btn-copy-code" class="btn-copy-code">Copiar</button>
+    </div>
+
     <div class="container">
 
-        <!-- TELA 1: Criar sala -->
-        <div id="screen-connect" class="screen" style="display: none;">
+        <!-- TELA: Início -->
+        <div id="screen-home" class="screen">
             <h1>⚔️ Unmatched Draft ⚔️</h1>
-            <p>Crie uma sala e envie o link para o outro jogador.</p>
-            <button id="btn-create-room" style="background-color: #2ecc71;">Criar Sala</button>
+            <p>Crie uma nova sala ou entre em uma existente com o código.</p>
+            <button id="btn-go-create" style="background-color: #2ecc71;">Criar Sala</button>
+            <button id="btn-go-join" style="background-color: #3498db; margin-top: 12px;">Entrar em Sala</button>
         </div>
 
-        <!-- TELA 2: Esperando o oponente entrar -->
+        <!-- TELA: Entrar com código -->
+        <div id="screen-enter-code" class="screen" style="display: none;">
+            <h1>Entrar na Sala</h1>
+            <p>Digite o código da sala para retornar ou entrar em uma partida.</p>
+            <input type="text" id="input-room-code" class="text-input" placeholder="Ex: ABC123" maxlength="8">
+            <button id="btn-join-room">Entrar</button>
+            <button id="btn-back-home" class="btn-secondary">Voltar</button>
+        </div>
+
+        <!-- TELA: Configurar sala -->
+        <div id="screen-configure" class="screen" style="display: none;">
+            <h1>Configurar Sala</h1>
+            <p>Escolha o tipo de partida e os nomes dos jogadores.</p>
+
+            <div class="config-section">
+                <h3>Tipo de Partida</h3>
+                <div class="mode-options">
+                    <label class="mode-option">
+                        <input type="radio" name="game-mode" value="single" checked>
+                        <span class="mode-label">
+                            <strong>Combate Único</strong>
+                            <small>1v1 — cada jogador recebe 2 heróis e escolhe 1</small>
+                        </span>
+                    </label>
+                    <label class="mode-option">
+                        <input type="radio" name="game-mode" value="bestof3">
+                        <span class="mode-label">
+                            <strong>Melhor de 3</strong>
+                            <small>1v1 — draft completo com 3 combates</small>
+                        </span>
+                    </label>
+                    <label class="mode-option">
+                        <input type="radio" name="game-mode" value="team">
+                        <span class="mode-label">
+                            <strong>Modo Equipe (2v2)</strong>
+                            <small>4 jogadores — draft com bans alternados</small>
+                        </span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="config-section">
+                <h3 id="config-names-title">Nomes dos Jogadores</h3>
+                <div id="player-names-inputs"></div>
+            </div>
+
+            <button id="btn-confirm-create">Confirmar e Criar Sala</button>
+            <button id="btn-back-config" class="btn-secondary">Voltar</button>
+        </div>
+
+        <!-- TELA: Esperando jogadores -->
         <div id="screen-waiting-room" class="screen" style="display: none;">
-            <h1>⚔️ Sala Criada! ⚔️</h1>
-            <p>Envie este link para o Jogador 2 entrar na partida:</p>
+            <h1 id="waiting-title">⚔️ Sala Criada! ⚔️</h1>
+            <p id="waiting-subtitle">Envie o link ou código para os jogadores entrarem.</p>
             <div class="room-link-box">
                 <input type="text" id="room-link-input" readonly>
                 <button id="btn-copy-link">Copiar Link</button>
             </div>
-            <p class="waiting-text">⏳ Aguardando o Jogador 2 entrar...</p>
+            <p class="room-code-inline">Código: <strong id="waiting-room-code">-</strong></p>
+            <div id="waiting-players-list" class="waiting-players-list"></div>
+            <p id="waiting-status" class="waiting-text">⏳ Aguardando jogadores...</p>
         </div>
 
-        <!-- TELA 3: Erro ao entrar na sala -->
+        <!-- TELA: Escolher nome (modo equipe) -->
+        <div id="screen-name-claim" class="screen" style="display: none;">
+            <h1>Escolha seu Nome</h1>
+            <p>Clique no seu nome para entrar na partida.</p>
+            <div id="name-claim-list" class="name-claim-list"></div>
+        </div>
+
+        <!-- TELA: Equipes definidas -->
+        <div id="screen-team-assignment" class="screen" style="display: none;">
+            <h1>Equipes Definidas!</h1>
+            <div id="team-display" class="team-display"></div>
+            <button id="btn-continue-team">Seguir para o Draft</button>
+        </div>
+
+        <!-- TELA: Erro ao entrar -->
         <div id="screen-join-error" class="screen" style="display: none;">
             <h1>⚠️ Ops!</h1>
             <p id="join-error-message">Não foi possível entrar nessa sala.</p>
-            <button onclick="window.location.href = window.location.pathname">Voltar ao início</button>
+            <button onclick="goHome()">Voltar ao início</button>
         </div>
 
-        <!-- TELA 4: Draft -->
+        <!-- TELA: Draft (melhor de 3 e equipe) -->
         <div id="screen-draft" class="screen" style="display: none;">
             <div class="scoreboard scoreboard-small">
                 <div class="score-box">Você é <span id="my-role-label">-</span></div>
             </div>
-
             <div id="draft-active">
                 <h2 id="draft-phase-title">Fase de Seleção</h2>
                 <p id="draft-instructions">Aguardando início...</p>
                 <div id="cards-container" class="cards-grid"></div>
                 <button id="btn-confirm-choice" disabled>Confirmar Escolha</button>
             </div>
-
             <div id="draft-waiting" style="display: none;">
                 <h2>⏳ Aguardando...</h2>
-                <p id="draft-waiting-text">É a vez do outro jogador. Aguarde a notificação.</p>
+                <p id="draft-waiting-text">É a vez do outro jogador.</p>
             </div>
         </div>
 
-        <!-- TELA 5: Combate -->
+        <!-- TELA: Combate único - escolha simultânea -->
+        <div id="screen-single-pick" class="screen" style="display: none;">
+            <h2>Escolha seu Combatente</h2>
+            <p id="single-pick-instructions">Escolha 1 dos 2 heróis sorteados. A escolha é simultânea e secreta.</p>
+            <div id="single-pick-cards" class="cards-grid"></div>
+            <button id="btn-confirm-single-pick" disabled>Confirmar Escolha</button>
+            <div id="single-pick-waiting" style="display: none;">
+                <p class="waiting-text">⏳ Aguardando o oponente confirmar...</p>
+            </div>
+        </div>
+
+        <!-- TELA: Combate -->
         <div id="screen-combat" class="screen" style="display: none;">
-            <div class="scoreboard">
-                <div class="score-box">🔹 J1 <span id="score-p1">0</span></div>
-                <div class="score-box">🔸 J2 <span id="score-p2">0</span></div>
+            <div class="scoreboard" id="combat-scoreboard">
+                <div class="score-box">🔹 <span id="score-p1-name">J1</span> <span id="score-p1">0</span></div>
+                <div class="score-box">🔸 <span id="score-p2-name">J2</span> <span id="score-p2">0</span></div>
             </div>
 
             <div id="combat-active">
@@ -73,27 +155,47 @@
             </div>
 
             <div id="combat-matchup-area" style="display: none;">
-                <h3>🔥 CONFRONTO DEFINIDO! 🔥</h3>
-                <div class="matchup-versus">
+                <h3 id="combat-matchup-title">🔥 CONFRONTO DEFINIDO! 🔥</h3>
+                <div class="matchup-versus" id="matchup-1v1">
                     <div class="fighter-card" id="fighter-p1">-</div>
                     <div class="vs">VS</div>
                     <div class="fighter-card" id="fighter-p2">-</div>
                 </div>
-
-                <p>Quem venceu este combate?</p>
-                <div class="judge-buttons">
+                <div class="matchup-teams" id="matchup-teams" style="display: none;">
+                    <div class="team-side team-a">
+                        <h4 id="team-a-label">Equipe A</h4>
+                        <div class="team-fighters" id="team-a-fighters"></div>
+                    </div>
+                    <div class="vs vs-large">VS</div>
+                    <div class="team-side team-b">
+                        <h4 id="team-b-label">Equipe B</h4>
+                        <div class="team-fighters" id="team-b-fighters"></div>
+                    </div>
+                </div>
+                <p id="combat-judge-text">Quem venceu?</p>
+                <div class="judge-buttons" id="judge-1v1">
                     <button onclick="registerWinner(1)">Venceu J1</button>
                     <button onclick="registerWinner(2)">Venceu J2</button>
+                </div>
+                <div class="judge-buttons" id="judge-teams" style="display: none;">
+                    <button onclick="registerTeamWinner('A')">Venceu Equipe A</button>
+                    <button onclick="registerTeamWinner('B')">Venceu Equipe B</button>
                 </div>
             </div>
         </div>
 
+        <!-- TELA: Pós-jogo -->
+        <div id="screen-post-game" class="screen" style="display: none;">
+            <h1 id="post-game-title">🏆 Partida Encerrada!</h1>
+            <p id="post-game-message">-</p>
+            <button id="btn-rematch" style="background-color: #2ecc71;">Revanche</button>
+            <button id="btn-close-room" class="btn-secondary" style="margin-top: 12px;">Fechar Sala</button>
+        </div>
+
     </div>
 
-    <!-- Firebase (compat SDK, mais simples de usar direto no navegador) -->
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
-
     <script src="firebase-config.js"></script>
     <script src="app.js"></script>
 </body>

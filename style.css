@@ -1,11 +1,11 @@
 /* ==========================================================================
-   RESET & CONFIGURAÇÕES GERAIS (ESTILO DARK APLICATIVO)
+   RESET & CONFIGURAÇÕES GERAIS
    ========================================================================== */
 * {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
-    -webkit-tap-highlight-color: transparent; /* Remove o flash azul ao tocar no telemóvel */
+    -webkit-tap-highlight-color: transparent;
 }
 
 body {
@@ -14,9 +14,41 @@ body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     min-height: 100vh;
     display: flex;
-    justify-content: center;
-    align-items: flex-start;
+    flex-direction: column;
+    align-items: center;
     padding: 15px;
+    padding-top: 60px;
+}
+
+/* Header com código da sala */
+.room-code-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: #16161a;
+    border-bottom: 1px solid #26262f;
+    padding: 10px 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    z-index: 100;
+    font-size: 14px;
+}
+
+.room-code-header strong {
+    color: #2ecc71;
+    font-size: 16px;
+    letter-spacing: 2px;
+}
+
+.btn-copy-code {
+    width: auto !important;
+    padding: 6px 14px !important;
+    font-size: 13px !important;
+    background: #2f3542 !important;
+    box-shadow: none !important;
 }
 
 .container {
@@ -55,7 +87,7 @@ p {
 }
 
 /* ==========================================================================
-   BOTÕES E ENTRADAS DE DADOS
+   BOTÕES E ENTRADAS
    ========================================================================== */
 button, .btn-action {
     background: linear-gradient(135deg, #ff4757, #ff6b81);
@@ -74,10 +106,9 @@ button, .btn-action {
 
 button:active, .btn-action:active {
     transform: scale(0.98);
-    box-shadow: 0 2px 5px rgba(255, 71, 87, 0.2);
 }
 
-button:disabled, .btn-action:disabled {
+button:disabled {
     background: #2f3542 !important;
     color: #747d8c !important;
     box-shadow: none !important;
@@ -85,18 +116,102 @@ button:disabled, .btn-action:disabled {
     transform: none;
 }
 
-/* Animação para transição de telas */
+.btn-secondary {
+    background: #2f3542 !important;
+    box-shadow: none !important;
+    margin-top: 12px;
+}
+
+.text-input {
+    width: 100%;
+    background: #1e1e24;
+    border: 2px solid #2f3542;
+    border-radius: 10px;
+    color: #f1f2f6;
+    padding: 14px;
+    font-size: 16px;
+    margin-bottom: 16px;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+.text-input.name-input {
+    text-transform: none;
+    letter-spacing: normal;
+    text-align: left;
+    margin-bottom: 10px;
+}
+
 .screen {
     animation: fadeIn 0.4s ease-in-out;
 }
 
 /* ==========================================================================
-   TELA DE SALA (CRIAR / AGUARDAR / LINK)
+   CONFIGURAÇÃO DE SALA
+   ========================================================================== */
+.config-section {
+    text-align: left;
+    margin-bottom: 24px;
+}
+
+.config-section h3 {
+    font-size: 15px;
+    color: #a4b0be;
+    margin-bottom: 12px;
+}
+
+.mode-options {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.mode-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    background: #1e1e24;
+    border: 2px solid #2f3542;
+    border-radius: 12px;
+    padding: 14px;
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+
+.mode-option:has(input:checked) {
+    border-color: #2ecc71;
+    background: rgba(46, 204, 113, 0.08);
+}
+
+.mode-option input {
+    margin-top: 4px;
+    accent-color: #2ecc71;
+}
+
+.mode-label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.mode-label strong {
+    color: #f1f2f6;
+    font-size: 15px;
+}
+
+.mode-label small {
+    color: #747d8c;
+    font-size: 12px;
+}
+
+/* ==========================================================================
+   SALA / LOBBY
    ========================================================================== */
 .room-link-box {
     display: flex;
     gap: 8px;
-    margin-bottom: 20px;
+    margin-bottom: 16px;
 }
 
 .room-link-box input {
@@ -116,22 +231,141 @@ button:disabled, .btn-action:disabled {
     padding: 12px 16px;
 }
 
+.room-code-inline {
+    color: #2ecc71;
+    font-weight: 600;
+    margin-bottom: 20px;
+}
+
+.room-code-inline strong {
+    font-size: 20px;
+    letter-spacing: 3px;
+}
+
 .waiting-text {
     color: #ffa500;
     font-weight: 600;
 }
 
-.scoreboard-small {
-    margin-bottom: 10px;
+.waiting-players-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 20px;
 }
 
-.scoreboard-small .score-box {
-    color: #f1f2f6;
+.waiting-player {
+    background: #1e1e24;
+    padding: 12px;
+    border-radius: 10px;
+    text-align: left;
     font-size: 14px;
 }
 
+/* Tags de jogador por cor */
+.player-tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 800;
+    margin-right: 6px;
+}
+
+.player-1 { background: rgba(52, 152, 219, 0.25); color: #3498db; }
+.player-2 { background: rgba(231, 76, 60, 0.25); color: #e74c3c; }
+.player-3 { background: rgba(46, 204, 113, 0.25); color: #2ecc71; }
+.player-4 { background: rgba(243, 156, 18, 0.25); color: #f39c12; }
+
+/* Escolha de nome */
+.name-claim-list, .waiting-players-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 20px 0;
+}
+
+.name-claim-item {
+    background: #1e1e24;
+    border: 2px solid #2f3542;
+    border-radius: 12px;
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.name-claim-item:not(.claimed):hover {
+    border-color: #2ecc71;
+    background: rgba(46, 204, 113, 0.08);
+}
+
+.name-claim-item.claimed {
+    opacity: 0.6;
+    cursor: default;
+}
+
+.name-claim-item.is-me {
+    border-color: #2ecc71;
+    background: rgba(46, 204, 113, 0.12);
+    opacity: 1;
+}
+
+.you-badge {
+    color: #2ecc71;
+    font-size: 12px;
+    margin-left: auto;
+}
+
+.taken-badge {
+    color: #747d8c;
+    font-size: 12px;
+    margin-left: auto;
+}
+
 /* ==========================================================================
-   CARDS / GRID DOS PERSONAGENS (DRAFT)
+   EQUIPES
+   ========================================================================== */
+.team-display {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin: 20px 0;
+}
+
+.team-box {
+    background: #1e1e24;
+    border-radius: 14px;
+    padding: 16px;
+    text-align: left;
+}
+
+.team-a-box { border-left: 4px solid #3498db; }
+.team-b-box { border-left: 4px solid #e74c3c; }
+
+.team-box h3 {
+    font-size: 14px;
+    color: #a4b0be;
+    margin-bottom: 12px;
+}
+
+.team-member {
+    padding: 10px 0;
+    font-size: 15px;
+    font-weight: 600;
+    border-bottom: 1px solid #26262f;
+}
+
+.team-member:last-child {
+    border-bottom: none;
+}
+
+/* ==========================================================================
+   CARDS / GRID
    ========================================================================== */
 .cards-grid {
     display: grid;
@@ -150,21 +384,18 @@ button:disabled, .btn-action:disabled {
     font-weight: 600;
     font-size: 13px;
     line-height: 1.4;
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.25s;
     display: flex;
-    flex-direction: column; 
+    flex-direction: column;
     align-items: center;
-    justify-content: space-between;
     gap: 8px;
-    min-height: 160px; 
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
-    box-sizing: border-box;
+    min-height: 160px;
 }
 
 .card-image {
     width: 100%;
     height: 95px;
-    object-fit: cover; /* Recorta a imagem proporcionalmente sem distorcer */
+    object-fit: cover;
     border-radius: 8px;
     background-color: #16161a;
 }
@@ -173,7 +404,6 @@ button:disabled, .btn-action:disabled {
     border-color: #57606f;
 }
 
-/* Estado Selecionado */
 .card.selected {
     border-color: #2ecc71;
     color: #ffffff;
@@ -182,13 +412,11 @@ button:disabled, .btn-action:disabled {
     transform: translateY(-2px);
 }
 
-/* Estado Descartado / Já Usado */
 .card.used {
     opacity: 0.25;
     cursor: not-allowed;
     border-color: #121214;
     background: #121214;
-    color: #747d8c;
 }
 
 .card.used span {
@@ -196,7 +424,7 @@ button:disabled, .btn-action:disabled {
 }
 
 /* ==========================================================================
-   TELA 3: PLACAR E CONFRONTO DE COMBATE
+   PLACAR E COMBATE
    ========================================================================== */
 .scoreboard {
     display: flex;
@@ -205,33 +433,70 @@ button:disabled, .btn-action:disabled {
     gap: 15px;
 }
 
+.scoreboard-small {
+    margin-bottom: 10px;
+}
+
 .score-box {
     flex: 1;
     background: #1e1e24;
     border: 1px solid #26262f;
     padding: 12px;
     border-radius: 12px;
-    font-size: 16px;
+    font-size: 14px;
     font-weight: 700;
-    letter-spacing: 0.5px;
 }
 
 .score-box span {
     font-size: 20px;
-    margin-left: 5px;
     font-weight: 800;
 }
 
 #score-p1 { color: #3498db; }
 #score-p2 { color: #e74c3c; }
 
-/* Duelo Versus */
 .matchup-versus {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 10px;
     margin: 30px 0;
+}
+
+.matchup-teams {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    margin: 20px 0;
+}
+
+.team-side {
+    background: #1e1e24;
+    border-radius: 14px;
+    padding: 16px;
+}
+
+.team-side h4 {
+    font-size: 13px;
+    color: #a4b0be;
+    margin-bottom: 12px;
+}
+
+.team-fighters {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.team-fighters .fighter-card {
+    width: 46%;
+    min-height: 140px;
+}
+
+.team-fighters .fighter-card small {
+    color: #a4b0be;
+    font-size: 11px;
+    margin-top: 4px;
 }
 
 .fighter-card {
@@ -242,18 +507,17 @@ button:disabled, .btn-action:disabled {
     font-weight: 700;
     border-radius: 14px;
     width: 44%;
-    min-height: 160px; 
+    min-height: 160px;
     display: flex;
-    flex-direction: column; 
+    flex-direction: column;
     align-items: center;
-    justify-content: space-between;
     gap: 8px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-    box-sizing: border-box;
 }
 
-#fighter-p1 { border-bottom: 4px solid #3498db; }
-#fighter-p2 { border-bottom: 4px solid #e74c3c; }
+#fighter-p1, .fighter-card.player-1 { border-bottom: 4px solid #3498db; }
+#fighter-p2, .fighter-card.player-2 { border-bottom: 4px solid #e74c3c; }
+.fighter-card.player-3 { border-bottom: 4px solid #2ecc71; }
+.fighter-card.player-4 { border-bottom: 4px solid #f39c12; }
 
 .vs {
     font-size: 16px;
@@ -269,9 +533,15 @@ button:disabled, .btn-action:disabled {
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+    margin: 0 auto;
 }
 
-/* Botões do Juiz (Quem ganhou) */
+.vs-large {
+    width: 44px;
+    height: 44px;
+    font-size: 18px;
+}
+
 .judge-buttons {
     display: flex;
     gap: 15px;
@@ -288,7 +558,6 @@ button:disabled, .btn-action:disabled {
     box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
 }
 
-/* Animação suave de transição */
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(8px); }
     to { opacity: 1; transform: translateY(0); }
