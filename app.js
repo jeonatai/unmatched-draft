@@ -833,13 +833,11 @@ function buildCombatInterface() {
         document.getElementById('score-p1-name').innerText = getPlayerDisplayName(1);
         document.getElementById('score-p2-name').innerText = getPlayerDisplayName(2);
 
-        if ((gameState.p1Score >= 2 || gameState.p2Score >= 2) && phase !== 'post-game') {
-            const winner = gameState.p1Score >= 2 ? 1 : 2;
-            roomRef.update({
-                phase: 'post-game',
-                winner,
-                winnerTeam: null
-            });
+        if (gameState.p1Score >= 2 || gameState.p2Score >= 2) {
+            if (gameState.phase !== 'post-game') {
+                const winner = gameState.p1Score >= 2 ? 1 : 2;
+                roomRef.update({ phase: 'post-game', winner, winnerTeam: null });
+            }
             return;
         }
     }
@@ -983,13 +981,25 @@ window.registerWinner = function(winnerNum) {
         p1CombatChoice: null,
         p2CombatChoice: null
     };
+    let newP1Score = gameState.p1Score || 0;
+    let newP2Score = gameState.p2Score || 0;
+
     if (winnerNum === 1) {
-        updates.p1Score = gameState.p1Score + 1;
+        newP1Score += 1;
+        updates.p1Score = newP1Score;
         updates.p1Used = [...(gameState.p1Used || []), gameState.p1CombatChoice];
     } else {
-        updates.p2Score = gameState.p2Score + 1;
+        newP2Score += 1;
+        updates.p2Score = newP2Score;
         updates.p2Used = [...(gameState.p2Used || []), gameState.p2CombatChoice];
     }
+
+    if (newP1Score >= 2 || newP2Score >= 2) {
+        updates.phase = 'post-game';
+        updates.winner = newP1Score >= 2 ? 1 : 2;
+        updates.winnerTeam = null;
+    }
+
     roomRef.update(updates);
 };
 
