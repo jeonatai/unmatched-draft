@@ -39,6 +39,10 @@ const PERSONAGENS = [
     { nome: "Homem-Mariposa | Sapo de Loveland", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/npcs/villains/card-covers/x83yAUgQGlJDoSWVi-CXQ.webp" },
     { nome: "Invasor Marciano", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/npcs/villains/card-covers/XMvDZU9R1vCn5dT4Do6iZ.webp" },
     { nome: "Jill Trent | Daizy", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/CvsgmaMFob3JNZ9OFOjgA.webp" },
+    { nome: "Cavaleiro da Lua", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/nh0wyjVp6hYSrGY8HS47C.webp" },
+    { nome: "Homem Aranha", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/Kngv_p0P1hdxfOANliL7Y.webp" },
+    { nome: "Luke Cage | Misty Knight", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/SkGReM3sdO9x2AGIumUao.webp" },
+    { nome: "Dr. Estranho | Wong", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/nV6hmlXVda7Kf4ABbW26Y.webp" },
     { nome: "Lampião e Corisco", img: "https://storage.googleapis.com/ludopedia-imagens-jogo/3741e_230447.jpg" }
 ];
 
