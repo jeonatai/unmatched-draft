@@ -151,8 +151,10 @@ function ensureLifeCounter(roleKey, hero) {
     roomRef.update(updates);
 }
 
-// Renderiza o(s) marcador(es) de vida dentro do card do lutador
-function renderLifeTrackers(container, roleKey, hero) {
+// Renderiza o(s) marcador(es) de vida dentro do card do lutador.
+// isOwner controla se os botões de +/- aparecem (só o dono do lutador edita);
+// para os demais, mostra apenas o número da vida, sem botões.
+function renderLifeTrackers(container, roleKey, hero, isOwner) {
     const config = getLifeConfig(hero);
     if (!config) return;
 
@@ -174,25 +176,28 @@ function renderLifeTrackers(container, roleKey, hero) {
         const controls = document.createElement('div');
         controls.className = 'life-tracker-controls';
 
-        const minusBtn = document.createElement('button');
-        minusBtn.type = 'button';
-        minusBtn.className = 'life-btn';
-        minusBtn.innerText = '−';
-        minusBtn.onclick = () => updateLifeValue(roleKey, idx, -1);
+        if (isOwner) {
+            const minusBtn = document.createElement('button');
+            minusBtn.type = 'button';
+            minusBtn.className = 'life-btn';
+            minusBtn.innerText = '−';
+            minusBtn.onclick = () => updateLifeValue(roleKey, idx, -1);
+            controls.appendChild(minusBtn);
+        }
 
         const valSpan = document.createElement('span');
         valSpan.className = 'life-value';
         valSpan.innerText = values[idx];
-
-        const plusBtn = document.createElement('button');
-        plusBtn.type = 'button';
-        plusBtn.className = 'life-btn';
-        plusBtn.innerText = '+';
-        plusBtn.onclick = () => updateLifeValue(roleKey, idx, 1);
-
-        controls.appendChild(minusBtn);
         controls.appendChild(valSpan);
-        controls.appendChild(plusBtn);
+
+        if (isOwner) {
+            const plusBtn = document.createElement('button');
+            plusBtn.type = 'button';
+            plusBtn.className = 'life-btn';
+            plusBtn.innerText = '+';
+            plusBtn.onclick = () => updateLifeValue(roleKey, idx, 1);
+            controls.appendChild(plusBtn);
+        }
 
         row.appendChild(label);
         row.appendChild(controls);
@@ -955,8 +960,8 @@ function buildCombatInterface() {
         fillCardContent(fP2, gameState.p2Pick);
         ensureLifeCounter('p1', gameState.p1Pick);
         ensureLifeCounter('p2', gameState.p2Pick);
-        renderLifeTrackers(fP1, 'p1', gameState.p1Pick);
-        renderLifeTrackers(fP2, 'p2', gameState.p2Pick);
+        renderLifeTrackers(fP1, 'p1', gameState.p1Pick, myRole === 1);
+        renderLifeTrackers(fP2, 'p2', gameState.p2Pick, myRole === 2);
 
         document.getElementById('judge-1v1').innerHTML =
             '<button onclick="registerWinner(1)">' + getPlayerDisplayName(1) + ' Venceu</button>' +
@@ -985,7 +990,7 @@ function buildCombatInterface() {
             label.innerText = getPlayerDisplayName(slot);
             div.appendChild(label);
             ensureLifeCounter('s' + slot, picks[slot]);
-            renderLifeTrackers(div, 's' + slot, picks[slot]);
+            renderLifeTrackers(div, 's' + slot, picks[slot], myRole === slot);
             teamAFighters.appendChild(div);
         });
 
@@ -997,7 +1002,7 @@ function buildCombatInterface() {
             label.innerText = getPlayerDisplayName(slot);
             div.appendChild(label);
             ensureLifeCounter('s' + slot, picks[slot]);
-            renderLifeTrackers(div, 's' + slot, picks[slot]);
+            renderLifeTrackers(div, 's' + slot, picks[slot], myRole === slot);
             teamBFighters.appendChild(div);
         });
 
@@ -1068,8 +1073,8 @@ function buildCombatInterface() {
         fillCardContent(fP2, gameState.p2CombatChoice);
         ensureLifeCounter('p1', gameState.p1CombatChoice);
         ensureLifeCounter('p2', gameState.p2CombatChoice);
-        renderLifeTrackers(fP1, 'p1', gameState.p1CombatChoice);
-        renderLifeTrackers(fP2, 'p2', gameState.p2CombatChoice);
+        renderLifeTrackers(fP1, 'p1', gameState.p1CombatChoice, myRole === 1);
+        renderLifeTrackers(fP2, 'p2', gameState.p2CombatChoice, myRole === 2);
 
         document.getElementById('judge-1v1').innerHTML =
             '<button onclick="registerWinner(1)">' + getPlayerDisplayName(1) + ' Venceu</button>' +
