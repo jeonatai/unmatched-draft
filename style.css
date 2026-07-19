@@ -636,6 +636,88 @@ button:disabled {
 }
 
 
+/* ==========================================================================
+   FEED DE PARTIDAS
+   ========================================================================== */
+.feed-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin: 20px 0;
+    text-align: left;
+}
+
+.feed-post {
+    background: #1e1e24;
+    border: 1px solid #2f3542;
+    border-radius: 14px;
+    padding: 14px;
+}
+
+.feed-post-text {
+    color: #f1f2f6;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.4;
+    margin-bottom: 4px;
+}
+
+.feed-post-time {
+    color: #747d8c;
+    font-size: 11px;
+    display: block;
+    margin-bottom: 12px;
+}
+
+.feed-comments {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.feed-comment {
+    background: #16161a;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 13px;
+    color: #ced6e0;
+    line-height: 1.4;
+    word-break: break-word;
+}
+
+.feed-comment strong {
+    color: #2ecc71;
+}
+
+.feed-comment-form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.feed-comment-form input {
+    margin-bottom: 0;
+    text-align: left;
+    text-transform: none;
+    letter-spacing: normal;
+    font-size: 13px;
+    padding: 10px 12px;
+}
+
+.feed-comment-form button {
+    padding: 10px !important;
+    font-size: 13px !important;
+    width: 100%;
+}
+
+.feed-empty {
+    color: #747d8c;
+    text-align: center;
+    margin: 30px 0;
+    font-size: 13px;
+}
+
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(8px); }
     to { opacity: 1; transform: translateY(0); }
