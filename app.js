@@ -46,6 +46,14 @@ const PERSONAGENS = [
     { nome: "Lampião e Corisco", img: "https://storage.googleapis.com/ludopedia-imagens-jogo/3741e_230447.jpg" }
 ];
 
+// Marcadores de vida para personagens específicos (nome deve bater com "nome" em PERSONAGENS)
+const HERO_LIFE_DATA = {
+    "Cavaleiro da Lua": { color: "#000000", trackers: [{ label: "Cavaleiro da Lua", hp: 16 }] },
+    "Homem Aranha": { color: "#e74c3c", trackers: [{ label: "Homem Aranha", hp: 15 }] },
+    "Dr. Estranho | Wong": { color: "#3498db", trackers: [{ label: "Dr. Estranho", hp: 14 }, { label: "Wong", hp: 6 }] },
+    "Luke Cage | Misty Knight": { color: "#f1c40f", trackers: [{ label: "Luke Cage", hp: 13 }, { label: "Misty Knight", hp: 6 }] }
+};
+
 const PLAYER_COLORS = {
     1: { name: 'Jogador 1', color: '#3498db', class: 'player-1' },
     2: { name: 'Jogador 2', color: '#e74c3c', class: 'player-2' },
@@ -120,6 +128,88 @@ function fillCardContent(div, char) {
     textSpan.innerText = char.nome;
     if (!char.img) textSpan.style.margin = "auto";
     div.appendChild(textSpan);
+}
+
+// ============================================================
+// MARCADORES DE VIDA
+// ============================================================
+function getLifeConfig(hero) {
+    if (!hero || !hero.nome) return null;
+    return HERO_LIFE_DATA[hero.nome] || null;
+}
+
+// Garante que o estado de vida no Firebase existe e corresponde ao herói atual
+function ensureLifeCounter(roleKey, hero) {
+    const config = getLifeConfig(hero);
+    if (!config || !roomRef) return;
+    const existing = gameState.lifeCounters && gameState.lifeCounters[roleKey];
+    if (existing && existing.heroName === hero.nome) return;
+
+    const initValues = config.trackers.map(t => t.hp);
+    const updates = {};
+    updates['lifeCounters/' + roleKey] = { heroName: hero.nome, values: initValues };
+    roomRef.update(updates);
+}
+
+// Renderiza o(s) marcador(es) de vida dentro do card do lutador
+function renderLifeTrackers(container, roleKey, hero) {
+    const config = getLifeConfig(hero);
+    if (!config) return;
+
+    const state = gameState.lifeCounters && gameState.lifeCounters[roleKey];
+    const values = (state && state.heroName === hero.nome) ? state.values : config.trackers.map(t => t.hp);
+
+    const wrap = document.createElement('div');
+    wrap.className = 'life-trackers';
+
+    config.trackers.forEach((t, idx) => {
+        const row = document.createElement('div');
+        row.className = 'life-tracker';
+        row.style.setProperty('--life-color', config.color);
+
+        const label = document.createElement('span');
+        label.className = 'life-tracker-label';
+        label.innerText = t.label;
+
+        const controls = document.createElement('div');
+        controls.className = 'life-tracker-controls';
+
+        const minusBtn = document.createElement('button');
+        minusBtn.type = 'button';
+        minusBtn.className = 'life-btn';
+        minusBtn.innerText = '−';
+        minusBtn.onclick = () => updateLifeValue(roleKey, idx, -1);
+
+        const valSpan = document.createElement('span');
+        valSpan.className = 'life-value';
+        valSpan.innerText = values[idx];
+
+        const plusBtn = document.createElement('button');
+        plusBtn.type = 'button';
+        plusBtn.className = 'life-btn';
+        plusBtn.innerText = '+';
+        plusBtn.onclick = () => updateLifeValue(roleKey, idx, 1);
+
+        controls.appendChild(minusBtn);
+        controls.appendChild(valSpan);
+        controls.appendChild(plusBtn);
+
+        row.appendChild(label);
+        row.appendChild(controls);
+        wrap.appendChild(row);
+    });
+
+    container.appendChild(wrap);
+}
+
+function updateLifeValue(roleKey, idx, delta) {
+    const state = gameState.lifeCounters && gameState.lifeCounters[roleKey];
+    if (!state || !roomRef) return;
+    const newValues = [...state.values];
+    newValues[idx] = Math.max(0, newValues[idx] + delta);
+    const updates = {};
+    updates['lifeCounters/' + roleKey + '/values'] = newValues;
+    roomRef.update(updates);
 }
 
 function getPlayerDisplayName(role) {
@@ -863,6 +953,10 @@ function buildCombatInterface() {
         fP2.innerHTML = "";
         fillCardContent(fP1, gameState.p1Pick);
         fillCardContent(fP2, gameState.p2Pick);
+        ensureLifeCounter('p1', gameState.p1Pick);
+        ensureLifeCounter('p2', gameState.p2Pick);
+        renderLifeTrackers(fP1, 'p1', gameState.p1Pick);
+        renderLifeTrackers(fP2, 'p2', gameState.p2Pick);
 
         document.getElementById('judge-1v1').innerHTML =
             '<button onclick="registerWinner(1)">' + getPlayerDisplayName(1) + ' Venceu</button>' +
@@ -890,6 +984,8 @@ function buildCombatInterface() {
             const label = document.createElement('small');
             label.innerText = getPlayerDisplayName(slot);
             div.appendChild(label);
+            ensureLifeCounter('s' + slot, picks[slot]);
+            renderLifeTrackers(div, 's' + slot, picks[slot]);
             teamAFighters.appendChild(div);
         });
 
@@ -900,6 +996,8 @@ function buildCombatInterface() {
             const label = document.createElement('small');
             label.innerText = getPlayerDisplayName(slot);
             div.appendChild(label);
+            ensureLifeCounter('s' + slot, picks[slot]);
+            renderLifeTrackers(div, 's' + slot, picks[slot]);
             teamBFighters.appendChild(div);
         });
 
@@ -968,6 +1066,10 @@ function buildCombatInterface() {
         fP2.innerHTML = "";
         fillCardContent(fP1, gameState.p1CombatChoice);
         fillCardContent(fP2, gameState.p2CombatChoice);
+        ensureLifeCounter('p1', gameState.p1CombatChoice);
+        ensureLifeCounter('p2', gameState.p2CombatChoice);
+        renderLifeTrackers(fP1, 'p1', gameState.p1CombatChoice);
+        renderLifeTrackers(fP2, 'p2', gameState.p2CombatChoice);
 
         document.getElementById('judge-1v1').innerHTML =
             '<button onclick="registerWinner(1)">' + getPlayerDisplayName(1) + ' Venceu</button>' +
@@ -1035,7 +1137,7 @@ function renderPostGame() {
 
 document.getElementById('btn-rematch')?.addEventListener('click', () => {
     if (!roomRef) return;
-    let updates = { phase: null, winner: null, winnerTeam: null };
+    let updates = { phase: null, winner: null, winnerTeam: null, lifeCounters: null };
 
     if (gameState.mode === 'single') {
         const shuffled = shuffleArray(PERSONAGENS);
