@@ -1142,14 +1142,15 @@ function renderPostGame() {
 
     document.getElementById('post-game-message').innerText = msg;
 
+    const postForm = document.getElementById('post-match-form');
     const postBtn = document.getElementById('btn-post-match');
-    if (postBtn) {
+    if (postForm && postBtn) {
         if (gameState.matchPosted) {
-            postBtn.innerText = 'Postada no Feed ✅';
-            postBtn.disabled = true;
+            postForm.style.display = 'none';
         } else {
-            postBtn.innerText = '📣 Postar Partida';
+            postForm.style.display = 'block';
             postBtn.disabled = false;
+            postBtn.innerText = '📣 Postar Partida';
         }
     }
 }
@@ -1157,37 +1158,44 @@ function renderPostGame() {
 // ============================================================
 // FEED DE PARTIDAS
 // ============================================================
-function buildMatchSummary() {
+function buildMatchParticipants() {
     if (gameState.mode === 'single') {
         const winnerRole = gameState.winner;
         if (!winnerRole) return null;
-        const loserRole = winnerRole === 1 ? 2 : 1;
-        const winnerHero = winnerRole === 1 ? gameState.p1Pick : gameState.p2Pick;
-        const loserHero = loserRole === 1 ? gameState.p1Pick : gameState.p2Pick;
-        return getPlayerDisplayName(winnerRole) + ' venceu com ' + (winnerHero ? winnerHero.nome : '?') +
-            ' contra ' + getPlayerDisplayName(loserRole) + ' (' + (loserHero ? loserHero.nome : '?') + ')';
+        return [1, 2].map(role => ({
+            name: getPlayerDisplayName(role),
+            hero: (role === 1 ? gameState.p1Pick : gameState.p2Pick)?.nome || '?',
+            colorClass: PLAYER_COLORS[role].class,
+            won: role === winnerRole
+        }));
     }
 
     if (gameState.mode === 'bestof3') {
         const winnerRole = gameState.winner;
         if (!winnerRole) return null;
-        const loserRole = winnerRole === 1 ? 2 : 1;
-        const winnerHero = gameState.finalWinnerHero;
-        const loserHero = gameState.finalLoserHero;
-        const score = (gameState.p1Score || 0) + ' x ' + (gameState.p2Score || 0);
-        return getPlayerDisplayName(winnerRole) + ' venceu com ' + (winnerHero ? winnerHero.nome : '?') +
-            ' contra ' + getPlayerDisplayName(loserRole) + ' (' + (loserHero ? loserHero.nome : '?') + ') — Placar ' + score;
+        return [1, 2].map(role => ({
+            name: getPlayerDisplayName(role),
+            hero: (role === winnerRole ? gameState.finalWinnerHero : gameState.finalLoserHero)?.nome || '?',
+            colorClass: PLAYER_COLORS[role].class,
+            won: role === winnerRole,
+            note: (gameState.p1Score || 0) + ' x ' + (gameState.p2Score || 0)
+        }));
     }
 
     if (gameState.mode === 'team') {
         const winnerTeam = gameState.winnerTeam;
         if (!winnerTeam) return null;
         const picks = gameState.teamPicks || {};
-        const teamA = [1, 3].map(s => getPlayerDisplayName(s) + ' (' + (picks[s] ? picks[s].nome : '?') + ')').join(' e ');
-        const teamB = [2, 4].map(s => getPlayerDisplayName(s) + ' (' + (picks[s] ? picks[s].nome : '?') + ')').join(' e ');
-        const winnerText = winnerTeam === 'A' ? teamA : teamB;
-        const loserText = winnerTeam === 'A' ? teamB : teamA;
-        return 'Equipe ' + winnerTeam + ' venceu! ' + winnerText + ' derrotaram ' + loserText;
+        return [1, 2, 3, 4].map(slot => {
+            const team = (slot === 1 || slot === 3) ? 'A' : 'B';
+            return {
+                name: getPlayerDisplayName(slot),
+                hero: picks[slot] ? picks[slot].nome : '?',
+                colorClass: PLAYER_COLORS[slot].class,
+                won: team === winnerTeam,
+                note: 'Equipe ' + team
+            };
+        });
     }
 
     return null;
@@ -1244,28 +1252,73 @@ function renderFeed(posts) {
         const div = document.createElement('div');
         div.className = 'feed-post';
 
-        const text = document.createElement('p');
-        text.className = 'feed-post-text';
-        text.innerText = post.summary || '';
-        div.appendChild(text);
+        // Chips: um por jogador, na cor do jogador, com nome + personagem
+        const participants = post.participants || [];
+        if (participants.length > 0) {
+            const chipsRow = document.createElement('div');
+            chipsRow.className = 'feed-participants';
+            participants.forEach(p => {
+                const chip = document.createElement('span');
+                chip.className = 'feed-chip ' + (p.colorClass || '') + (p.won ? '' : ' feed-chip-loser');
+                chip.innerText = (p.won ? '🏆 ' : '') + p.name + ' · ' + p.hero;
+                chipsRow.appendChild(chip);
+            });
+            div.appendChild(chipsRow);
+
+            if (participants[0] && participants[0].note) {
+                const note = document.createElement('span');
+                note.className = 'feed-post-note';
+                note.innerText = participants[0].note;
+                div.appendChild(note);
+            }
+        }
+
+        // Texto livre escrito por quem postou (ou resumo antigo, para posts anteriores a essa versão)
+        const bodyText = post.description || post.summary || '';
+        if (bodyText) {
+            const desc = document.createElement('p');
+            desc.className = 'feed-post-text';
+            desc.innerText = bodyText;
+            div.appendChild(desc);
+        }
 
         const time = document.createElement('span');
         time.className = 'feed-post-time';
         time.innerText = formatTimestamp(post.timestamp);
         div.appendChild(time);
 
-        const commentsWrap = document.createElement('div');
-        commentsWrap.className = 'feed-comments';
+        // Comentários: área recolhível, fechada por padrão
         const comments = post.comments
-            ? Object.values(post.comments).sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0))
+            ? Object.entries(post.comments).sort((a, b) => (a[1].timestamp || 0) - (b[1].timestamp || 0))
             : [];
-        comments.forEach(c => {
+
+        const toggleBtn = document.createElement('button');
+        toggleBtn.type = 'button';
+        toggleBtn.className = 'btn-secondary feed-toggle-comments';
+        const setToggleLabel = (open) => {
+            toggleBtn.innerText = (open ? '▲ Ocultar comentários' : '💬 Comentários') + ' (' + comments.length + ')';
+        };
+        setToggleLabel(false);
+
+        const commentsSection = document.createElement('div');
+        commentsSection.className = 'feed-comments-section';
+        commentsSection.style.display = 'none';
+
+        const commentsList = document.createElement('div');
+        commentsList.className = 'feed-comments';
+        comments.forEach(([, c]) => {
             const cDiv = document.createElement('div');
             cDiv.className = 'feed-comment';
             cDiv.innerHTML = '<strong>' + escapeHtml(c.name) + ':</strong> ' + escapeHtml(c.text);
-            commentsWrap.appendChild(cDiv);
+            commentsList.appendChild(cDiv);
         });
-        div.appendChild(commentsWrap);
+        if (comments.length === 0) {
+            const empty = document.createElement('p');
+            empty.className = 'feed-comment-empty';
+            empty.innerText = 'Nenhum comentário ainda. Seja o primeiro!';
+            commentsList.appendChild(empty);
+        }
+        commentsSection.appendChild(commentsList);
 
         const form = document.createElement('div');
         form.className = 'feed-comment-form';
@@ -1304,7 +1357,16 @@ function renderFeed(posts) {
         form.appendChild(nameInput);
         form.appendChild(textInput);
         form.appendChild(sendBtn);
-        div.appendChild(form);
+        commentsSection.appendChild(form);
+
+        toggleBtn.onclick = () => {
+            const isOpen = commentsSection.style.display !== 'none';
+            commentsSection.style.display = isOpen ? 'none' : 'block';
+            setToggleLabel(!isOpen);
+        };
+
+        div.appendChild(toggleBtn);
+        div.appendChild(commentsSection);
 
         list.appendChild(div);
     });
@@ -1312,23 +1374,31 @@ function renderFeed(posts) {
 
 document.getElementById('btn-post-match')?.addEventListener('click', () => {
     if (!gameState || !roomRef || gameState.matchPosted) return;
-    const summary = buildMatchSummary();
-    if (!summary) return;
+    const participants = buildMatchParticipants();
+    if (!participants) return;
+
+    const descInput = document.getElementById('post-match-description');
+    const description = descInput ? descInput.value.trim() : '';
 
     const postBtn = document.getElementById('btn-post-match');
     if (postBtn) postBtn.disabled = true;
 
     db.ref('posts').push({
-        summary,
+        participants,
+        description,
         mode: gameState.mode,
         timestamp: Date.now()
     }).then(() => {
         roomRef.update({ matchPosted: true });
+    }).catch(() => {
+        if (postBtn) postBtn.disabled = false;
     });
 });
 
 document.getElementById('btn-rematch')?.addEventListener('click', () => {
     if (!roomRef) return;
+    const descInput = document.getElementById('post-match-description');
+    if (descInput) descInput.value = '';
     let updates = { phase: null, winner: null, winnerTeam: null, lifeCounters: null, matchPosted: null, finalWinnerHero: null, finalLoserHero: null };
 
     if (gameState.mode === 'single') {
