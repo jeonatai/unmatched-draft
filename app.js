@@ -320,7 +320,8 @@ function createRoomFromConfig() {
         nameClaims: {},
         slotAssignments: null,
         winner: null,
-        winnerTeam: null
+        winnerTeam: null,
+        createdAt: Date.now()
     };
 
     if (mode === 'single') {
@@ -1341,6 +1342,13 @@ function renderFeed(posts) {
             div.appendChild(note);
         }
 
+        if (post.durationMs != null) {
+            const durationSpan = document.createElement('span');
+            durationSpan.className = 'feed-post-note';
+            durationSpan.innerText = '⏱️ ' + formatDuration(post.durationMs);
+            div.appendChild(durationSpan);
+        }
+
         // Texto livre escrito por quem postou (ou resumo antigo, para posts anteriores a essa versão)
         const bodyText = post.description || post.summary || '';
         if (bodyText) {
@@ -1455,6 +1463,7 @@ document.getElementById('btn-post-match')?.addEventListener('click', () => {
         participants,
         description,
         mode: gameState.mode,
+        durationMs: gameState.matchDurationMs || null,
         timestamp: Date.now()
     }).then(() => {
         roomRef.update({ matchPosted: true });
@@ -1506,9 +1515,31 @@ document.getElementById('btn-close-room')?.addEventListener('click', () => {
 });
 
 // ============================================================
+// LIMPEZA DE SALAS ANTIGAS (mais de 1 semana)
+// ============================================================
+function cleanupOldRooms() {
+    const oneWeekAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+    db.ref('rooms')
+        .orderByChild('createdAt')
+        .endAt(oneWeekAgo)
+        .once('value')
+        .then(snapshot => {
+            const updates = {};
+            snapshot.forEach(child => {
+                updates[child.key] = null;
+            });
+            if (Object.keys(updates).length > 0) {
+                db.ref('rooms').update(updates);
+            }
+        })
+        .catch(() => { /* silencioso: limpeza é best-effort */ });
+}
+
+// ============================================================
 // INICIALIZAÇÃO
 // ============================================================
 window.addEventListener('DOMContentLoaded', () => {
+    cleanupOldRooms();
     document.getElementById('btn-go-create').onclick = () => {
         pendingConfig = null;
         buildNameInputs(2);
