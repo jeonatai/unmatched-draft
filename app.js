@@ -71,6 +71,7 @@ let roomRef = null;
 let gameState = null;
 let selectedCardIndex = null;
 let pendingConfig = null;
+let combatTimerInterval = null;
 
 function secureRandomInt(maxExclusive) {
     const arr = new Uint32Array(1);
@@ -235,7 +236,34 @@ function getMySlotFromNameIndex(nameIndex) {
     return null;
 }
 
+function formatDuration(ms) {
+    const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
+}
+
+function updateCombatTimerDisplay() {
+    const el = document.getElementById('combat-timer');
+    if (!el || !gameState || !gameState.combatStartTime) return;
+    el.innerText = '⏱️ ' + formatDuration(Date.now() - gameState.combatStartTime);
+}
+
+function startCombatTimerDisplay() {
+    stopCombatTimerDisplay();
+    updateCombatTimerDisplay();
+    combatTimerInterval = setInterval(updateCombatTimerDisplay, 1000);
+}
+
+function stopCombatTimerDisplay() {
+    if (combatTimerInterval) {
+        clearInterval(combatTimerInterval);
+        combatTimerInterval = null;
+    }
+}
+
 function goHome() {
+    stopCombatTimerDisplay();
     detachFeedListener();
     if (roomRef) roomRef.off();
     roomId = null;
@@ -506,6 +534,7 @@ function renderGame() {
     }
 
     if (phase === 'post-game') {
+        stopCombatTimerDisplay();
         renderPostGame();
         return;
     }
@@ -918,6 +947,11 @@ function currentCombatTurn() {
 }
 
 function buildCombatInterface() {
+    if (!gameState.combatStartTime && roomRef) {
+        roomRef.update({ combatStartTime: Date.now() });
+    }
+    if (!combatTimerInterval) startCombatTimerDisplay();
+
     const isTeam = gameState.phase === 'team-combat';
     const isSingle = gameState.phase === 'single-combat';
 
@@ -1085,7 +1119,8 @@ function buildCombatInterface() {
 
 window.registerWinner = function(winnerNum) {
     if (gameState.mode === 'single') {
-        roomRef.update({ phase: 'post-game', winner: winnerNum });
+        const duration = gameState.combatStartTime ? (Date.now() - gameState.combatStartTime) : null;
+        roomRef.update({ phase: 'post-game', winner: winnerNum, matchDurationMs: duration });
         return;
     }
 
@@ -1112,14 +1147,17 @@ window.registerWinner = function(winnerNum) {
         updates.winnerTeam = null;
         updates.finalWinnerHero = winnerNum === 1 ? gameState.p1CombatChoice : gameState.p2CombatChoice;
         updates.finalLoserHero = winnerNum === 1 ? gameState.p2CombatChoice : gameState.p1CombatChoice;
+        updates.matchDurationMs = gameState.combatStartTime ? (Date.now() - gameState.combatStartTime) : null;
     }
 
     roomRef.update(updates);
 };
 
 window.registerTeamWinner = function(team) {
-    roomRef.update({ phase: 'post-game', winnerTeam: team });
+    const duration = gameState.combatStartTime ? (Date.now() - gameState.combatStartTime) : null;
+    roomRef.update({ phase: 'post-game', winnerTeam: team, matchDurationMs: duration });
 };
+
 
 // ============================================================
 // PÓS-JOGO: REVANCHE E FECHAR SALA
@@ -1141,6 +1179,13 @@ function renderPostGame() {
     }
 
     document.getElementById('post-game-message').innerText = msg;
+
+    const durationEl = document.getElementById('post-game-duration');
+    if (durationEl) {
+        durationEl.innerText = (gameState.matchDurationMs != null)
+            ? '⏱️ Duração da batalha: ' + formatDuration(gameState.matchDurationMs)
+            : '';
+    }
 
     const postForm = document.getElementById('post-match-form');
     const postBtn = document.getElementById('btn-post-match');
@@ -1422,7 +1467,7 @@ document.getElementById('btn-rematch')?.addEventListener('click', () => {
     if (!roomRef) return;
     const descInput = document.getElementById('post-match-description');
     if (descInput) descInput.value = '';
-    let updates = { phase: null, winner: null, winnerTeam: null, lifeCounters: null, matchPosted: null, finalWinnerHero: null, finalLoserHero: null };
+    let updates = { phase: null, winner: null, winnerTeam: null, lifeCounters: null, matchPosted: null, finalWinnerHero: null, finalLoserHero: null, combatStartTime: null, matchDurationMs: null };
 
     if (gameState.mode === 'single') {
         const shuffled = shuffleArray(PERSONAGENS);
