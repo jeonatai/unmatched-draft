@@ -236,6 +236,7 @@ function getMySlotFromNameIndex(nameIndex) {
 }
 
 function goHome() {
+    detachFeedListener();
     if (roomRef) roomRef.off();
     roomId = null;
     myRole = null;
@@ -1109,6 +1110,8 @@ window.registerWinner = function(winnerNum) {
         updates.phase = 'post-game';
         updates.winner = newP1Score >= 2 ? 1 : 2;
         updates.winnerTeam = null;
+        updates.finalWinnerHero = winnerNum === 1 ? gameState.p1CombatChoice : gameState.p2CombatChoice;
+        updates.finalLoserHero = winnerNum === 1 ? gameState.p2CombatChoice : gameState.p1CombatChoice;
     }
 
     roomRef.update(updates);
@@ -1138,11 +1141,195 @@ function renderPostGame() {
     }
 
     document.getElementById('post-game-message').innerText = msg;
+
+    const postBtn = document.getElementById('btn-post-match');
+    if (postBtn) {
+        if (gameState.matchPosted) {
+            postBtn.innerText = 'Postada no Feed ✅';
+            postBtn.disabled = true;
+        } else {
+            postBtn.innerText = '📣 Postar Partida';
+            postBtn.disabled = false;
+        }
+    }
 }
+
+// ============================================================
+// FEED DE PARTIDAS
+// ============================================================
+function buildMatchSummary() {
+    if (gameState.mode === 'single') {
+        const winnerRole = gameState.winner;
+        if (!winnerRole) return null;
+        const loserRole = winnerRole === 1 ? 2 : 1;
+        const winnerHero = winnerRole === 1 ? gameState.p1Pick : gameState.p2Pick;
+        const loserHero = loserRole === 1 ? gameState.p1Pick : gameState.p2Pick;
+        return getPlayerDisplayName(winnerRole) + ' venceu com ' + (winnerHero ? winnerHero.nome : '?') +
+            ' contra ' + getPlayerDisplayName(loserRole) + ' (' + (loserHero ? loserHero.nome : '?') + ')';
+    }
+
+    if (gameState.mode === 'bestof3') {
+        const winnerRole = gameState.winner;
+        if (!winnerRole) return null;
+        const loserRole = winnerRole === 1 ? 2 : 1;
+        const winnerHero = gameState.finalWinnerHero;
+        const loserHero = gameState.finalLoserHero;
+        const score = (gameState.p1Score || 0) + ' x ' + (gameState.p2Score || 0);
+        return getPlayerDisplayName(winnerRole) + ' venceu com ' + (winnerHero ? winnerHero.nome : '?') +
+            ' contra ' + getPlayerDisplayName(loserRole) + ' (' + (loserHero ? loserHero.nome : '?') + ') — Placar ' + score;
+    }
+
+    if (gameState.mode === 'team') {
+        const winnerTeam = gameState.winnerTeam;
+        if (!winnerTeam) return null;
+        const picks = gameState.teamPicks || {};
+        const teamA = [1, 3].map(s => getPlayerDisplayName(s) + ' (' + (picks[s] ? picks[s].nome : '?') + ')').join(' e ');
+        const teamB = [2, 4].map(s => getPlayerDisplayName(s) + ' (' + (picks[s] ? picks[s].nome : '?') + ')').join(' e ');
+        const winnerText = winnerTeam === 'A' ? teamA : teamB;
+        const loserText = winnerTeam === 'A' ? teamB : teamA;
+        return 'Equipe ' + winnerTeam + ' venceu! ' + winnerText + ' derrotaram ' + loserText;
+    }
+
+    return null;
+}
+
+let feedRef = null;
+
+function goToFeed() {
+    showScreen('screen-feed');
+    attachFeedListener();
+}
+
+function attachFeedListener() {
+    if (feedRef) feedRef.off();
+    feedRef = db.ref('posts');
+    feedRef.on('value', snapshot => {
+        renderFeed(snapshot.val() || {});
+    });
+}
+
+function detachFeedListener() {
+    if (feedRef) feedRef.off();
+    feedRef = null;
+}
+
+function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.innerText = str == null ? '' : str;
+    return div.innerHTML;
+}
+
+function formatTimestamp(ts) {
+    if (!ts) return '';
+    try {
+        return new Date(ts).toLocaleString('pt-BR');
+    } catch (e) {
+        return '';
+    }
+}
+
+function renderFeed(posts) {
+    const list = document.getElementById('feed-list');
+    if (!list) return;
+    list.innerHTML = '';
+
+    const entries = Object.entries(posts).sort((a, b) => (b[1].timestamp || 0) - (a[1].timestamp || 0));
+
+    if (entries.length === 0) {
+        list.innerHTML = '<p class="feed-empty">Nenhuma partida postada ainda. Jogue e clique em "Postar Partida" no fim!</p>';
+        return;
+    }
+
+    entries.forEach(([postId, post]) => {
+        const div = document.createElement('div');
+        div.className = 'feed-post';
+
+        const text = document.createElement('p');
+        text.className = 'feed-post-text';
+        text.innerText = post.summary || '';
+        div.appendChild(text);
+
+        const time = document.createElement('span');
+        time.className = 'feed-post-time';
+        time.innerText = formatTimestamp(post.timestamp);
+        div.appendChild(time);
+
+        const commentsWrap = document.createElement('div');
+        commentsWrap.className = 'feed-comments';
+        const comments = post.comments
+            ? Object.values(post.comments).sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0))
+            : [];
+        comments.forEach(c => {
+            const cDiv = document.createElement('div');
+            cDiv.className = 'feed-comment';
+            cDiv.innerHTML = '<strong>' + escapeHtml(c.name) + ':</strong> ' + escapeHtml(c.text);
+            commentsWrap.appendChild(cDiv);
+        });
+        div.appendChild(commentsWrap);
+
+        const form = document.createElement('div');
+        form.className = 'feed-comment-form';
+
+        const nameInput = document.createElement('input');
+        nameInput.type = 'text';
+        nameInput.className = 'text-input feed-comment-name';
+        nameInput.placeholder = 'Seu nome';
+
+        const textInput = document.createElement('input');
+        textInput.type = 'text';
+        textInput.className = 'text-input feed-comment-text';
+        textInput.placeholder = 'Escreva um comentário...';
+
+        const sendBtn = document.createElement('button');
+        sendBtn.type = 'button';
+        sendBtn.innerText = 'Comentar';
+        sendBtn.onclick = () => {
+            const name = nameInput.value.trim();
+            const text = textInput.value.trim();
+            if (!name || !text) return;
+            sendBtn.disabled = true;
+            db.ref('posts/' + postId + '/comments').push({
+                name,
+                text,
+                timestamp: Date.now()
+            }).then(() => {
+                nameInput.value = '';
+                textInput.value = '';
+                sendBtn.disabled = false;
+            }).catch(() => {
+                sendBtn.disabled = false;
+            });
+        };
+
+        form.appendChild(nameInput);
+        form.appendChild(textInput);
+        form.appendChild(sendBtn);
+        div.appendChild(form);
+
+        list.appendChild(div);
+    });
+}
+
+document.getElementById('btn-post-match')?.addEventListener('click', () => {
+    if (!gameState || !roomRef || gameState.matchPosted) return;
+    const summary = buildMatchSummary();
+    if (!summary) return;
+
+    const postBtn = document.getElementById('btn-post-match');
+    if (postBtn) postBtn.disabled = true;
+
+    db.ref('posts').push({
+        summary,
+        mode: gameState.mode,
+        timestamp: Date.now()
+    }).then(() => {
+        roomRef.update({ matchPosted: true });
+    });
+});
 
 document.getElementById('btn-rematch')?.addEventListener('click', () => {
     if (!roomRef) return;
-    let updates = { phase: null, winner: null, winnerTeam: null, lifeCounters: null };
+    let updates = { phase: null, winner: null, winnerTeam: null, lifeCounters: null, matchPosted: null, finalWinnerHero: null, finalLoserHero: null };
 
     if (gameState.mode === 'single') {
         const shuffled = shuffleArray(PERSONAGENS);
@@ -1191,6 +1378,12 @@ window.addEventListener('DOMContentLoaded', () => {
     };
 
     document.getElementById('btn-go-join').onclick = () => showScreen('screen-enter-code');
+
+    document.getElementById('btn-go-feed').onclick = goToFeed;
+    document.getElementById('btn-feed-back').onclick = () => {
+        detachFeedListener();
+        showScreen('screen-home');
+    };
 
     document.getElementById('btn-back-home').onclick = goHome;
     document.getElementById('btn-back-config').onclick = () => showScreen('screen-home');
