@@ -492,7 +492,11 @@ function renderGame() {
     const phase = gameState.phase;
 
     if (phase === 'lobby') {
-        renderWaitingRoom();
+        if (gameState.mode === 'team' && myNameIndex === null) {
+            renderNameClaim();
+        } else {
+            renderWaitingRoom();
+        }
         return;
     }
 
@@ -1345,7 +1349,7 @@ function renderFeed(posts) {
         if (post.durationMs != null) {
             const durationSpan = document.createElement('span');
             durationSpan.className = 'feed-post-note';
-            durationSpan.innerText = '⏱️ ' + formatDuration(post.durationMs);
+            durationSpan.innerText = '⏱️ Tempo de partida: ' + formatDuration(post.durationMs);
             div.appendChild(durationSpan);
         }
 
