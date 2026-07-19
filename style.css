@@ -423,6 +423,27 @@ button:disabled {
     text-decoration: line-through;
 }
 
+/* Timer de batalha */
+.combat-timer {
+    display: inline-block;
+    margin: 0 auto 16px auto;
+    background: #1e1e24;
+    border: 1px solid #2f3542;
+    border-radius: 20px;
+    padding: 6px 16px;
+    font-size: 15px;
+    font-weight: 800;
+    color: #f39c12;
+    letter-spacing: 1px;
+}
+
+.post-game-duration {
+    color: #a4b0be;
+    font-size: 13px;
+    margin-top: -12px;
+    margin-bottom: 20px;
+}
+
 /* ==========================================================================
    PLACAR E COMBATE
    ========================================================================== */
