@@ -139,6 +139,7 @@
 
         <!-- TELA: Combate -->
         <div id="screen-combat" class="screen" style="display: none;">
+            <div id="combat-timer" class="combat-timer">⏱️ 00:00</div>
             <div class="scoreboard" id="combat-scoreboard">
                 <div class="score-box">🔹 <span id="score-p1-name">J1</span> <span id="score-p1">0</span></div>
                 <div class="score-box">🔸 <span id="score-p2-name">J2</span> <span id="score-p2">0</span></div>
@@ -189,6 +190,7 @@
         <div id="screen-post-game" class="screen" style="display: none;">
             <h1 id="post-game-title">🏆 Partida Encerrada!</h1>
             <p id="post-game-message">-</p>
+            <p id="post-game-duration" class="post-game-duration"></p>
             <button id="btn-rematch" style="background-color: #2ecc71;">Revanche</button>
             <div id="post-match-form">
                 <textarea id="post-match-description" class="text-input post-match-textarea" rows="3" placeholder="Conte como foi a partida (opcional)..."></textarea>
