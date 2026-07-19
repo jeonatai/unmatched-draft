@@ -1252,7 +1252,10 @@ function renderFeed(posts) {
         const div = document.createElement('div');
         div.className = 'feed-post';
 
-        // Chips: um por jogador, na cor do jogador, com nome + personagem
+        // Linha do topo: chips dos jogadores + botão de apagar
+        const topRow = document.createElement('div');
+        topRow.className = 'feed-post-top';
+
         const participants = post.participants || [];
         if (participants.length > 0) {
             const chipsRow = document.createElement('div');
@@ -1263,14 +1266,34 @@ function renderFeed(posts) {
                 chip.innerText = (p.won ? '🏆 ' : '') + p.name + ' · ' + p.hero;
                 chipsRow.appendChild(chip);
             });
-            div.appendChild(chipsRow);
+            topRow.appendChild(chipsRow);
+        } else {
+            topRow.appendChild(document.createElement('span'));
+        }
 
-            if (participants[0] && participants[0].note) {
-                const note = document.createElement('span');
-                note.className = 'feed-post-note';
-                note.innerText = participants[0].note;
-                div.appendChild(note);
+        const deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
+        deleteBtn.className = 'feed-delete-btn';
+        deleteBtn.innerText = '🗑️';
+        deleteBtn.title = 'Apagar post';
+        deleteBtn.onclick = () => {
+            const pass = window.prompt('Digite a senha para apagar este post:');
+            if (pass === null) return;
+            if (pass !== 'bolas') {
+                alert('Senha incorreta. O post não foi apagado.');
+                return;
             }
+            db.ref('posts/' + postId).remove();
+        };
+        topRow.appendChild(deleteBtn);
+
+        div.appendChild(topRow);
+
+        if (participants[0] && participants[0].note) {
+            const note = document.createElement('span');
+            note.className = 'feed-post-note';
+            note.innerText = participants[0].note;
+            div.appendChild(note);
         }
 
         // Texto livre escrito por quem postou (ou resumo antigo, para posts anteriores a essa versão)
