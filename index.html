@@ -22,6 +22,7 @@
             <p>Crie uma nova sala ou entre em uma existente com o código.</p>
             <button id="btn-go-create" style="background-color: #2ecc71;">Criar Sala</button>
             <button id="btn-go-join" style="background-color: #3498db; margin-top: 12px;">Entrar em Sala</button>
+            <button id="btn-go-feed" class="btn-secondary">📰 Feed de Partidas</button>
         </div>
 
         <!-- TELA: Entrar com código -->
@@ -189,7 +190,16 @@
             <h1 id="post-game-title">🏆 Partida Encerrada!</h1>
             <p id="post-game-message">-</p>
             <button id="btn-rematch" style="background-color: #2ecc71;">Revanche</button>
-            <button id="btn-close-room" class="btn-secondary" style="margin-top: 12px;">Fechar Sala</button>
+            <button id="btn-post-match" style="background-color: #3498db; margin-top: 12px;">📣 Postar Partida</button>
+            <button id="btn-close-room" class="btn-secondary">Fechar Sala</button>
+        </div>
+
+        <!-- TELA: Feed de Partidas -->
+        <div id="screen-feed" class="screen" style="display: none;">
+            <h1>📰 Feed de Partidas</h1>
+            <p>Partidas postadas pela comunidade.</p>
+            <div id="feed-list" class="feed-list"></div>
+            <button id="btn-feed-back" class="btn-secondary">Voltar</button>
         </div>
 
     </div>
