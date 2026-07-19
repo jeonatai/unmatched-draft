@@ -558,6 +558,76 @@ button:disabled {
     box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
 }
 
+/* ==========================================================================
+   MARCADORES DE VIDA
+   ========================================================================== */
+.life-trackers {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+    margin-top: 4px;
+}
+
+.life-tracker {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    background: #16161a;
+    border: 2px solid var(--life-color, #57606f);
+    outline: 1px solid rgba(255, 255, 255, 0.08);
+    outline-offset: -1px;
+    border-radius: 8px;
+    padding: 4px 8px;
+}
+
+.life-tracker-label {
+    font-size: 10px;
+    color: #ced6e0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    max-width: 60px;
+    line-height: 1.2;
+    text-align: left;
+}
+
+.life-tracker-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.life-btn {
+    width: 22px !important;
+    height: 22px;
+    min-width: 22px;
+    padding: 0 !important;
+    border-radius: 50%;
+    background: var(--life-color, #2f3542) !important;
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 800;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: none !important;
+}
+
+.life-btn:active {
+    transform: scale(0.9);
+}
+
+.life-value {
+    min-width: 20px;
+    text-align: center;
+    font-size: 15px;
+    font-weight: 800;
+    color: #ffffff;
+}
+
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(8px); }
     to { opacity: 1; transform: translateY(0); }
