@@ -669,6 +669,41 @@ button:disabled {
     resize: vertical;
 }
 
+.home-feed-section {
+    margin-top: 28px;
+    padding-top: 18px;
+    border-top: 1px solid #26262f;
+    text-align: left;
+}
+
+.home-feed-section h3 {
+    text-align: center;
+    margin-bottom: 10px;
+    color: #f1f2f6;
+}
+
+.btn-pause {
+    width: auto !important;
+    display: inline-block;
+    margin: 0 auto 16px auto !important;
+    padding: 6px 16px !important;
+}
+
+.feed-combats {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin: 6px 0;
+    padding: 8px 10px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 10px;
+}
+
+.feed-combat-row {
+    font-size: 13px;
+    color: #c8c9d4;
+}
+
 .feed-list {
     display: flex;
     flex-direction: column;
