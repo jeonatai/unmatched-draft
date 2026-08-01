@@ -150,6 +150,15 @@
             <button onclick="goHome()">Voltar ao início</button>
         </div>
 
+        <!-- TELA: Reconectar (sala já cheia, dispositivo não reconhecido) -->
+        <div id="screen-rejoin-choice" class="screen" style="display: none;">
+            <h1>🔄 Reconectar à Sala</h1>
+            <p>Essa sala já tem os 2 jogadores. Se sua conexão caiu (ex: abriu o link em outro navegador ou app) e você é um deles, toque abaixo para retomar sua posição:</p>
+            <button id="btn-rejoin-p1" style="background-color: #3498db;">Sou <span id="rejoin-p1-name">Jogador 1</span></button>
+            <button id="btn-rejoin-p2" style="background-color: #e74c3c; margin-top: 12px;">Sou <span id="rejoin-p2-name">Jogador 2</span></button>
+            <button class="btn-secondary" onclick="goHome()">Voltar ao início</button>
+        </div>
+
         <!-- TELA: Draft (melhor de 3 e equipe) -->
         <div id="screen-draft" class="screen" style="display: none;">
             <div class="scoreboard scoreboard-small">
