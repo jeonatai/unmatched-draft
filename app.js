@@ -38,8 +38,8 @@ const PERSONAGENS = [
     { nome: "Nicolas Tesla", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/byq-c3l_HktvangjGc33q.webp" },
     { nome: "Oda Nobunaga | Guarda de Honra", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/_hVP2Ah-uMSD_kH5-LUol.webp" },
     { nome: "T-Rex", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/mURpEFDw_zxQRn19mYXgG.webp" },
-    { nome: "Homem-Mariposa | Sapo de Loveland", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/npcs/villains/card-covers/XMvDZU9R1vCn5dT4Do6iZ.webp" },
-    { nome: "Invasor Marciano", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/npcs/villains/card-covers/x83yAUgQGlJDoSWVi-CXQ.webp" },
+    { nome: "Homem-Mariposa | Sapo de Loveland", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/npcs/villains/card-covers/x83yAUgQGlJDoSWVi-CXQ.webp" },
+    { nome: "Invasor Marciano", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/npcs/villains/card-covers/XMvDZU9R1vCn5dT4Do6iZ.webp" },
     { nome: "Jill Trent | Daizy", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/CvsgmaMFob3JNZ9OFOjgA.webp" },
     { nome: "Cavaleiro da Lua", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/nh0wyjVp6hYSrGY8HS47C.webp" },
     { nome: "Homem Aranha", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/Kngv_p0P1hdxfOANliL7Y.webp" },
@@ -74,6 +74,36 @@ let gameState = null;
 let selectedCardIndex = null;
 let pendingConfig = null;
 let combatTimerInterval = null;
+let quickState = null;
+let quickTimerInterval = null;
+
+// ============================================================
+// TIMER COM PAUSE/PLAY
+// ============================================================
+// Um "timer" é guardado como { accumulatedMs, paused, runStartTime }.
+// accumulatedMs: tempo já decorrido antes do trecho atual em execução.
+// runStartTime: quando o trecho atual começou a rodar (null se pausado).
+function getElapsedMs(timer) {
+    if (!timer) return 0;
+    const base = timer.accumulatedMs || 0;
+    if (timer.paused || !timer.runStartTime) return base;
+    return base + (Date.now() - timer.runStartTime);
+}
+
+function pauseTimer(timer) {
+    if (!timer || timer.paused) return timer;
+    return { accumulatedMs: getElapsedMs(timer), paused: true, runStartTime: null };
+}
+
+function resumeTimer(timer) {
+    if (!timer) return { accumulatedMs: 0, paused: false, runStartTime: Date.now() };
+    if (!timer.paused) return timer;
+    return { accumulatedMs: timer.accumulatedMs || 0, paused: false, runStartTime: Date.now() };
+}
+
+function newTimer() {
+    return { accumulatedMs: 0, paused: false, runStartTime: Date.now() };
+}
 
 function secureRandomInt(maxExclusive) {
     const arr = new Uint32Array(1);
@@ -247,8 +277,13 @@ function formatDuration(ms) {
 
 function updateCombatTimerDisplay() {
     const el = document.getElementById('combat-timer');
-    if (!el || !gameState || !gameState.combatStartTime) return;
-    el.innerText = '⏱️ ' + formatDuration(Date.now() - gameState.combatStartTime);
+    if (el && gameState) {
+        el.innerText = '⏱️ ' + formatDuration(getElapsedMs(gameState.combatTimer));
+    }
+    const pauseBtn = document.getElementById('btn-pause-combat');
+    if (pauseBtn && gameState) {
+        pauseBtn.innerText = (gameState.combatTimer && gameState.combatTimer.paused) ? '▶️ Retomar' : '⏸️ Pausar';
+    }
 }
 
 function startCombatTimerDisplay() {
@@ -264,9 +299,15 @@ function stopCombatTimerDisplay() {
     }
 }
 
+document.getElementById('btn-pause-combat')?.addEventListener('click', () => {
+    if (!gameState || !roomRef) return;
+    const timer = gameState.combatTimer;
+    const updated = (timer && !timer.paused) ? pauseTimer(timer) : resumeTimer(timer);
+    roomRef.update({ combatTimer: updated });
+});
+
 function goHome() {
     stopCombatTimerDisplay();
-    detachFeedListener();
     if (roomRef) roomRef.off();
     roomId = null;
     myRole = null;
@@ -276,6 +317,7 @@ function goHome() {
     updateRoomHeader();
     window.history.replaceState({}, '', window.location.pathname);
     showScreen('screen-home');
+    attachFeedListener();
 }
 
 // ============================================================
@@ -323,6 +365,9 @@ function createRoomFromConfig() {
         slotAssignments: null,
         winner: null,
         winnerTeam: null,
+        combatTimer: null,
+        combatLogs: [],
+        matchPosted: false,
         createdAt: Date.now()
     };
 
@@ -522,7 +567,7 @@ function renderGame() {
         return;
     }
 
-    if (phase.startsWith('phase') || phase.startsWith('team-')) {
+    if ((phase.startsWith('phase') || phase.startsWith('team-')) && phase !== 'team-combat') {
         showScreen('screen-draft');
         const roleLabel = document.getElementById('my-role-label');
         if (roleLabel) {
@@ -954,8 +999,8 @@ function currentCombatTurn() {
 }
 
 function buildCombatInterface() {
-    if (!gameState.combatStartTime && roomRef) {
-        roomRef.update({ combatStartTime: Date.now() });
+    if (!gameState.combatTimer && roomRef) {
+        roomRef.update({ combatTimer: newTimer() });
     }
     if (!combatTimerInterval) startCombatTimerDisplay();
 
@@ -1125,9 +1170,23 @@ function buildCombatInterface() {
 }
 
 window.registerWinner = function(winnerNum) {
+    const elapsed = getElapsedMs(gameState.combatTimer);
+
     if (gameState.mode === 'single') {
-        const duration = gameState.combatStartTime ? (Date.now() - gameState.combatStartTime) : null;
-        roomRef.update({ phase: 'post-game', winner: winnerNum, matchDurationMs: duration });
+        const combatLogs = [{
+            round: 1,
+            p1Hero: gameState.p1Pick ? gameState.p1Pick.nome : '?',
+            p2Hero: gameState.p2Pick ? gameState.p2Pick.nome : '?',
+            winnerName: getPlayerDisplayName(winnerNum),
+            durationMs: elapsed
+        }];
+        roomRef.update({
+            phase: 'post-game',
+            winner: winnerNum,
+            matchDurationMs: elapsed,
+            combatLogs,
+            combatTimer: null
+        });
         return;
     }
 
@@ -1137,6 +1196,17 @@ window.registerWinner = function(winnerNum) {
     };
     let newP1Score = gameState.p1Score || 0;
     let newP2Score = gameState.p2Score || 0;
+
+    const priorLogs = gameState.combatLogs || [];
+    const roundLog = {
+        round: priorLogs.length + 1,
+        p1Hero: gameState.p1CombatChoice ? gameState.p1CombatChoice.nome : '?',
+        p2Hero: gameState.p2CombatChoice ? gameState.p2CombatChoice.nome : '?',
+        winnerName: getPlayerDisplayName(winnerNum),
+        durationMs: elapsed
+    };
+    const combatLogs = [...priorLogs, roundLog];
+    updates.combatLogs = combatLogs;
 
     if (winnerNum === 1) {
         newP1Score += 1;
@@ -1154,15 +1224,33 @@ window.registerWinner = function(winnerNum) {
         updates.winnerTeam = null;
         updates.finalWinnerHero = winnerNum === 1 ? gameState.p1CombatChoice : gameState.p2CombatChoice;
         updates.finalLoserHero = winnerNum === 1 ? gameState.p2CombatChoice : gameState.p1CombatChoice;
-        updates.matchDurationMs = gameState.combatStartTime ? (Date.now() - gameState.combatStartTime) : null;
+        updates.matchDurationMs = combatLogs.reduce((sum, c) => sum + (c.durationMs || 0), 0);
+        updates.combatTimer = null;
+    } else {
+        // Novo timer independente para o próximo combate da melhor de 3
+        updates.combatTimer = newTimer();
     }
 
     roomRef.update(updates);
 };
 
 window.registerTeamWinner = function(team) {
-    const duration = gameState.combatStartTime ? (Date.now() - gameState.combatStartTime) : null;
-    roomRef.update({ phase: 'post-game', winnerTeam: team, matchDurationMs: duration });
+    const elapsed = getElapsedMs(gameState.combatTimer);
+    const picks = gameState.teamPicks || {};
+    const combatLogs = [{
+        round: 1,
+        p1Hero: [1, 3].map(s => picks[s] ? picks[s].nome : '?').join(' & '),
+        p2Hero: [2, 4].map(s => picks[s] ? picks[s].nome : '?').join(' & '),
+        winnerName: 'Equipe ' + team,
+        durationMs: elapsed
+    }];
+    roomRef.update({
+        phase: 'post-game',
+        winnerTeam: team,
+        matchDurationMs: elapsed,
+        combatLogs,
+        combatTimer: null
+    });
 };
 
 
@@ -1171,6 +1259,7 @@ window.registerTeamWinner = function(team) {
 // ============================================================
 function renderPostGame() {
     showScreen('screen-post-game');
+    postMatchAutomatically();
 
     let msg = '';
     if (gameState.mode === 'team' && gameState.winnerTeam) {
@@ -1194,22 +1283,36 @@ function renderPostGame() {
             : '';
     }
 
-    const postForm = document.getElementById('post-match-form');
-    const postBtn = document.getElementById('btn-post-match');
-    if (postForm && postBtn) {
-        if (gameState.matchPosted) {
-            postForm.style.display = 'none';
-        } else {
-            postForm.style.display = 'block';
-            postBtn.disabled = false;
-            postBtn.innerText = '📣 Postar Partida';
-        }
-    }
 }
 
 // ============================================================
 // FEED DE PARTIDAS
 // ============================================================
+// Posta a partida automaticamente assim que ela termina. Usa uma transaction
+// no campo matchPosted para garantir que, mesmo com vários clientes vendo a
+// mesma sala ao mesmo tempo, o post seja criado uma única vez.
+function postMatchAutomatically() {
+    if (!gameState || !roomRef) return;
+
+    roomRef.child('matchPosted').transaction(current => {
+        if (current) return; // aborta: já foi postado por este ou outro cliente
+        return true;
+    }, (error, committed) => {
+        if (error || !committed) return;
+
+        const participants = buildMatchParticipants();
+        if (!participants) return;
+
+        db.ref('posts').push({
+            participants,
+            mode: gameState.mode,
+            combats: gameState.combatLogs || [],
+            durationMs: gameState.matchDurationMs || null,
+            timestamp: Date.now()
+        });
+    });
+}
+
 function buildMatchParticipants() {
     if (gameState.mode === 'single') {
         const winnerRole = gameState.winner;
@@ -1255,13 +1358,8 @@ function buildMatchParticipants() {
 
 let feedRef = null;
 
-function goToFeed() {
-    showScreen('screen-feed');
-    attachFeedListener();
-}
-
 function attachFeedListener() {
-    if (feedRef) feedRef.off();
+    if (feedRef) return; // já conectado
     feedRef = db.ref('posts');
     feedRef.on('value', snapshot => {
         renderFeed(snapshot.val() || {});
@@ -1289,14 +1387,14 @@ function formatTimestamp(ts) {
 }
 
 function renderFeed(posts) {
-    const list = document.getElementById('feed-list');
+    const list = document.getElementById('home-feed-list');
     if (!list) return;
     list.innerHTML = '';
 
     const entries = Object.entries(posts).sort((a, b) => (b[1].timestamp || 0) - (a[1].timestamp || 0));
 
     if (entries.length === 0) {
-        list.innerHTML = '<p class="feed-empty">Nenhuma partida postada ainda. Jogue e clique em "Postar Partida" no fim!</p>';
+        list.innerHTML = '<p class="feed-empty">Nenhuma partida postada ainda. Jogue uma partida para ela aparecer aqui automaticamente!</p>';
         return;
     }
 
@@ -1351,8 +1449,23 @@ function renderFeed(posts) {
         if (post.durationMs != null) {
             const durationSpan = document.createElement('span');
             durationSpan.className = 'feed-post-note';
-            durationSpan.innerText = '⏱️ Tempo de partida: ' + formatDuration(post.durationMs);
+            durationSpan.innerText = '⏱️ Tempo total: ' + formatDuration(post.durationMs);
             div.appendChild(durationSpan);
+        }
+
+        // Detalhamento de cada combate (útil sobretudo na melhor de 3, que pode ter até 3 combates)
+        const combats = post.combats || [];
+        if (combats.length > 0) {
+            const combatsBox = document.createElement('div');
+            combatsBox.className = 'feed-combats';
+            combats.forEach(c => {
+                const row = document.createElement('div');
+                row.className = 'feed-combat-row';
+                const matchup = (c.p1Hero && c.p2Hero) ? (c.p1Hero + ' vs ' + c.p2Hero + ' — ') : '';
+                row.innerText = 'Combate ' + c.round + ': ' + matchup + '🏆 ' + c.winnerName + ' (' + formatDuration(c.durationMs || 0) + ')';
+                combatsBox.appendChild(row);
+            });
+            div.appendChild(combatsBox);
         }
 
         // Texto livre escrito por quem postou (ou resumo antigo, para posts anteriores a essa versão)
@@ -1454,35 +1567,9 @@ function renderFeed(posts) {
     });
 }
 
-document.getElementById('btn-post-match')?.addEventListener('click', () => {
-    if (!gameState || !roomRef || gameState.matchPosted) return;
-    const participants = buildMatchParticipants();
-    if (!participants) return;
-
-    const descInput = document.getElementById('post-match-description');
-    const description = descInput ? descInput.value.trim() : '';
-
-    const postBtn = document.getElementById('btn-post-match');
-    if (postBtn) postBtn.disabled = true;
-
-    db.ref('posts').push({
-        participants,
-        description,
-        mode: gameState.mode,
-        durationMs: gameState.matchDurationMs || null,
-        timestamp: Date.now()
-    }).then(() => {
-        roomRef.update({ matchPosted: true });
-    }).catch(() => {
-        if (postBtn) postBtn.disabled = false;
-    });
-});
-
 document.getElementById('btn-rematch')?.addEventListener('click', () => {
     if (!roomRef) return;
-    const descInput = document.getElementById('post-match-description');
-    if (descInput) descInput.value = '';
-    let updates = { phase: null, winner: null, winnerTeam: null, lifeCounters: null, matchPosted: null, finalWinnerHero: null, finalLoserHero: null, combatStartTime: null, matchDurationMs: null };
+    let updates = { phase: null, winner: null, winnerTeam: null, lifeCounters: null, matchPosted: false, finalWinnerHero: null, finalLoserHero: null, combatTimer: null, combatLogs: [], matchDurationMs: null };
 
     if (gameState.mode === 'single') {
         const shuffled = shuffleArray(PERSONAGENS);
@@ -1521,6 +1608,103 @@ document.getElementById('btn-close-room')?.addEventListener('click', () => {
 });
 
 // ============================================================
+// SORTEIO RÁPIDO (sem sala, sem link — tudo local nesta tela)
+// ============================================================
+function startQuickSetup() {
+    quickState = null;
+    showScreen('screen-quick-setup');
+    document.getElementById('quick-p1-name').value = 'Jogador 1';
+    document.getElementById('quick-p2-name').value = 'Jogador 2';
+}
+
+function startQuickDraft() {
+    const p1Name = document.getElementById('quick-p1-name').value.trim() || 'Jogador 1';
+    const p2Name = document.getElementById('quick-p2-name').value.trim() || 'Jogador 2';
+    const shuffled = shuffleArray(PERSONAGENS);
+
+    quickState = {
+        p1Name,
+        p2Name,
+        p1Hero: shuffled[0],
+        p2Hero: shuffled[1],
+        timer: newTimer()
+    };
+
+    showScreen('screen-quick-combat');
+    renderQuickCombat();
+    startQuickTimer();
+}
+
+function renderQuickCombat() {
+    if (!quickState) return;
+    const fP1 = document.getElementById('quick-fighter-p1');
+    const fP2 = document.getElementById('quick-fighter-p2');
+    fP1.innerHTML = '';
+    fP2.innerHTML = '';
+    fillCardContent(fP1, quickState.p1Hero);
+    fillCardContent(fP2, quickState.p2Hero);
+    document.getElementById('quick-p1-label').innerText = quickState.p1Name;
+    document.getElementById('quick-p2-label').innerText = quickState.p2Name;
+    updateQuickTimerDisplay();
+}
+
+function updateQuickTimerDisplay() {
+    if (!quickState) return;
+    const el = document.getElementById('quick-combat-timer');
+    if (el) el.innerText = '⏱️ ' + formatDuration(getElapsedMs(quickState.timer));
+    const pauseBtn = document.getElementById('btn-quick-pause');
+    if (pauseBtn) pauseBtn.innerText = quickState.timer.paused ? '▶️ Retomar' : '⏸️ Pausar';
+}
+
+function updateQuickPauseBtn() {
+    updateQuickTimerDisplay();
+}
+
+function startQuickTimer() {
+    stopQuickTimer();
+    updateQuickTimerDisplay();
+    quickTimerInterval = setInterval(updateQuickTimerDisplay, 1000);
+}
+
+function stopQuickTimer() {
+    if (quickTimerInterval) {
+        clearInterval(quickTimerInterval);
+        quickTimerInterval = null;
+    }
+}
+
+window.registerQuickWinner = function(winnerNum) {
+    if (!quickState) return;
+    stopQuickTimer();
+
+    const elapsed = getElapsedMs(quickState.timer);
+    const winnerName = winnerNum === 1 ? quickState.p1Name : quickState.p2Name;
+
+    const participants = [
+        { name: quickState.p1Name, hero: quickState.p1Hero.nome, colorClass: 'player-1', won: winnerNum === 1 },
+        { name: quickState.p2Name, hero: quickState.p2Hero.nome, colorClass: 'player-2', won: winnerNum === 2 }
+    ];
+
+    db.ref('posts').push({
+        participants,
+        mode: 'quick',
+        combats: [{
+            round: 1,
+            p1Hero: quickState.p1Hero.nome,
+            p2Hero: quickState.p2Hero.nome,
+            winnerName,
+            durationMs: elapsed
+        }],
+        durationMs: elapsed,
+        timestamp: Date.now()
+    });
+
+    showScreen('screen-quick-result');
+    document.getElementById('quick-result-message').innerText = '🏆 ' + winnerName + ' venceu!';
+    document.getElementById('quick-result-duration').innerText = '⏱️ Duração: ' + formatDuration(elapsed);
+};
+
+// ============================================================
 // LIMPEZA DE SALAS ANTIGAS (mais de 1 semana)
 // ============================================================
 function cleanupOldRooms() {
@@ -1554,10 +1738,15 @@ window.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('btn-go-join').onclick = () => showScreen('screen-enter-code');
 
-    document.getElementById('btn-go-feed').onclick = goToFeed;
-    document.getElementById('btn-feed-back').onclick = () => {
-        detachFeedListener();
-        showScreen('screen-home');
+    document.getElementById('btn-go-quick').onclick = startQuickSetup;
+    document.getElementById('btn-quick-back').onclick = () => showScreen('screen-home');
+    document.getElementById('btn-quick-start').onclick = startQuickDraft;
+    document.getElementById('btn-quick-again').onclick = () => startQuickSetup();
+    document.getElementById('btn-quick-home').onclick = () => { stopQuickTimer(); showScreen('screen-home'); };
+    document.getElementById('btn-quick-pause').onclick = () => {
+        if (!quickState) return;
+        quickState.timer = quickState.timer.paused ? resumeTimer(quickState.timer) : pauseTimer(quickState.timer);
+        updateQuickPauseBtn();
     };
 
     document.getElementById('btn-back-home').onclick = goHome;
@@ -1596,6 +1785,7 @@ window.addEventListener('DOMContentLoaded', () => {
         tryJoinRoom();
     } else {
         showScreen('screen-home');
+        attachFeedListener();
     }
 });
 
