@@ -449,32 +449,50 @@ function tryJoinRoom() {
             return;
         }
 
-        if (data.player2Joined) {
-            showJoinError('Essa sala já está cheia.');
+        roomRef = ref;
+
+        if (!data.player2Joined) {
+            // Vaga de Jogador 2 livre: entra normalmente.
+            myRole = 2;
+            localStorage.setItem('unmatched_role_' + roomId, '2');
+
+            const updates = { player2Joined: true };
+            if (data.mode === 'single') {
+                const shuffled = shuffleArray(PERSONAGENS);
+                updates.phase = 'single-pick';
+                updates.p1Cards = shuffled.slice(0, 2);
+                updates.p2Cards = shuffled.slice(2, 4);
+                updates.p1Pick = null;
+                updates.p2Pick = null;
+            } else if (data.mode === 'bestof3') {
+                updates.phase = 'phase1-j1-save';
+            }
+
+            roomRef.update(updates).then(() => attachRoomListener());
             return;
         }
 
-        myRole = 2;
-        localStorage.setItem('unmatched_role_' + roomId, '2');
-        roomRef = ref;
-
-        const updates = { player2Joined: true };
-        if (data.mode === 'single') {
-            const shuffled = shuffleArray(PERSONAGENS);
-            updates.phase = 'single-pick';
-            updates.p1Cards = shuffled.slice(0, 2);
-            updates.p2Cards = shuffled.slice(2, 4);
-            updates.p1Pick = null;
-            updates.p2Pick = null;
-        } else if (data.mode === 'bestof3') {
-            updates.phase = 'phase1-j1-save';
-        }
-
-        roomRef.update(updates).then(() => attachRoomListener());
+        // A sala já tem os 2 jogadores e este dispositivo não tem registro local
+        // dessa sala (ex: perdeu a conexão, trocou de navegador/app, limpou o cache).
+        // Em vez de bloquear, deixa a pessoa dizer quem ela é para retomar a posição.
+        showRejoinChoice(data);
     }).catch(() => {
         showJoinError('Não foi possível conectar. Verifique sua internet.');
     });
 }
+
+function showRejoinChoice(data) {
+    showScreen('screen-rejoin-choice');
+    document.getElementById('rejoin-p1-name').innerText = (data.playerNames && data.playerNames[0]) || 'Jogador 1';
+    document.getElementById('rejoin-p2-name').innerText = (data.playerNames && data.playerNames[1]) || 'Jogador 2';
+}
+
+function rejoinAsRole(role) {
+    myRole = role;
+    localStorage.setItem('unmatched_role_' + roomId, String(role));
+    attachRoomListener();
+}
+window.rejoinAsRole = rejoinAsRole;
 
 function showJoinError(msg) {
     document.getElementById('join-error-message').innerText = msg;
@@ -653,7 +671,15 @@ function claimName(nameIndex) {
         if (dev === deviceId) return;
     }
 
-    if (claims[nameIndex]) return;
+    const alreadyClaimed = !!claims[nameIndex];
+    if (alreadyClaimed) {
+        // Nome já reivindicado por outro dispositivo. Pode ser o mesmo jogador
+        // reconectando de um navegador/app diferente (ex: link aberto pelo WhatsApp)
+        // — confirma antes de retomar essa posição.
+        const name = gameState.playerNames[nameIndex] || ('Nome ' + (nameIndex + 1));
+        const ok = window.confirm('O nome "' + name + '" já foi escolhido em outro dispositivo.\n\nSe for você mesmo reconectando, toque OK para retomar essa posição.');
+        if (!ok) return;
+    }
 
     myNameIndex = nameIndex;
     localStorage.setItem('unmatched_nameidx_' + roomId, String(nameIndex));
@@ -662,8 +688,8 @@ function claimName(nameIndex) {
     const updates = {};
     updates['nameClaims/' + nameIndex] = deviceId;
 
-    const newClaimCount = Object.keys(claims).length + 1;
-    if (newClaimCount >= 4) {
+    const newClaimCount = alreadyClaimed ? Object.keys(claims).length : Object.keys(claims).length + 1;
+    if (newClaimCount >= 4 && !gameState.slotAssignments) {
         const shuffledIndices = shuffleArray([0, 1, 2, 3]);
         updates.slotAssignments = {
             1: shuffledIndices[0],
@@ -699,7 +725,8 @@ function renderNameClaim() {
         } else if (isMe) {
             div.innerHTML += ' <span class="you-badge">(Você)</span>';
         } else {
-            div.innerHTML += ' <span class="taken-badge">✓ Ocupado</span>';
+            div.innerHTML += ' <span class="taken-badge">✓ Ocupado — toque p/ retomar</span>';
+            div.onclick = () => claimName(idx);
         }
         list.appendChild(div);
     });
@@ -1757,6 +1784,9 @@ window.addEventListener('DOMContentLoaded', () => {
         if (!code) return;
         joinRoomByCode(code);
     };
+
+    document.getElementById('btn-rejoin-p1').onclick = () => rejoinAsRole(1);
+    document.getElementById('btn-rejoin-p2').onclick = () => rejoinAsRole(2);
 
     document.querySelectorAll('input[name="game-mode"]').forEach(radio => {
         radio.addEventListener('change', () => {
