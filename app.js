@@ -25,7 +25,7 @@ const PERSONAGENS = [
     { nome: "Shakespeare | Atores", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/pqYPwbvPq9hp_RtpsQB5B.webp" },
     { nome: "Sun Wukong", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/EoDLc4PNqSqST9akf5nVn.jpg" },
     { nome: "Tomoe Gozen", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/8P9zI-HHRr-qgJASxttfi.webp" },
-    { nome: "Elektra | O Tentáculo", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/BiC5iLlqu_RyyelKidLWp.webp" },
+    { nome: "Eletrika | O Tentáculo", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/BiC5iLlqu_RyyelKidLWp.webp" },
     { nome: "Titânia | Oberon", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/hq3qeQJWxR1UIcSt9aIkw.webp" },
     { nome: "As Irmãs Estranhas", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/epUAsiZCbo09Q_Tew3OxK.webp" },
     { nome: "Darth Vader", img: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQGLmpFnjkvmn-NLbixmiel5H3davC2VTHxJAB8HiRCnxLTjmQdxGQ6npg&s=10" },
@@ -35,17 +35,16 @@ const PERSONAGENS = [
     { nome: "Motoqueiro Fantasma", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/LRuz2YID8471dnTGfM1_b.webp" },
     { nome: "Cavaleiro Banana", img: "https://i.imgur.com/SQtDNjJ.png" },
     { nome: "Hamlet", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/bg3s8IEdB07YlbFJQSGS5.webp" },
-    { nome: "Nicola Tesla", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/byq-c3l_HktvangjGc33q.webp" },
+    { nome: "Nicolas Tesla", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/byq-c3l_HktvangjGc33q.webp" },
     { nome: "Oda Nobunaga | Guarda de Honra", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/_hVP2Ah-uMSD_kH5-LUol.webp" },
     { nome: "T-Rex", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/mURpEFDw_zxQRn19mYXgG.webp" },
-    { nome: "Homem-Mariposa | Sapo de Loveland", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/npcs/villains/card-covers/XMvDZU9R1vCn5dT4Do6iZ.webp" },
-    { nome: "Invasor Marciano", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/npcs/villains/card-covers/x83yAUgQGlJDoSWVi-CXQ.webp" },
+    { nome: "Homem-Mariposa | Sapo de Loveland", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/npcs/villains/card-covers/x83yAUgQGlJDoSWVi-CXQ.webp" },
+    { nome: "Invasor Marciano", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/npcs/villains/card-covers/XMvDZU9R1vCn5dT4Do6iZ.webp" },
     { nome: "Jill Trent | Daizy", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/CvsgmaMFob3JNZ9OFOjgA.webp" },
     { nome: "Cavaleiro da Lua", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/nh0wyjVp6hYSrGY8HS47C.webp" },
     { nome: "Homem Aranha", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/Kngv_p0P1hdxfOANliL7Y.webp" },
     { nome: "Luke Cage | Misty Knight", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/SkGReM3sdO9x2AGIumUao.webp" },
     { nome: "Dr. Estranho | Wong", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/nV6hmlXVda7Kf4ABbW26Y.webp" },
-    { nome: "She Hulk", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/dfiv68ElGn0Gf-G0Il-Vy.webp" },
     { nome: "Lampião e Corisco", img: "https://storage.googleapis.com/ludopedia-imagens-jogo/3741e_230447.jpg" }
 ];
 
@@ -103,7 +102,14 @@ function resumeTimer(timer) {
 }
 
 function newTimer() {
-    return { accumulatedMs: 0, paused: false, runStartTime: Date.now() };
+    return { accumulatedMs: 0, paused: true, runStartTime: null };
+}
+
+function pauseBtnLabel(timer) {
+    if (!timer || timer.paused) {
+        return (timer && timer.accumulatedMs > 0) ? '▶️ Retomar' : '▶️ Iniciar';
+    }
+    return '⏸️ Pausar';
 }
 
 function secureRandomInt(maxExclusive) {
@@ -283,7 +289,7 @@ function updateCombatTimerDisplay() {
     }
     const pauseBtn = document.getElementById('btn-pause-combat');
     if (pauseBtn && gameState) {
-        pauseBtn.innerText = (gameState.combatTimer && gameState.combatTimer.paused) ? '▶️ Retomar' : '⏸️ Pausar';
+        pauseBtn.innerText = pauseBtnLabel(gameState.combatTimer);
     }
 }
 
@@ -1073,6 +1079,14 @@ function buildCombatInterface() {
         fP2.innerHTML = "";
         fillCardContent(fP1, gameState.p1Pick);
         fillCardContent(fP2, gameState.p2Pick);
+        const p1Tag = document.createElement('small');
+        p1Tag.className = 'fighter-player-name';
+        p1Tag.innerText = getPlayerDisplayName(1);
+        fP1.appendChild(p1Tag);
+        const p2Tag = document.createElement('small');
+        p2Tag.className = 'fighter-player-name';
+        p2Tag.innerText = getPlayerDisplayName(2);
+        fP2.appendChild(p2Tag);
         ensureLifeCounter('p1', gameState.p1Pick);
         ensureLifeCounter('p2', gameState.p2Pick);
         renderLifeTrackers(fP1, 'p1', gameState.p1Pick, myRole === 1);
@@ -1186,6 +1200,14 @@ function buildCombatInterface() {
         fP2.innerHTML = "";
         fillCardContent(fP1, gameState.p1CombatChoice);
         fillCardContent(fP2, gameState.p2CombatChoice);
+        const p1Tag2 = document.createElement('small');
+        p1Tag2.className = 'fighter-player-name';
+        p1Tag2.innerText = getPlayerDisplayName(1);
+        fP1.appendChild(p1Tag2);
+        const p2Tag2 = document.createElement('small');
+        p2Tag2.className = 'fighter-player-name';
+        p2Tag2.innerText = getPlayerDisplayName(2);
+        fP2.appendChild(p2Tag2);
         ensureLifeCounter('p1', gameState.p1CombatChoice);
         ensureLifeCounter('p2', gameState.p2CombatChoice);
         renderLifeTrackers(fP1, 'p1', gameState.p1CombatChoice, myRole === 1);
@@ -1671,8 +1693,25 @@ function renderQuickCombat() {
     fP2.innerHTML = '';
     fillCardContent(fP1, quickState.p1Hero);
     fillCardContent(fP2, quickState.p2Hero);
+
+    const p1NameTag = document.createElement('small');
+    p1NameTag.className = 'fighter-player-name';
+    p1NameTag.innerText = quickState.p1Name;
+    fP1.appendChild(p1NameTag);
+
+    const p2NameTag = document.createElement('small');
+    p2NameTag.className = 'fighter-player-name';
+    p2NameTag.innerText = quickState.p2Name;
+    fP2.appendChild(p2NameTag);
+
     document.getElementById('quick-p1-label').innerText = quickState.p1Name;
     document.getElementById('quick-p2-label').innerText = quickState.p2Name;
+
+    const btnP1 = document.getElementById('btn-quick-winner-p1');
+    const btnP2 = document.getElementById('btn-quick-winner-p2');
+    if (btnP1) btnP1.innerText = 'Venceu ' + quickState.p1Name;
+    if (btnP2) btnP2.innerText = 'Venceu ' + quickState.p2Name;
+
     updateQuickTimerDisplay();
 }
 
@@ -1681,7 +1720,7 @@ function updateQuickTimerDisplay() {
     const el = document.getElementById('quick-combat-timer');
     if (el) el.innerText = '⏱️ ' + formatDuration(getElapsedMs(quickState.timer));
     const pauseBtn = document.getElementById('btn-quick-pause');
-    if (pauseBtn) pauseBtn.innerText = quickState.timer.paused ? '▶️ Retomar' : '⏸️ Pausar';
+    if (pauseBtn) pauseBtn.innerText = pauseBtnLabel(quickState.timer);
 }
 
 function updateQuickPauseBtn() {
