@@ -22,7 +22,48 @@
             <p>Crie uma nova sala ou entre em uma existente com o código.</p>
             <button id="btn-go-create" style="background-color: #2ecc71;">Criar Sala</button>
             <button id="btn-go-join" style="background-color: #3498db; margin-top: 12px;">Entrar em Sala</button>
-            <button id="btn-go-feed" class="btn-secondary">📰 Feed de Partidas</button>
+            <button id="btn-go-quick" class="btn-secondary" style="margin-top: 12px;">🎲 Sorteio Rápido</button>
+
+            <div id="home-feed-section" class="home-feed-section">
+                <h3>📰 Últimas Partidas</h3>
+                <div id="home-feed-list" class="feed-list"></div>
+            </div>
+        </div>
+
+        <!-- TELA: Sorteio Rápido - configuração -->
+        <div id="screen-quick-setup" class="screen" style="display: none;">
+            <h1>🎲 Sorteio Rápido</h1>
+            <p>Digite os nomes dos jogadores. Cada um recebe 1 herói sorteado, sem sala nem link.</p>
+            <input type="text" id="quick-p1-name" class="text-input" placeholder="Jogador 1" value="Jogador 1">
+            <input type="text" id="quick-p2-name" class="text-input" placeholder="Jogador 2" value="Jogador 2" style="margin-top: 10px;">
+            <button id="btn-quick-start" style="margin-top: 16px;">Sortear e Ir para o Combate</button>
+            <button id="btn-quick-back" class="btn-secondary">Voltar</button>
+        </div>
+
+        <!-- TELA: Sorteio Rápido - combate -->
+        <div id="screen-quick-combat" class="screen" style="display: none;">
+            <div id="quick-combat-timer" class="combat-timer">⏱️ 00:00</div>
+            <button id="btn-quick-pause" class="btn-secondary btn-pause">⏸️ Pausar</button>
+            <h3>🔥 CONFRONTO! 🔥</h3>
+            <div class="matchup-versus">
+                <div class="fighter-card" id="quick-fighter-p1">-</div>
+                <div class="vs">VS</div>
+                <div class="fighter-card" id="quick-fighter-p2">-</div>
+            </div>
+            <p class="waiting-text"><span id="quick-p1-label"></span> vs <span id="quick-p2-label"></span> — Quem venceu?</p>
+            <div class="judge-buttons">
+                <button onclick="registerQuickWinner(1)">Venceu Jogador 1</button>
+                <button onclick="registerQuickWinner(2)">Venceu Jogador 2</button>
+            </div>
+        </div>
+
+        <!-- TELA: Sorteio Rápido - resultado -->
+        <div id="screen-quick-result" class="screen" style="display: none;">
+            <h1 id="quick-result-message">🏆 Resultado</h1>
+            <p id="quick-result-duration" class="post-game-duration"></p>
+            <p class="waiting-text">A partida já foi postada automaticamente no feed.</p>
+            <button id="btn-quick-again" style="background-color: #2ecc71;">🎲 Novo Sorteio</button>
+            <button id="btn-quick-home" class="btn-secondary">Voltar ao Início</button>
         </div>
 
         <!-- TELA: Entrar com código -->
@@ -140,6 +181,7 @@
         <!-- TELA: Combate -->
         <div id="screen-combat" class="screen" style="display: none;">
             <div id="combat-timer" class="combat-timer">⏱️ 00:00</div>
+            <button id="btn-pause-combat" class="btn-secondary btn-pause">⏸️ Pausar</button>
             <div class="scoreboard" id="combat-scoreboard">
                 <div class="score-box">🔹 <span id="score-p1-name">J1</span> <span id="score-p1">0</span></div>
                 <div class="score-box">🔸 <span id="score-p2-name">J2</span> <span id="score-p2">0</span></div>
@@ -191,20 +233,9 @@
             <h1 id="post-game-title">🏆 Partida Encerrada!</h1>
             <p id="post-game-message">-</p>
             <p id="post-game-duration" class="post-game-duration"></p>
+            <p id="post-game-auto-posted" class="waiting-text">📣 Partida postada automaticamente no feed!</p>
             <button id="btn-rematch" style="background-color: #2ecc71;">Revanche</button>
-            <div id="post-match-form">
-                <textarea id="post-match-description" class="text-input post-match-textarea" rows="3" placeholder="Conte como foi a partida (opcional)..."></textarea>
-                <button id="btn-post-match" style="background-color: #3498db;">📣 Postar Partida</button>
-            </div>
             <button id="btn-close-room" class="btn-secondary">Fechar Sala</button>
-        </div>
-
-        <!-- TELA: Feed de Partidas -->
-        <div id="screen-feed" class="screen" style="display: none;">
-            <h1>📰 Feed de Partidas</h1>
-            <p>Partidas postadas pela comunidade.</p>
-            <div id="feed-list" class="feed-list"></div>
-            <button id="btn-feed-back" class="btn-secondary">Voltar</button>
         </div>
 
     </div>
