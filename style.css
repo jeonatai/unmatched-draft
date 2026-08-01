@@ -531,6 +531,14 @@ button:disabled {
     margin-top: 4px;
 }
 
+.fighter-player-name {
+    color: #a4b0be;
+    font-size: 11px;
+    margin-top: 2px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+}
+
 .fighter-card {
     background: linear-gradient(135deg, #1e1e24, #2a2a35);
     color: #ffffff;
