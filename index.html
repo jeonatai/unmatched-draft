@@ -119,6 +119,11 @@
                 <button id="btn-quick-winner-p1" onclick="registerQuickWinner(1)">Venceu Jogador 1</button>
                 <button id="btn-quick-winner-p2" onclick="registerQuickWinner(2)">Venceu Jogador 2</button>
             </div>
+
+            <div id="quick-roster-section" class="quick-roster-section">
+                <h4>🎲 Heróis Sorteados</h4>
+                <div id="quick-roster-list" class="quick-roster-list"></div>
+            </div>
         </div>
 
         <!-- TELA: Sorteio Rápido - resultado -->
@@ -179,6 +184,14 @@
 
             <button id="btn-confirm-create">Confirmar e Criar Sala</button>
             <button id="btn-back-config" class="btn-secondary">Voltar</button>
+        </div>
+
+        <!-- TELA: Criador escolhe qual nome é o dele (modos 1v1) -->
+        <div id="screen-creator-role-pick" class="screen" style="display: none;">
+            <h1>Qual desses é você?</h1>
+            <p>Antes de enviar o link, escolha qual dos nomes é o seu. Assim não há troca de jogador.</p>
+            <div id="creator-role-pick-list" class="name-claim-list"></div>
+            <button id="btn-creator-role-back" class="btn-secondary">Voltar</button>
         </div>
 
         <!-- TELA: Esperando jogadores -->

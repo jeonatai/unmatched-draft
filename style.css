@@ -588,6 +588,75 @@ button:disabled {
     font-size: 18px;
 }
 
+/* ==========================================================================
+   SORTEIO RÁPIDO — LISTA DE HERÓIS SORTEADOS
+   ========================================================================== */
+.quick-roster-section {
+    margin-top: 26px;
+    padding-top: 18px;
+    border-top: 1px solid #26262f;
+}
+
+.quick-roster-section h4 {
+    font-size: 13px;
+    color: #a4b0be;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.quick-roster-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+}
+
+.quick-roster-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #1e1e24;
+    border-radius: 10px;
+    padding: 6px 10px 6px 6px;
+    font-size: 12px;
+    max-width: 100%;
+}
+
+.quick-roster-item img {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.quick-roster-item-text {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+    line-height: 1.25;
+    overflow: hidden;
+}
+
+.quick-roster-item-name {
+    font-weight: 700;
+    color: #ffffff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 130px;
+}
+
+.quick-roster-item-hero {
+    color: #a4b0be;
+    font-size: 10.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 130px;
+}
+
 .judge-buttons {
     display: flex;
     gap: 15px;

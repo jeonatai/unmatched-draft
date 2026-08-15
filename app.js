@@ -270,17 +270,39 @@ function getNameInputs() {
 // ============================================================
 // CRIAÇÃO E ENTRADA NA SALA
 // ============================================================
-function createRoomFromConfig() {
+function showCreatorRolePick() {
+    const list = document.getElementById('creator-role-pick-list');
+    list.innerHTML = '';
+
+    pendingConfig.playerNames.forEach((name, idx) => {
+        const div = document.createElement('div');
+        div.className = 'name-claim-item';
+        div.innerText = name;
+        div.onclick = () => createRoomFromConfig(idx + 1);
+        list.appendChild(div);
+    });
+
+    showScreen('screen-creator-role-pick');
+}
+
+function createRoomFromConfig(creatorRole) {
     const mode = pendingConfig.mode;
     const playerNames = pendingConfig.playerNames;
     roomId = generateRoomId();
-    myRole = mode === 'team' ? null : 1;
-    localStorage.setItem('unmatched_role_' + roomId, mode === 'team' ? 'creator' : '1');
+
+    if (mode === 'team') {
+        myRole = null;
+        localStorage.setItem('unmatched_role_' + roomId, 'creator');
+    } else {
+        myRole = creatorRole || 1;
+        localStorage.setItem('unmatched_role_' + roomId, String(myRole));
+    }
 
     const initialState = {
         mode,
         phase: 'lobby',
         playerNames,
+        creatorRole: mode === 'team' ? null : myRole,
         player2Joined: false,
         nameClaims: {},
         slotAssignments: null,
@@ -373,9 +395,10 @@ function tryJoinRoom() {
         roomRef = ref;
 
         if (!data.player2Joined) {
-            // Vaga de Jogador 2 livre: entra normalmente.
-            myRole = 2;
-            localStorage.setItem('unmatched_role_' + roomId, '2');
+            // Vaga livre: entra com o papel que o criador não escolheu.
+            const freeRole = (data.creatorRole === 2) ? 1 : 2;
+            myRole = freeRole;
+            localStorage.setItem('unmatched_role_' + roomId, String(freeRole));
 
             const updates = { player2Joined: true };
             if (data.mode === 'single') {
@@ -571,16 +594,19 @@ function renderWaitingRoom() {
         }
     } else {
         document.getElementById('waiting-title').innerText = '⚔️ Sala Criada! ⚔️';
-        document.getElementById('waiting-subtitle').innerText = 'Envie o link ou código para o Jogador 2.';
+        const waitingRole = gameState.creatorRole === 2 ? 1 : 2;
+        document.getElementById('waiting-subtitle').innerText = 'Envie o link ou código para o Jogador ' + waitingRole + '.';
 
         const p1Name = gameState.playerNames[0] || 'Jogador 1';
         const p2Name = gameState.playerNames[1] || 'Jogador 2';
-        list.innerHTML = '<div class="waiting-player"><span class="player-tag player-1">J1</span> ' + p1Name + ' ✓</div>' +
-            '<div class="waiting-player"><span class="player-tag player-2">J2</span> ' + p2Name + (gameState.player2Joined ? ' ✓' : ' ⏳') + '</div>';
+        const p1You = gameState.creatorRole === 1 ? ' <span class="you-badge">(Você)</span>' : '';
+        const p2You = gameState.creatorRole === 2 ? ' <span class="you-badge">(Você)</span>' : '';
+        list.innerHTML = '<div class="waiting-player"><span class="player-tag player-1">J1</span> ' + p1Name + ' ✓' + p1You + '</div>' +
+            '<div class="waiting-player"><span class="player-tag player-2">J2</span> ' + p2Name + (gameState.player2Joined ? ' ✓' : ' ⏳') + p2You + '</div>';
 
         document.getElementById('waiting-status').innerText = gameState.player2Joined
-            ? '✅ Jogador 2 entrou! Iniciando...'
-            : '⏳ Aguardando o Jogador 2 entrar...';
+            ? '✅ Segundo jogador entrou! Iniciando...'
+            : '⏳ Aguardando o outro jogador entrar...';
     }
 }
 
@@ -1795,6 +1821,42 @@ function renderQuickCombat() {
     }
 
     updateQuickTimerDisplay();
+    renderQuickRoster();
+}
+
+function renderQuickRoster() {
+    if (!quickState) return;
+    const list = document.getElementById('quick-roster-list');
+    if (!list) return;
+    list.innerHTML = '';
+
+    quickState.players.forEach(p => {
+        const item = document.createElement('div');
+        item.className = 'quick-roster-item';
+
+        if (p.hero.img) {
+            const img = document.createElement('img');
+            img.src = p.hero.img;
+            img.alt = p.hero.nome;
+            item.appendChild(img);
+        }
+
+        const textWrap = document.createElement('div');
+        textWrap.className = 'quick-roster-item-text';
+
+        const nameEl = document.createElement('span');
+        nameEl.className = 'quick-roster-item-name';
+        nameEl.innerText = p.name;
+        textWrap.appendChild(nameEl);
+
+        const heroEl = document.createElement('span');
+        heroEl.className = 'quick-roster-item-hero';
+        heroEl.innerText = p.hero.nome;
+        textWrap.appendChild(heroEl);
+
+        item.appendChild(textWrap);
+        list.appendChild(item);
+    });
 }
 
 function updateQuickTimerDisplay() {
@@ -2002,12 +2064,18 @@ window.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('btn-confirm-create').onclick = () => {
-        pendingConfig = {
-            mode: getSelectedMode(),
-            playerNames: getNameInputs()
-        };
-        createRoomFromConfig();
+        const mode = getSelectedMode();
+        const playerNames = getNameInputs();
+        pendingConfig = { mode, playerNames };
+
+        if (mode === 'team') {
+            createRoomFromConfig();
+        } else {
+            showCreatorRolePick();
+        }
     };
+
+    document.getElementById('btn-creator-role-back').onclick = () => showScreen('screen-configure');
 
     document.getElementById('btn-copy-link').onclick = copyRoomLink;
     document.getElementById('btn-copy-code').onclick = copyRoomCode;
