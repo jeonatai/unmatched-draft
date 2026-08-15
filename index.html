@@ -33,9 +33,58 @@
         <!-- TELA: Sorteio Rápido - configuração -->
         <div id="screen-quick-setup" class="screen" style="display: none;">
             <h1>🎲 Sorteio Rápido</h1>
-            <p>Digite os nomes dos jogadores. Cada um recebe 1 herói sorteado, sem sala nem link.</p>
-            <input type="text" id="quick-p1-name" class="text-input" placeholder="Jogador 1" value="Jogador 1">
-            <input type="text" id="quick-p2-name" class="text-input" placeholder="Jogador 2" value="Jogador 2" style="margin-top: 10px;">
+            <p>Configure os jogadores. Cada um recebe 1 herói sorteado, sem sala nem link.</p>
+
+            <div class="config-section">
+                <h3>Quantidade de Jogadores</h3>
+                <input type="number" id="quick-player-count" class="text-input" min="2" max="10" value="2">
+            </div>
+
+            <div class="config-section">
+                <h3>Nomes dos Jogadores</h3>
+                <div id="quick-names-inputs"></div>
+            </div>
+
+            <div class="config-section">
+                <h3>Formato da Partida</h3>
+                <div class="mode-options">
+                    <label class="mode-option">
+                        <input type="radio" name="quick-format" value="ffa" checked>
+                        <span class="mode-label">
+                            <strong>Todos Contra Todos</strong>
+                            <small>Cada jogador enfrenta todos os outros, 1 contra 1</small>
+                        </span>
+                    </label>
+                    <label class="mode-option">
+                        <input type="radio" name="quick-format" value="team">
+                        <span class="mode-label">
+                            <strong>Em Equipe</strong>
+                            <small>Jogadores são divididos em equipes sorteadas</small>
+                        </span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="config-section" id="quick-team-size-section" style="display: none;">
+                <h3>Tamanho da Equipe</h3>
+                <div class="mode-options">
+                    <label class="mode-option">
+                        <input type="radio" name="quick-team-size" value="2" checked>
+                        <span class="mode-label">
+                            <strong>Equipe de 2</strong>
+                        </span>
+                    </label>
+                    <label class="mode-option">
+                        <input type="radio" name="quick-team-size" value="3">
+                        <span class="mode-label">
+                            <strong>Equipe de 3</strong>
+                        </span>
+                    </label>
+                </div>
+            </div>
+
+            <p id="quick-setup-warning" class="waiting-text" style="display: none;"></p>
+
             <button id="btn-quick-start" style="margin-top: 16px;">Sortear e Ir para o Combate</button>
             <button id="btn-quick-back" class="btn-secondary">Voltar</button>
         </div>
@@ -44,13 +93,28 @@
         <div id="screen-quick-combat" class="screen" style="display: none;">
             <div id="quick-combat-timer" class="combat-timer">⏱️ 00:00</div>
             <button id="btn-quick-pause" class="btn-secondary btn-pause">⏸️ Pausar</button>
+            <p id="quick-match-progress" class="waiting-text"></p>
             <h3>🔥 CONFRONTO! 🔥</h3>
-            <div class="matchup-versus">
+
+            <div class="matchup-versus" id="quick-matchup-ffa">
                 <div class="fighter-card" id="quick-fighter-p1">-</div>
                 <div class="vs">VS</div>
                 <div class="fighter-card" id="quick-fighter-p2">-</div>
             </div>
-            <p class="waiting-text"><span id="quick-p1-label"></span> vs <span id="quick-p2-label"></span> — Quem venceu?</p>
+
+            <div class="matchup-teams" id="quick-matchup-teams" style="display: none;">
+                <div class="team-side team-a">
+                    <h4 id="quick-team-a-label">Equipe A</h4>
+                    <div class="team-fighters" id="quick-team-a-fighters"></div>
+                </div>
+                <div class="vs vs-large">VS</div>
+                <div class="team-side team-b">
+                    <h4 id="quick-team-b-label">Equipe B</h4>
+                    <div class="team-fighters" id="quick-team-b-fighters"></div>
+                </div>
+            </div>
+
+            <p class="waiting-text" id="quick-judge-text"><span id="quick-p1-label"></span> vs <span id="quick-p2-label"></span> — Quem venceu?</p>
             <div class="judge-buttons">
                 <button id="btn-quick-winner-p1" onclick="registerQuickWinner(1)">Venceu Jogador 1</button>
                 <button id="btn-quick-winner-p2" onclick="registerQuickWinner(2)">Venceu Jogador 2</button>
@@ -61,7 +125,8 @@
         <div id="screen-quick-result" class="screen" style="display: none;">
             <h1 id="quick-result-message">🏆 Resultado</h1>
             <p id="quick-result-duration" class="post-game-duration"></p>
-            <p class="waiting-text">A partida já foi postada automaticamente no feed.</p>
+            <div id="quick-result-standings" class="waiting-players-list"></div>
+            <p class="waiting-text">Todas as partidas já foram postadas automaticamente no feed.</p>
             <button id="btn-quick-again" style="background-color: #2ecc71;">🎲 Novo Sorteio</button>
             <button id="btn-quick-home" class="btn-secondary">Voltar ao Início</button>
         </div>

@@ -57,14 +57,6 @@ const PERSONAGENS = [
     { nome: "Lampião e Corisco", img: "https://storage.googleapis.com/ludopedia-imagens-jogo/3741e_230447.jpg" }
 ];
 
-// Marcadores de vida para personagens específicos (nome deve bater com "nome" em PERSONAGENS)
-const HERO_LIFE_DATA = {
-    "Cavaleiro da Lua": { color: "#000000", trackers: [{ label: "Cavaleiro da Lua", hp: 16 }] },
-    "Homem Aranha": { color: "#e74c3c", trackers: [{ label: "Homem Aranha", hp: 15 }] },
-    "Dr. Estranho | Wong": { color: "#3498db", trackers: [{ label: "Dr. Estranho", hp: 14 }, { label: "Wong", hp: 6 }] },
-    "Luke Cage | Misty Knight": { color: "#f1c40f", trackers: [{ label: "Luke Cage", hp: 13 }, { label: "Misty Knight", hp: 6 }] }
-};
-
 const PLAYER_COLORS = {
     1: { name: 'Jogador 1', color: '#3498db', class: 'player-1' },
     2: { name: 'Jogador 2', color: '#e74c3c', class: 'player-2' },
@@ -177,93 +169,6 @@ function fillCardContent(div, char) {
     textSpan.innerText = char.nome;
     if (!char.img) textSpan.style.margin = "auto";
     div.appendChild(textSpan);
-}
-
-// ============================================================
-// MARCADORES DE VIDA
-// ============================================================
-function getLifeConfig(hero) {
-    if (!hero || !hero.nome) return null;
-    return HERO_LIFE_DATA[hero.nome] || null;
-}
-
-// Garante que o estado de vida no Firebase existe e corresponde ao herói atual
-function ensureLifeCounter(roleKey, hero) {
-    const config = getLifeConfig(hero);
-    if (!config || !roomRef) return;
-    const existing = gameState.lifeCounters && gameState.lifeCounters[roleKey];
-    if (existing && existing.heroName === hero.nome) return;
-
-    const initValues = config.trackers.map(t => t.hp);
-    const updates = {};
-    updates['lifeCounters/' + roleKey] = { heroName: hero.nome, values: initValues };
-    roomRef.update(updates);
-}
-
-// Renderiza o(s) marcador(es) de vida dentro do card do lutador.
-// isOwner controla se os botões de +/- aparecem (só o dono do lutador edita);
-// para os demais, mostra apenas o número da vida, sem botões.
-function renderLifeTrackers(container, roleKey, hero, isOwner) {
-    const config = getLifeConfig(hero);
-    if (!config) return;
-
-    const state = gameState.lifeCounters && gameState.lifeCounters[roleKey];
-    const values = (state && state.heroName === hero.nome) ? state.values : config.trackers.map(t => t.hp);
-
-    const wrap = document.createElement('div');
-    wrap.className = 'life-trackers';
-
-    config.trackers.forEach((t, idx) => {
-        const row = document.createElement('div');
-        row.className = 'life-tracker';
-        row.style.setProperty('--life-color', config.color);
-
-        const label = document.createElement('span');
-        label.className = 'life-tracker-label';
-        label.innerText = t.label;
-
-        const controls = document.createElement('div');
-        controls.className = 'life-tracker-controls';
-
-        if (isOwner) {
-            const minusBtn = document.createElement('button');
-            minusBtn.type = 'button';
-            minusBtn.className = 'life-btn';
-            minusBtn.innerText = '−';
-            minusBtn.onclick = () => updateLifeValue(roleKey, idx, -1);
-            controls.appendChild(minusBtn);
-        }
-
-        const valSpan = document.createElement('span');
-        valSpan.className = 'life-value';
-        valSpan.innerText = values[idx];
-        controls.appendChild(valSpan);
-
-        if (isOwner) {
-            const plusBtn = document.createElement('button');
-            plusBtn.type = 'button';
-            plusBtn.className = 'life-btn';
-            plusBtn.innerText = '+';
-            plusBtn.onclick = () => updateLifeValue(roleKey, idx, 1);
-            controls.appendChild(plusBtn);
-        }
-
-        row.appendChild(label);
-        row.appendChild(controls);
-        wrap.appendChild(row);
-    });
-
-    container.appendChild(wrap);
-}
-
-function updateLifeValue(roleKey, idx, delta) {
-    const state = gameState.lifeCounters && gameState.lifeCounters[roleKey];
-    if (!state || !roomRef) return;
-    const newValues = [...state.values];
-    newValues[idx] = Math.max(0, newValues[idx] + delta);
-    const updates = {};
-    updates['lifeCounters/' + roleKey + '/values'] = newValues;
-    roomRef.update(updates);
 }
 
 function getPlayerDisplayName(role) {
@@ -1096,10 +1001,6 @@ function buildCombatInterface() {
         p2Tag.className = 'fighter-player-name';
         p2Tag.innerText = getPlayerDisplayName(2);
         fP2.appendChild(p2Tag);
-        ensureLifeCounter('p1', gameState.p1Pick);
-        ensureLifeCounter('p2', gameState.p2Pick);
-        renderLifeTrackers(fP1, 'p1', gameState.p1Pick, myRole === 1);
-        renderLifeTrackers(fP2, 'p2', gameState.p2Pick, myRole === 2);
 
         document.getElementById('judge-1v1').innerHTML =
             '<button onclick="registerWinner(1)">' + getPlayerDisplayName(1) + ' Venceu</button>' +
@@ -1127,8 +1028,6 @@ function buildCombatInterface() {
             const label = document.createElement('small');
             label.innerText = getPlayerDisplayName(slot);
             div.appendChild(label);
-            ensureLifeCounter('s' + slot, picks[slot]);
-            renderLifeTrackers(div, 's' + slot, picks[slot], myRole === slot);
             teamAFighters.appendChild(div);
         });
 
@@ -1139,8 +1038,6 @@ function buildCombatInterface() {
             const label = document.createElement('small');
             label.innerText = getPlayerDisplayName(slot);
             div.appendChild(label);
-            ensureLifeCounter('s' + slot, picks[slot]);
-            renderLifeTrackers(div, 's' + slot, picks[slot], myRole === slot);
             teamBFighters.appendChild(div);
         });
 
@@ -1217,10 +1114,6 @@ function buildCombatInterface() {
         p2Tag2.className = 'fighter-player-name';
         p2Tag2.innerText = getPlayerDisplayName(2);
         fP2.appendChild(p2Tag2);
-        ensureLifeCounter('p1', gameState.p1CombatChoice);
-        ensureLifeCounter('p2', gameState.p2CombatChoice);
-        renderLifeTrackers(fP1, 'p1', gameState.p1CombatChoice, myRole === 1);
-        renderLifeTrackers(fP2, 'p2', gameState.p2CombatChoice, myRole === 2);
 
         document.getElementById('judge-1v1').innerHTML =
             '<button onclick="registerWinner(1)">' + getPlayerDisplayName(1) + ' Venceu</button>' +
@@ -1628,7 +1521,7 @@ function renderFeed(posts) {
 
 document.getElementById('btn-rematch')?.addEventListener('click', () => {
     if (!roomRef) return;
-    let updates = { phase: null, winner: null, winnerTeam: null, lifeCounters: null, matchPosted: false, finalWinnerHero: null, finalLoserHero: null, combatTimer: null, combatLogs: [], matchDurationMs: null };
+    let updates = { phase: null, winner: null, winnerTeam: null, matchPosted: false, finalWinnerHero: null, finalLoserHero: null, combatTimer: null, combatLogs: [], matchDurationMs: null };
 
     if (gameState.mode === 'single') {
         const shuffled = shuffleArray(PERSONAGENS);
@@ -1669,23 +1562,139 @@ document.getElementById('btn-close-room')?.addEventListener('click', () => {
 // ============================================================
 // SORTEIO RÁPIDO (sem sala, sem link — tudo local nesta tela)
 // ============================================================
+function buildQuickNameInputs(count) {
+    const container = document.getElementById('quick-names-inputs');
+    container.innerHTML = '';
+    for (let i = 0; i < count; i++) {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'text-input name-input quick-name-input';
+        input.placeholder = 'Jogador ' + (i + 1);
+        input.value = 'Jogador ' + (i + 1);
+        input.dataset.index = i;
+        if (i > 0) input.style.marginTop = '10px';
+        container.appendChild(input);
+    }
+}
+
+function getQuickNameInputs() {
+    return Array.from(document.querySelectorAll('.quick-name-input')).map(inp => inp.value.trim() || inp.placeholder);
+}
+
+function getQuickFormat() {
+    const checked = document.querySelector('input[name="quick-format"]:checked');
+    return checked ? checked.value : 'ffa';
+}
+
+function getQuickTeamSize() {
+    const checked = document.querySelector('input[name="quick-team-size"]:checked');
+    return checked ? parseInt(checked.value) : 2;
+}
+
+function updateQuickSetupUI() {
+    const count = parseInt(document.getElementById('quick-player-count').value) || 2;
+    buildQuickNameInputs(count);
+
+    const format = getQuickFormat();
+    const teamSection = document.getElementById('quick-team-size-section');
+    teamSection.style.display = format === 'team' ? 'block' : 'none';
+
+    const warning = document.getElementById('quick-setup-warning');
+    if (format === 'team') {
+        const teamSize = getQuickTeamSize();
+        if (count < teamSize * 2) {
+            warning.style.display = 'block';
+            warning.innerText = '⚠️ São necessários pelo menos ' + (teamSize * 2) + ' jogadores para equipes de ' + teamSize + '.';
+        } else if (count % teamSize !== 0) {
+            warning.style.display = 'block';
+            warning.innerText = '⚠️ ' + count + ' jogadores não divide igualmente em equipes de ' + teamSize + '. Uma equipe ficará com um número diferente de jogadores.';
+        } else {
+            warning.style.display = 'none';
+        }
+    } else {
+        warning.style.display = 'none';
+    }
+}
+
 function startQuickSetup() {
     quickState = null;
     showScreen('screen-quick-setup');
-    document.getElementById('quick-p1-name').value = 'Jogador 1';
-    document.getElementById('quick-p2-name').value = 'Jogador 2';
+    document.getElementById('quick-player-count').value = 2;
+    document.querySelector('input[name="quick-format"][value="ffa"]').checked = true;
+    document.querySelector('input[name="quick-team-size"][value="2"]').checked = true;
+    updateQuickSetupUI();
+}
+
+// Divide os jogadores (já embaralhados) em equipes do tamanho pedido.
+// Se não dividir igualmente, o resto é distribuído entre as primeiras equipes.
+function splitIntoTeams(playerIndexes, teamSize) {
+    const teams = [];
+    let i = 0;
+    while (i < playerIndexes.length) {
+        const remaining = playerIndexes.length - i;
+        const size = (remaining < teamSize * 2 && remaining > teamSize) ? Math.ceil(remaining / 2) : teamSize;
+        teams.push(playerIndexes.slice(i, i + size));
+        i += size;
+    }
+    return teams;
+}
+
+// Gera todos os pares possíveis (round-robin) entre os índices fornecidos
+function buildRoundRobinPairs(indexes) {
+    const pairs = [];
+    for (let i = 0; i < indexes.length; i++) {
+        for (let j = i + 1; j < indexes.length; j++) {
+            pairs.push([indexes[i], indexes[j]]);
+        }
+    }
+    return pairs;
 }
 
 function startQuickDraft() {
-    const p1Name = document.getElementById('quick-p1-name').value.trim() || 'Jogador 1';
-    const p2Name = document.getElementById('quick-p2-name').value.trim() || 'Jogador 2';
-    const shuffled = shuffleArray(PERSONAGENS);
+    const names = getQuickNameInputs();
+    const format = getQuickFormat();
+
+    if (names.length < 2) {
+        alert('É necessário pelo menos 2 jogadores.');
+        return;
+    }
+    if (format === 'team') {
+        const teamSize = getQuickTeamSize();
+        if (names.length < teamSize * 2) {
+            alert('São necessários pelo menos ' + (teamSize * 2) + ' jogadores para equipes de ' + teamSize + '.');
+            return;
+        }
+    }
+
+    const shuffledHeroes = shuffleArray(PERSONAGENS);
+
+    const players = names.map((name, idx) => ({
+        name,
+        hero: shuffledHeroes[idx % shuffledHeroes.length],
+        wins: 0
+    }));
+
+    let teams = null;
+    let matches = [];
+
+    if (format === 'team') {
+        const teamSize = getQuickTeamSize();
+        const shuffledPlayerIdx = shuffleArray(players.map((_, idx) => idx));
+        teams = splitIntoTeams(shuffledPlayerIdx, teamSize).map(members => ({ members, wins: 0 }));
+        const teamIndexes = teams.map((_, idx) => idx);
+        matches = buildRoundRobinPairs(teamIndexes).map(([a, b]) => ({ type: 'team', teamA: a, teamB: b }));
+    } else {
+        const playerIndexes = players.map((_, idx) => idx);
+        matches = buildRoundRobinPairs(playerIndexes).map(([a, b]) => ({ type: 'ffa', p1: a, p2: b }));
+    }
 
     quickState = {
-        p1Name,
-        p2Name,
-        p1Hero: shuffled[0],
-        p2Hero: shuffled[1],
+        format,
+        players,
+        teams,
+        matches,
+        matchIndex: 0,
+        combatLog: [],
         timer: newTimer()
     };
 
@@ -1696,30 +1705,94 @@ function startQuickDraft() {
 
 function renderQuickCombat() {
     if (!quickState) return;
-    const fP1 = document.getElementById('quick-fighter-p1');
-    const fP2 = document.getElementById('quick-fighter-p2');
-    fP1.innerHTML = '';
-    fP2.innerHTML = '';
-    fillCardContent(fP1, quickState.p1Hero);
-    fillCardContent(fP2, quickState.p2Hero);
+    const match = quickState.matches[quickState.matchIndex];
+    if (!match) return;
 
-    const p1NameTag = document.createElement('small');
-    p1NameTag.className = 'fighter-player-name';
-    p1NameTag.innerText = quickState.p1Name;
-    fP1.appendChild(p1NameTag);
+    document.getElementById('quick-match-progress').innerText =
+        'Partida ' + (quickState.matchIndex + 1) + ' de ' + quickState.matches.length;
 
-    const p2NameTag = document.createElement('small');
-    p2NameTag.className = 'fighter-player-name';
-    p2NameTag.innerText = quickState.p2Name;
-    fP2.appendChild(p2NameTag);
-
-    document.getElementById('quick-p1-label').innerText = quickState.p1Name;
-    document.getElementById('quick-p2-label').innerText = quickState.p2Name;
-
+    const ffaBox = document.getElementById('quick-matchup-ffa');
+    const teamsBox = document.getElementById('quick-matchup-teams');
+    const judgeText = document.getElementById('quick-judge-text');
     const btnP1 = document.getElementById('btn-quick-winner-p1');
     const btnP2 = document.getElementById('btn-quick-winner-p2');
-    if (btnP1) btnP1.innerText = 'Venceu ' + quickState.p1Name;
-    if (btnP2) btnP2.innerText = 'Venceu ' + quickState.p2Name;
+
+    if (match.type === 'ffa') {
+        ffaBox.style.display = 'flex';
+        teamsBox.style.display = 'none';
+
+        const p1 = quickState.players[match.p1];
+        const p2 = quickState.players[match.p2];
+
+        const fP1 = document.getElementById('quick-fighter-p1');
+        const fP2 = document.getElementById('quick-fighter-p2');
+        fP1.innerHTML = '';
+        fP2.innerHTML = '';
+        fillCardContent(fP1, p1.hero);
+        fillCardContent(fP2, p2.hero);
+
+        const p1NameTag = document.createElement('small');
+        p1NameTag.className = 'fighter-player-name';
+        p1NameTag.innerText = p1.name;
+        fP1.appendChild(p1NameTag);
+
+        const p2NameTag = document.createElement('small');
+        p2NameTag.className = 'fighter-player-name';
+        p2NameTag.innerText = p2.name;
+        fP2.appendChild(p2NameTag);
+
+        document.getElementById('quick-p1-label').innerText = p1.name;
+        document.getElementById('quick-p2-label').innerText = p2.name;
+        judgeText.style.display = 'block';
+
+        if (btnP1) btnP1.innerText = 'Venceu ' + p1.name;
+        if (btnP2) btnP2.innerText = 'Venceu ' + p2.name;
+    } else {
+        ffaBox.style.display = 'none';
+        teamsBox.style.display = 'flex';
+
+        const teamA = quickState.teams[match.teamA];
+        const teamB = quickState.teams[match.teamB];
+        const teamANames = teamA.members.map(i => quickState.players[i].name).join(' + ');
+        const teamBNames = teamB.members.map(i => quickState.players[i].name).join(' + ');
+
+        document.getElementById('quick-team-a-label').innerText = 'Equipe A: ' + teamANames;
+        document.getElementById('quick-team-b-label').innerText = 'Equipe B: ' + teamBNames;
+
+        const fightersA = document.getElementById('quick-team-a-fighters');
+        const fightersB = document.getElementById('quick-team-b-fighters');
+        fightersA.innerHTML = '';
+        fightersB.innerHTML = '';
+
+        teamA.members.forEach(i => {
+            const p = quickState.players[i];
+            const div = document.createElement('div');
+            div.className = 'fighter-card';
+            fillCardContent(div, p.hero);
+            const label = document.createElement('small');
+            label.innerText = p.name;
+            div.appendChild(label);
+            fightersA.appendChild(div);
+        });
+
+        teamB.members.forEach(i => {
+            const p = quickState.players[i];
+            const div = document.createElement('div');
+            div.className = 'fighter-card';
+            fillCardContent(div, p.hero);
+            const label = document.createElement('small');
+            label.innerText = p.name;
+            div.appendChild(label);
+            fightersB.appendChild(div);
+        });
+
+        document.getElementById('quick-p1-label').innerText = 'Equipe A';
+        document.getElementById('quick-p2-label').innerText = 'Equipe B';
+        judgeText.style.display = 'block';
+
+        if (btnP1) btnP1.innerText = 'Venceu Equipe A';
+        if (btnP2) btnP2.innerText = 'Venceu Equipe B';
+    }
 
     updateQuickTimerDisplay();
 }
@@ -1751,23 +1824,46 @@ function stopQuickTimer() {
 
 window.registerQuickWinner = function(winnerNum) {
     if (!quickState) return;
-    stopQuickTimer();
 
+    const match = quickState.matches[quickState.matchIndex];
     const elapsed = getElapsedMs(quickState.timer);
-    const winnerName = winnerNum === 1 ? quickState.p1Name : quickState.p2Name;
+    let winnerName, p1Hero, p2Hero, participants;
 
-    const participants = [
-        { name: quickState.p1Name, hero: quickState.p1Hero.nome, colorClass: 'player-1', won: winnerNum === 1 },
-        { name: quickState.p2Name, hero: quickState.p2Hero.nome, colorClass: 'player-2', won: winnerNum === 2 }
-    ];
+    if (match.type === 'ffa') {
+        const p1 = quickState.players[match.p1];
+        const p2 = quickState.players[match.p2];
+        const winner = winnerNum === 1 ? p1 : p2;
+        winner.wins++;
+        winnerName = winner.name;
+        p1Hero = p1.hero.nome;
+        p2Hero = p2.hero.nome;
+        participants = [
+            { name: p1.name, hero: p1.hero.nome, colorClass: 'player-1', won: winnerNum === 1 },
+            { name: p2.name, hero: p2.hero.nome, colorClass: 'player-2', won: winnerNum === 2 }
+        ];
+    } else {
+        const teamA = quickState.teams[match.teamA];
+        const teamB = quickState.teams[match.teamB];
+        const winnerTeam = winnerNum === 1 ? teamA : teamB;
+        winnerTeam.wins++;
+        winnerName = winnerNum === 1
+            ? teamA.members.map(i => quickState.players[i].name).join(' + ')
+            : teamB.members.map(i => quickState.players[i].name).join(' + ');
+        p1Hero = teamA.members.map(i => quickState.players[i].hero.nome).join(', ');
+        p2Hero = teamB.members.map(i => quickState.players[i].hero.nome).join(', ');
+        participants = [
+            ...teamA.members.map(i => ({ name: quickState.players[i].name, hero: quickState.players[i].hero.nome, colorClass: 'player-1', won: winnerNum === 1 })),
+            ...teamB.members.map(i => ({ name: quickState.players[i].name, hero: quickState.players[i].hero.nome, colorClass: 'player-2', won: winnerNum === 2 }))
+        ];
+    }
 
     db.ref('posts').push({
         participants,
         mode: 'quick',
         combats: [{
-            round: 1,
-            p1Hero: quickState.p1Hero.nome,
-            p2Hero: quickState.p2Hero.nome,
+            round: quickState.matchIndex + 1,
+            p1Hero,
+            p2Hero,
             winnerName,
             durationMs: elapsed
         }],
@@ -1775,10 +1871,56 @@ window.registerQuickWinner = function(winnerNum) {
         timestamp: Date.now()
     });
 
-    showScreen('screen-quick-result');
-    document.getElementById('quick-result-message').innerText = '🏆 ' + winnerName + ' venceu!';
-    document.getElementById('quick-result-duration').innerText = '⏱️ Duração: ' + formatDuration(elapsed);
+    quickState.matchIndex++;
+
+    if (quickState.matchIndex < quickState.matches.length) {
+        renderQuickCombat();
+    } else {
+        stopQuickTimer();
+        showQuickResult(elapsed);
+    }
 };
+
+function showQuickResult(elapsed) {
+    showScreen('screen-quick-result');
+
+    const standingsEl = document.getElementById('quick-result-standings');
+    standingsEl.innerHTML = '';
+
+    if (quickState.format === 'team') {
+        const ranked = [...quickState.teams]
+            .map((team, idx) => ({ team, idx }))
+            .sort((a, b) => b.team.wins - a.team.wins);
+        const topWins = ranked[0].team.wins;
+        const winners = ranked.filter(r => r.team.wins === topWins);
+        const winnerLabel = winners.length > 1 ? 'Empate!' :
+            winners[0].team.members.map(i => quickState.players[i].name).join(' + ') + ' venceu!';
+        document.getElementById('quick-result-message').innerText = '🏆 ' + winnerLabel;
+
+        ranked.forEach(r => {
+            const teamNames = r.team.members.map(i => quickState.players[i].name).join(' + ');
+            const row = document.createElement('div');
+            row.className = 'waiting-player';
+            row.innerText = teamNames + ' — ' + r.team.wins + ' vitória(s)';
+            standingsEl.appendChild(row);
+        });
+    } else {
+        const ranked = [...quickState.players].sort((a, b) => b.wins - a.wins);
+        const topWins = ranked[0].wins;
+        const winners = ranked.filter(p => p.wins === topWins);
+        const winnerLabel = winners.length > 1 ? 'Empate!' : winners[0].name + ' venceu!';
+        document.getElementById('quick-result-message').innerText = '🏆 ' + winnerLabel;
+
+        ranked.forEach(p => {
+            const row = document.createElement('div');
+            row.className = 'waiting-player';
+            row.innerText = p.name + ' (' + p.hero.nome + ') — ' + p.wins + ' vitória(s)';
+            standingsEl.appendChild(row);
+        });
+    }
+
+    document.getElementById('quick-result-duration').innerText = '⏱️ Duração total: ' + formatDuration(elapsed);
+}
 
 // ============================================================
 // LIMPEZA DE SALAS ANTIGAS (mais de 1 semana)
@@ -1824,6 +1966,21 @@ window.addEventListener('DOMContentLoaded', () => {
         quickState.timer = quickState.timer.paused ? resumeTimer(quickState.timer) : pauseTimer(quickState.timer);
         updateQuickPauseBtn();
     };
+
+    document.getElementById('quick-player-count').addEventListener('input', (e) => {
+        let val = parseInt(e.target.value);
+        if (isNaN(val)) val = 2;
+        if (val < 2) val = 2;
+        if (val > 10) val = 10;
+        e.target.value = val;
+        updateQuickSetupUI();
+    });
+    document.querySelectorAll('input[name="quick-format"]').forEach(radio => {
+        radio.addEventListener('change', updateQuickSetupUI);
+    });
+    document.querySelectorAll('input[name="quick-team-size"]').forEach(radio => {
+        radio.addEventListener('change', updateQuickSetupUI);
+    });
 
     document.getElementById('btn-back-home').onclick = goHome;
     document.getElementById('btn-back-config').onclick = () => showScreen('screen-home');

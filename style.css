@@ -516,6 +516,7 @@ button:disabled {
 
 .team-fighters {
     display: flex;
+    flex-wrap: wrap;
     gap: 10px;
     justify-content: center;
 }
@@ -523,6 +524,11 @@ button:disabled {
 .team-fighters .fighter-card {
     width: 46%;
     min-height: 140px;
+}
+
+.team-fighters:has(.fighter-card:nth-child(3)) .fighter-card {
+    width: 30%;
+    min-height: 120px;
 }
 
 .team-fighters .fighter-card small {
@@ -597,84 +603,6 @@ button:disabled {
     background: linear-gradient(135deg, #e74c3c, #f17b6e);
     box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
 }
-
-/* ==========================================================================
-   MARCADORES DE VIDA
-   ========================================================================== */
-.life-trackers {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    width: 100%;
-    margin-top: 4px;
-    box-sizing: border-box;
-}
-
-.life-tracker {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-    background: #16161a;
-    border: 2px solid var(--life-color, #57606f);
-    outline: 1px solid rgba(255, 255, 255, 0.08);
-    outline-offset: -1px;
-    border-radius: 8px;
-    padding: 6px 4px;
-    width: 100%;
-    box-sizing: border-box;
-    overflow: hidden;
-}
-
-.life-tracker-label {
-    font-size: 9px;
-    color: #ced6e0;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    line-height: 1.2;
-    text-align: center;
-    width: 100%;
-    overflow-wrap: break-word;
-}
-
-.life-tracker-controls {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    width: 100%;
-}
-
-.life-btn {
-    width: 20px !important;
-    height: 20px;
-    min-width: 20px;
-    flex-shrink: 0;
-    padding: 0 !important;
-    border-radius: 50%;
-    background: var(--life-color, #2f3542) !important;
-    color: #ffffff;
-    font-size: 13px;
-    font-weight: 800;
-    line-height: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: none !important;
-}
-
-.life-btn:active {
-    transform: scale(0.9);
-}
-
-.life-value {
-    min-width: 20px;
-    text-align: center;
-    font-size: 15px;
-    font-weight: 800;
-    color: #ffffff;
-}
-
 
 /* ==========================================================================
    FEED DE PARTIDAS
