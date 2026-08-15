@@ -45,6 +45,15 @@ const PERSONAGENS = [
     { nome: "Homem Aranha", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/Kngv_p0P1hdxfOANliL7Y.webp" },
     { nome: "Luke Cage | Misty Knight", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/SkGReM3sdO9x2AGIumUao.webp" },
     { nome: "Dr. Estranho | Wong", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/nV6hmlXVda7Kf4ABbW26Y.webp" },
+    { nome: "Yennefer | Triss", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/wyF2xEhMaHY_hYfRIkWWv.webp" },
+    { nome: "Eredin | Cavaleiros Vermelhos", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/s3I7T0MDElqnYmN5Kzv3r.webp" },
+    { nome: "Philippa | Dijkstra", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/u0_PFJIp0z0ITwRgpitzx.webp" },
+    { nome: "Geralt of Rivia | Dandelion", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/CNnTH-5_N8SAAWXV_RSZV.webp" },
+    { nome: "Ciri | Ihuarraquax", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/sr7i7S_M7FHSAVuqn21jE.webp" },
+    { nome: "Liche Ancião | Lobos", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/A-XrmwVNY2Gf9TvYj6FES.webp" },
+    { nome: "Pantera Negra | Shuri", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/VuFF0FGwy-spBM3-5NfDA.webp" },
+    { nome: "Soldado Invernal", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/JxKGaAvQQUDqjJK1ec8Ua.webp" },
+    { nome: "Viuva Negra| Maria Hill", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/wlWum83DPKQPdY0TfJEcm.webp" },
     { nome: "Lampião e Corisco", img: "https://storage.googleapis.com/ludopedia-imagens-jogo/3741e_230447.jpg" }
 ];
 
