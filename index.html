@@ -114,6 +114,14 @@
                 </div>
             </div>
 
+            <div class="map-draw-section" id="quick-map-draw-section">
+                <button id="btn-quick-draw-map" class="btn-secondary btn-draw-map">🗺️ Quer sortear um mapa?</button>
+                <div id="quick-map-draw-result" class="map-draw-result" style="display: none;">
+                    <img id="quick-map-draw-image" src="" alt="">
+                    <p id="quick-map-draw-name" class="map-draw-name"></p>
+                </div>
+            </div>
+
             <p class="waiting-text" id="quick-judge-text"><span id="quick-p1-label"></span> vs <span id="quick-p2-label"></span> — Quem venceu?</p>
             <div class="judge-buttons">
                 <button id="btn-quick-winner-p1" onclick="registerQuickWinner(1)">Venceu Jogador 1</button>
@@ -303,6 +311,15 @@
                         <div class="team-fighters" id="team-b-fighters"></div>
                     </div>
                 </div>
+
+                <div class="map-draw-section" id="map-draw-section">
+                    <button id="btn-draw-map" class="btn-secondary btn-draw-map">🗺️ Quer sortear um mapa?</button>
+                    <div id="map-draw-result" class="map-draw-result" style="display: none;">
+                        <img id="map-draw-image" src="" alt="">
+                        <p id="map-draw-name" class="map-draw-name"></p>
+                    </div>
+                </div>
+
                 <p id="combat-judge-text">Quem venceu?</p>
                 <div class="judge-buttons" id="judge-1v1">
                     <button onclick="registerWinner(1)">Venceu J1</button>

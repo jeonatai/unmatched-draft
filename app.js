@@ -57,6 +57,43 @@ const PERSONAGENS = [
     { nome: "Lampião e Corisco", img: "https://storage.googleapis.com/ludopedia-imagens-jogo/3741e_230447.jpg" }
 ];
 
+// ============================================================
+// MAPAS (sorteio de mapa dentro do combate)
+// ============================================================
+const MAPAS_GRANDES = [
+    { nome: "Baskerville Manor", img: "maps/grande/baskerville-manor.webp", tamanho: "grande" },
+    { nome: "Globe Theatre", img: "maps/grande/globe-theatre.webp", tamanho: "grande" },
+    { nome: "Hanging Gardens", img: "maps/grande/hanging-gardens.webp", tamanho: "grande" },
+    { nome: "Helicarrier", img: "maps/grande/helicarrier.webp", tamanho: "grande" },
+    { nome: "Hell's Kitchen", img: "maps/grande/hell-s-kitchen.webp", tamanho: "grande" },
+    { nome: "Kaer Morhen", img: "maps/grande/kaer-morhen.webp", tamanho: "grande" },
+    { nome: "Marmoreal", img: "maps/grande/marmoreal.webp", tamanho: "grande" },
+    { nome: "McMinnville OR", img: "maps/grande/mcminnville-or.webp", tamanho: "grande" },
+    { nome: "Naglfar", img: "maps/grande/naglfar.webp", tamanho: "grande" },
+    { nome: "Point Pleasant", img: "maps/grande/point-pleasant.webp", tamanho: "grande" },
+    { nome: "Sarpedon", img: "maps/grande/sarpedon.webp", tamanho: "grande" },
+    { nome: "Soho", img: "maps/grande/soho.webp", tamanho: "grande" },
+    { nome: "Streets of Novigrad", img: "maps/grande/streets-of-novigrad.webp", tamanho: "grande" }
+];
+
+const MAPAS_PEQUENOS = [
+    { nome: "Azuchi Castle", img: "maps/pequena/azuchi-castle.webp", tamanho: "pequena" },
+    { nome: "Heorot", img: "maps/pequena/heorot.webp", tamanho: "pequena" },
+    { nome: "Raptor Paddock", img: "maps/pequena/raptor-paddock.webp", tamanho: "pequena" },
+    { nome: "Sherwood Forest", img: "maps/pequena/sherwood-forest.webp", tamanho: "pequena" },
+    { nome: "Yukon", img: "maps/pequena/yukon.webp", tamanho: "pequena" },
+    { nome: "king Solomon's Mine", img: "maps/pequena/king-solomon-s-mine.webp", tamanho: "pequena" }
+];
+
+const MAPAS_TODOS = [...MAPAS_GRANDES, ...MAPAS_PEQUENOS];
+
+// Sorteia um mapa. Combates com mais de 2 participantes (equipes) sorteiam
+// apenas entre os mapas grandes; combates 1x1 sorteiam entre todos os mapas.
+function drawRandomMap(onlyLarge) {
+    const pool = onlyLarge ? MAPAS_GRANDES : MAPAS_TODOS;
+    return pool[secureRandomInt(pool.length)];
+}
+
 const PLAYER_COLORS = {
     1: { name: 'Jogador 1', color: '#3498db', class: 'player-1' },
     2: { name: 'Jogador 2', color: '#e74c3c', class: 'player-2' },
@@ -314,6 +351,7 @@ function createRoomFromConfig(creatorRole) {
         winnerTeam: null,
         combatTimer: null,
         combatLogs: [],
+        currentMap: null,
         matchPosted: false,
         createdAt: Date.now()
     };
@@ -976,6 +1014,40 @@ function currentCombatTurn() {
     return null;
 }
 
+function renderMapDrawSection(ids, onlyLarge, onDraw) {
+    const btn = document.getElementById(ids.btn);
+    const resultBox = document.getElementById(ids.result);
+    const img = document.getElementById(ids.img);
+    const nameEl = document.getElementById(ids.name);
+    if (!btn) return;
+
+    const map = ids.getMap();
+    if (map) {
+        btn.style.display = 'none';
+        resultBox.style.display = 'flex';
+        img.src = map.img;
+        img.alt = map.nome;
+        nameEl.innerText = '🗺️ Mapa sorteado: ' + map.nome;
+    } else {
+        btn.style.display = 'inline-block';
+        resultBox.style.display = 'none';
+        btn.onclick = () => onDraw(drawRandomMap(onlyLarge));
+    }
+}
+
+function renderRoomMapDraw(onlyLarge) {
+    renderMapDrawSection({
+        btn: 'btn-draw-map',
+        result: 'map-draw-result',
+        img: 'map-draw-image',
+        name: 'map-draw-name',
+        getMap: () => gameState.currentMap
+    }, onlyLarge, (map) => {
+        if (!roomRef) return;
+        roomRef.update({ currentMap: map });
+    });
+}
+
 function buildCombatInterface() {
     if (!gameState.combatTimer && roomRef) {
         roomRef.update({ combatTimer: newTimer() });
@@ -1035,6 +1107,7 @@ function buildCombatInterface() {
         document.getElementById('judge-1v1').innerHTML =
             '<button onclick="registerWinner(1)">' + getPlayerDisplayName(1) + ' Venceu</button>' +
             '<button onclick="registerWinner(2)">' + getPlayerDisplayName(2) + ' Venceu</button>';
+        renderRoomMapDraw(false);
         return;
     }
 
@@ -1075,6 +1148,7 @@ function buildCombatInterface() {
         const teamBNames = [2, 4].map(s => getPlayerDisplayName(s)).join(' + ');
         document.getElementById('team-a-label').innerText = 'Equipe A: ' + teamANames;
         document.getElementById('team-b-label').innerText = 'Equipe B: ' + teamBNames;
+        renderRoomMapDraw(true);
         return;
     }
 
@@ -1148,11 +1222,13 @@ function buildCombatInterface() {
         document.getElementById('judge-1v1').innerHTML =
             '<button onclick="registerWinner(1)">' + getPlayerDisplayName(1) + ' Venceu</button>' +
             '<button onclick="registerWinner(2)">' + getPlayerDisplayName(2) + ' Venceu</button>';
+        renderRoomMapDraw(false);
     }
 }
 
 window.registerWinner = function(winnerNum) {
     const elapsed = getElapsedMs(gameState.combatTimer);
+    const mapName = gameState.currentMap ? gameState.currentMap.nome : null;
 
     if (gameState.mode === 'single') {
         const combatLogs = [{
@@ -1160,7 +1236,8 @@ window.registerWinner = function(winnerNum) {
             p1Hero: gameState.p1Pick ? gameState.p1Pick.nome : '?',
             p2Hero: gameState.p2Pick ? gameState.p2Pick.nome : '?',
             winnerName: getPlayerDisplayName(winnerNum),
-            durationMs: elapsed
+            durationMs: elapsed,
+            mapName
         }];
         roomRef.update({
             phase: 'post-game',
@@ -1174,7 +1251,8 @@ window.registerWinner = function(winnerNum) {
 
     let updates = {
         p1CombatChoice: null,
-        p2CombatChoice: null
+        p2CombatChoice: null,
+        currentMap: null
     };
     let newP1Score = gameState.p1Score || 0;
     let newP2Score = gameState.p2Score || 0;
@@ -1185,7 +1263,8 @@ window.registerWinner = function(winnerNum) {
         p1Hero: gameState.p1CombatChoice ? gameState.p1CombatChoice.nome : '?',
         p2Hero: gameState.p2CombatChoice ? gameState.p2CombatChoice.nome : '?',
         winnerName: getPlayerDisplayName(winnerNum),
-        durationMs: elapsed
+        durationMs: elapsed,
+        mapName
     };
     const combatLogs = [...priorLogs, roundLog];
     updates.combatLogs = combatLogs;
@@ -1219,12 +1298,14 @@ window.registerWinner = function(winnerNum) {
 window.registerTeamWinner = function(team) {
     const elapsed = getElapsedMs(gameState.combatTimer);
     const picks = gameState.teamPicks || {};
+    const mapName = gameState.currentMap ? gameState.currentMap.nome : null;
     const combatLogs = [{
         round: 1,
         p1Hero: [1, 3].map(s => picks[s] ? picks[s].nome : '?').join(' & '),
         p2Hero: [2, 4].map(s => picks[s] ? picks[s].nome : '?').join(' & '),
         winnerName: 'Equipe ' + team,
-        durationMs: elapsed
+        durationMs: elapsed,
+        mapName
     }];
     roomRef.update({
         phase: 'post-game',
@@ -1444,7 +1525,8 @@ function renderFeed(posts) {
                 const row = document.createElement('div');
                 row.className = 'feed-combat-row';
                 const matchup = (c.p1Hero && c.p2Hero) ? (c.p1Hero + ' vs ' + c.p2Hero + ' — ') : '';
-                row.innerText = 'Combate ' + c.round + ': ' + matchup + '🏆 ' + c.winnerName + ' (' + formatDuration(c.durationMs || 0) + ')';
+                const mapTag = c.mapName ? (' 🗺️ ' + c.mapName) : '';
+                row.innerText = 'Combate ' + c.round + ': ' + matchup + '🏆 ' + c.winnerName + ' (' + formatDuration(c.durationMs || 0) + ')' + mapTag;
                 combatsBox.appendChild(row);
             });
             div.appendChild(combatsBox);
@@ -1826,6 +1908,20 @@ function renderQuickCombat() {
 
     updateQuickTimerDisplay();
     renderQuickRoster();
+    renderQuickMapDraw(match);
+}
+
+function renderQuickMapDraw(match) {
+    renderMapDrawSection({
+        btn: 'btn-quick-draw-map',
+        result: 'quick-map-draw-result',
+        img: 'quick-map-draw-image',
+        name: 'quick-map-draw-name',
+        getMap: () => match.map || null
+    }, match.type === 'team', (map) => {
+        match.map = map;
+        renderQuickMapDraw(match);
+    });
 }
 
 function renderQuickRoster() {
@@ -1931,7 +2027,8 @@ window.registerQuickWinner = function(winnerNum) {
             p1Hero,
             p2Hero,
             winnerName,
-            durationMs: elapsed
+            durationMs: elapsed,
+            mapName: match.map ? match.map.nome : null
         }],
         durationMs: elapsed,
         timestamp: Date.now()

@@ -589,6 +589,46 @@ button:disabled {
 }
 
 /* ==========================================================================
+   SORTEIO DE MAPA
+   ========================================================================== */
+.map-draw-section {
+    margin: 18px 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.btn-draw-map {
+    width: auto;
+    padding: 10px 20px;
+    font-size: 14px;
+}
+
+.map-draw-result {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.map-draw-result img {
+    width: 100%;
+    max-width: 480px;
+    border-radius: 12px;
+    border: 2px solid #57606f;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4);
+}
+
+.map-draw-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: #ffd166;
+    text-align: center;
+}
+
+/* ==========================================================================
    SORTEIO RÁPIDO — LISTA DE HERÓIS SORTEADOS
    ========================================================================== */
 .quick-roster-section {
