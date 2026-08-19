@@ -276,6 +276,12 @@ button:disabled {
 .player-2 { background: rgba(231, 76, 60, 0.25); color: #e74c3c; }
 .player-3 { background: rgba(46, 204, 113, 0.25); color: #2ecc71; }
 .player-4 { background: rgba(243, 156, 18, 0.25); color: #f39c12; }
+.player-5 { background: rgba(155, 89, 182, 0.25); color: #9b59b6; }
+.player-6 { background: rgba(26, 188, 156, 0.25); color: #1abc9c; }
+.player-7 { background: rgba(233, 69, 96, 0.25); color: #e94560; }
+.player-8 { background: rgba(241, 196, 15, 0.25); color: #f1c40f; }
+.player-9 { background: rgba(52, 73, 94, 0.35); color: #a4b0be; }
+.player-10 { background: rgba(0, 168, 150, 0.25); color: #00d2a8; }
 
 /* Escolha de nome */
 .name-claim-list, .waiting-players-list {
@@ -589,6 +595,131 @@ button:disabled {
 }
 
 /* ==========================================================================
+   BATTLE ROYALE — TODOS CONTRA TODOS (3 A 10 JOGADORES)
+   ========================================================================== */
+.br-grid {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: stretch;
+    gap: 10px;
+    margin: 6px 0 18px;
+}
+
+/* 3 jogadores: uma linha só, cards maiores */
+.br-grid.br-count-3 .br-card {
+    flex: 0 0 calc(33.333% - 7px);
+    max-width: calc(33.333% - 7px);
+}
+
+/* 4 jogadores: grade 2x2 */
+.br-grid.br-count-4 .br-card {
+    flex: 0 0 calc(50% - 5px);
+    max-width: calc(50% - 5px);
+}
+
+/* 5-6 jogadores: 3 por linha */
+.br-grid.br-count-5 .br-card,
+.br-grid.br-count-6 .br-card {
+    flex: 0 0 calc(33.333% - 7px);
+    max-width: calc(33.333% - 7px);
+}
+
+/* 7-8 jogadores: 4 por linha */
+.br-grid.br-count-7 .br-card,
+.br-grid.br-count-8 .br-card {
+    flex: 0 0 calc(25% - 8px);
+    max-width: calc(25% - 8px);
+}
+
+/* 9-10 jogadores: 5 por linha, cards compactos */
+.br-grid.br-count-9 .br-card,
+.br-grid.br-count-10 .br-card {
+    flex: 0 0 calc(20% - 8px);
+    max-width: calc(20% - 8px);
+}
+
+.br-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    background: #1a1a1f;
+    border: 2px solid #33333c;
+    border-radius: 12px;
+    padding: 8px 4px 10px;
+    cursor: pointer;
+    transition: transform 0.12s ease, border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.br-card:hover,
+.br-card:focus-visible {
+    transform: translateY(-2px) scale(1.03);
+    background: #22222a;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+.br-card:active {
+    transform: scale(0.96);
+    background: #2a2a33;
+}
+
+.br-card img {
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 2px solid currentColor;
+}
+
+/* Nas grades mais lotadas (7+), reduz um pouco o texto e o respiro do card */
+.br-grid.br-count-7 .br-card,
+.br-grid.br-count-8 .br-card,
+.br-grid.br-count-9 .br-card,
+.br-grid.br-count-10 .br-card {
+    padding: 6px 3px 8px;
+    gap: 2px;
+}
+
+.br-card-name {
+    font-size: 11.5px;
+    font-weight: 800;
+    color: #ffffff;
+    text-align: center;
+    line-height: 1.2;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.br-grid.br-count-7 .br-card-name,
+.br-grid.br-count-8 .br-card-name,
+.br-grid.br-count-9 .br-card-name,
+.br-grid.br-count-10 .br-card-name {
+    font-size: 10px;
+}
+
+.br-card-hero {
+    font-size: 9.5px;
+    color: currentColor;
+    opacity: 0.9;
+    text-align: center;
+    line-height: 1.2;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.br-grid.br-count-9 .br-card-hero,
+.br-grid.br-count-10 .br-card-hero {
+    font-size: 8.5px;
+}
+
+/* ==========================================================================
    SORTEIO DE MAPA
    ========================================================================== */
 .map-draw-section {
@@ -824,6 +955,12 @@ button:disabled {
 .feed-chip.player-2 { background: rgba(231, 76, 60, 0.18); color: #f17b6e; border: 1px solid rgba(231, 76, 60, 0.4); }
 .feed-chip.player-3 { background: rgba(46, 204, 113, 0.18); color: #2ecc71; border: 1px solid rgba(46, 204, 113, 0.4); }
 .feed-chip.player-4 { background: rgba(243, 156, 18, 0.18); color: #f39c12; border: 1px solid rgba(243, 156, 18, 0.4); }
+.feed-chip.player-5 { background: rgba(155, 89, 182, 0.18); color: #b57fd0; border: 1px solid rgba(155, 89, 182, 0.4); }
+.feed-chip.player-6 { background: rgba(26, 188, 156, 0.18); color: #1abc9c; border: 1px solid rgba(26, 188, 156, 0.4); }
+.feed-chip.player-7 { background: rgba(233, 69, 96, 0.18); color: #f2748c; border: 1px solid rgba(233, 69, 96, 0.4); }
+.feed-chip.player-8 { background: rgba(241, 196, 15, 0.18); color: #f1c40f; border: 1px solid rgba(241, 196, 15, 0.4); }
+.feed-chip.player-9 { background: rgba(164, 176, 190, 0.18); color: #ced6e0; border: 1px solid rgba(164, 176, 190, 0.4); }
+.feed-chip.player-10 { background: rgba(0, 210, 168, 0.18); color: #00d2a8; border: 1px solid rgba(0, 210, 168, 0.4); }
 
 .feed-chip-loser {
     opacity: 0.55;

@@ -169,6 +169,48 @@ function shuffleArray(arr) {
     return shuffled;
 }
 
+// ============================================================
+// SORTEIO DE HERÓIS COM MEMÓRIA (evita repetir sempre os mesmos)
+// ============================================================
+// Guarda, neste navegador, os últimos heróis sorteados no Sorteio Rápido.
+// Assim, novos sorteios priorizam heróis que não saíram recentemente,
+// dando mais variedade em vez de "sempre cair nos mesmos".
+const RECENT_HEROES_KEY = 'unmatched_recent_heroes';
+const RECENT_HEROES_LIMIT = 24;
+
+function getRecentHeroNames() {
+    try {
+        const raw = localStorage.getItem(RECENT_HEROES_KEY);
+        const list = raw ? JSON.parse(raw) : [];
+        return Array.isArray(list) ? list : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function pushRecentHeroNames(names) {
+    try {
+        const recent = getRecentHeroNames();
+        const updated = [...names, ...recent].slice(0, RECENT_HEROES_LIMIT);
+        localStorage.setItem(RECENT_HEROES_KEY, JSON.stringify(updated));
+    } catch (e) {
+        // localStorage indisponível (modo privado etc.) — segue sem memória, sem quebrar o sorteio
+    }
+}
+
+// Sorteia `count` heróis únicos entre si, priorizando os que não saíram
+// recentemente. Se não houver heróis "frescos" suficientes, completa com
+// os demais (nunca deixa de sortear por falta de heróis inéditos).
+function drawUniqueHeroes(count) {
+    const recent = new Set(getRecentHeroNames());
+    const fresh = shuffleArray(PERSONAGENS.filter(p => !recent.has(p.nome)));
+    const stale = shuffleArray(PERSONAGENS.filter(p => recent.has(p.nome)));
+    const pool = [...fresh, ...stale];
+    const picked = pool.slice(0, Math.min(count, pool.length));
+    pushRecentHeroNames(picked.map(p => p.nome));
+    return picked;
+}
+
 function generateRoomId() {
     return Math.random().toString(36).substring(2, 8).toUpperCase();
 }
@@ -384,7 +426,7 @@ function createRoomFromConfig(creatorRole) {
 }
 
 function buildBestOf3State() {
-    const shuffled = shuffleArray(PERSONAGENS);
+    const shuffled = drawUniqueHeroes(8);
     return {
         p1Cards: shuffled.slice(0, 4),
         p2Cards: shuffled.slice(4, 8),
@@ -399,7 +441,7 @@ function buildBestOf3State() {
 
 function buildTeamDraftState() {
     return {
-        teamPool: shuffleArray(PERSONAGENS).slice(0, 12),
+        teamPool: drawUniqueHeroes(12),
         teamPicks: { 1: null, 2: null, 3: null, 4: null },
         teamBans: []
     };
@@ -448,7 +490,7 @@ function tryJoinRoom() {
 
             const updates = { player2Joined: true };
             if (data.mode === 'single') {
-                const shuffled = shuffleArray(PERSONAGENS);
+                const shuffled = drawUniqueHeroes(4);
                 updates.phase = 'single-pick';
                 updates.p1Cards = shuffled.slice(0, 2);
                 updates.p2Cards = shuffled.slice(2, 4);
@@ -691,7 +733,7 @@ function claimName(nameIndex) {
             4: shuffledIndices[3]
         };
         updates.phase = 'team-assignment';
-        updates.teamPool = shuffleArray(PERSONAGENS).slice(0, 12);
+        updates.teamPool = drawUniqueHeroes(12);
         updates.teamPicks = { 1: null, 2: null, 3: null, 4: null };
         updates.teamBans = [];
     }
@@ -1640,7 +1682,7 @@ document.getElementById('btn-rematch')?.addEventListener('click', () => {
     let updates = { phase: null, winner: null, winnerTeam: null, matchPosted: false, finalWinnerHero: null, finalLoserHero: null, combatTimer: null, combatLogs: [], matchDurationMs: null };
 
     if (gameState.mode === 'single') {
-        const shuffled = shuffleArray(PERSONAGENS);
+        const shuffled = drawUniqueHeroes(4);
         updates.phase = 'single-pick';
         updates.p1Cards = shuffled.slice(0, 2);
         updates.p2Cards = shuffled.slice(2, 4);
@@ -1657,7 +1699,7 @@ document.getElementById('btn-rematch')?.addEventListener('click', () => {
             3: shuffledIndices[2],
             4: shuffledIndices[3]
         };
-        updates.teamPool = shuffleArray(PERSONAGENS).slice(0, 12);
+        updates.teamPool = drawUniqueHeroes(12);
         updates.teamPicks = { 1: null, 2: null, 3: null, 4: null };
         updates.teamBans = [];
         updates.phase = 'team-assignment';
@@ -1782,11 +1824,11 @@ function startQuickDraft() {
         }
     }
 
-    const shuffledHeroes = shuffleArray(PERSONAGENS);
+    const drawnHeroes = drawUniqueHeroes(names.length);
 
     const players = names.map((name, idx) => ({
         name,
-        hero: shuffledHeroes[idx % shuffledHeroes.length],
+        hero: drawnHeroes[idx],
         wins: 0
     }));
 
@@ -1800,8 +1842,8 @@ function startQuickDraft() {
         const teamIndexes = teams.map((_, idx) => idx);
         matches = buildRoundRobinPairs(teamIndexes).map(([a, b]) => ({ type: 'team', teamA: a, teamB: b }));
     } else {
-        const playerIndexes = players.map((_, idx) => idx);
-        matches = buildRoundRobinPairs(playerIndexes).map(([a, b]) => ({ type: 'ffa', p1: a, p2: b }));
+        // Todos Contra Todos = uma única partida battle royale com todo mundo ao mesmo tempo
+        matches = [{ type: 'ffa', players: players.map((_, idx) => idx) }];
     }
 
     quickState = {
@@ -1829,16 +1871,20 @@ function renderQuickCombat() {
 
     const ffaBox = document.getElementById('quick-matchup-ffa');
     const teamsBox = document.getElementById('quick-matchup-teams');
+    const brGrid = document.getElementById('quick-br-grid');
     const judgeText = document.getElementById('quick-judge-text');
     const btnP1 = document.getElementById('btn-quick-winner-p1');
     const btnP2 = document.getElementById('btn-quick-winner-p2');
 
-    if (match.type === 'ffa') {
+    if (match.type === 'ffa' && match.players.length === 2) {
         ffaBox.style.display = 'flex';
         teamsBox.style.display = 'none';
+        brGrid.style.display = 'none';
 
-        const p1 = quickState.players[match.p1];
-        const p2 = quickState.players[match.p2];
+        const p1idx = match.players[0];
+        const p2idx = match.players[1];
+        const p1 = quickState.players[p1idx];
+        const p2 = quickState.players[p2idx];
 
         const fP1 = document.getElementById('quick-fighter-p1');
         const fP2 = document.getElementById('quick-fighter-p2');
@@ -1857,15 +1903,60 @@ function renderQuickCombat() {
         p2NameTag.innerText = p2.name;
         fP2.appendChild(p2NameTag);
 
-        document.getElementById('quick-p1-label').innerText = p1.name;
-        document.getElementById('quick-p2-label').innerText = p2.name;
         judgeText.style.display = 'block';
+        judgeText.innerText = p1.name + ' vs ' + p2.name + ' — Quem venceu?';
 
-        if (btnP1) btnP1.innerText = 'Venceu ' + p1.name;
-        if (btnP2) btnP2.innerText = 'Venceu ' + p2.name;
+        btnP1.style.display = 'inline-block';
+        btnP2.style.display = 'inline-block';
+        btnP1.innerText = 'Venceu ' + p1.name;
+        btnP2.innerText = 'Venceu ' + p2.name;
+        btnP1.onclick = () => registerFfaWinner(p1idx);
+        btnP2.onclick = () => registerFfaWinner(p2idx);
+    } else if (match.type === 'ffa') {
+        ffaBox.style.display = 'none';
+        teamsBox.style.display = 'none';
+        btnP1.style.display = 'none';
+        btnP2.style.display = 'none';
+
+        judgeText.style.display = 'block';
+        judgeText.innerText = '🏆 Clique no jogador que venceu:';
+
+        brGrid.style.display = 'grid';
+        brGrid.className = 'br-grid br-count-' + match.players.length;
+        brGrid.innerHTML = '';
+
+        match.players.forEach((idx, i) => {
+            const p = quickState.players[idx];
+            const card = document.createElement('button');
+            card.type = 'button';
+            card.className = 'br-card player-' + ((i % 10) + 1);
+
+            if (p.hero.img) {
+                const img = document.createElement('img');
+                img.src = p.hero.img;
+                img.alt = p.hero.nome;
+                card.appendChild(img);
+            }
+
+            const nameEl = document.createElement('span');
+            nameEl.className = 'br-card-name';
+            nameEl.innerText = p.name;
+            card.appendChild(nameEl);
+
+            const heroEl = document.createElement('span');
+            heroEl.className = 'br-card-hero';
+            heroEl.innerText = p.hero.nome;
+            card.appendChild(heroEl);
+
+            card.onclick = () => registerFfaWinner(idx);
+            brGrid.appendChild(card);
+        });
     } else {
         ffaBox.style.display = 'none';
         teamsBox.style.display = 'flex';
+        brGrid.style.display = 'none';
+        btnP1.style.display = 'inline-block';
+        btnP2.style.display = 'inline-block';
 
         const teamA = quickState.teams[match.teamA];
         const teamB = quickState.teams[match.teamB];
@@ -1902,12 +1993,13 @@ function renderQuickCombat() {
             fightersB.appendChild(div);
         });
 
-        document.getElementById('quick-p1-label').innerText = 'Equipe A';
-        document.getElementById('quick-p2-label').innerText = 'Equipe B';
         judgeText.style.display = 'block';
+        judgeText.innerText = 'Equipe A vs Equipe B — Quem venceu?';
 
-        if (btnP1) btnP1.innerText = 'Venceu Equipe A';
-        if (btnP2) btnP2.innerText = 'Venceu Equipe B';
+        btnP1.innerText = 'Venceu Equipe A';
+        btnP2.innerText = 'Venceu Equipe B';
+        btnP1.onclick = () => registerTeamMatchWinner(1);
+        btnP2.onclick = () => registerTeamMatchWinner(2);
     }
 
     updateQuickTimerDisplay();
@@ -1916,13 +2008,14 @@ function renderQuickCombat() {
 }
 
 function renderQuickMapDraw(match) {
+    const onlyLarge = match.type === 'team' || (match.type === 'ffa' && match.players.length > 2);
     renderMapDrawSection({
         btn: 'btn-quick-draw-map',
         result: 'quick-map-draw-result',
         img: 'quick-map-draw-image',
         name: 'quick-map-draw-name',
         getMap: () => match.map || null
-    }, match.type === 'team', (map) => {
+    }, onlyLarge, (map) => {
         match.map = map;
         renderQuickMapDraw(match);
     });
@@ -1988,40 +2081,69 @@ function stopQuickTimer() {
     }
 }
 
-window.registerQuickWinner = function(winnerNum) {
+window.registerFfaWinner = function(winnerIdx) {
     if (!quickState) return;
 
     const match = quickState.matches[quickState.matchIndex];
     const elapsed = getElapsedMs(quickState.timer);
-    let winnerName, p1Hero, p2Hero, participants;
+    const winner = quickState.players[winnerIdx];
+    winner.wins++;
 
-    if (match.type === 'ffa') {
-        const p1 = quickState.players[match.p1];
-        const p2 = quickState.players[match.p2];
-        const winner = winnerNum === 1 ? p1 : p2;
-        winner.wins++;
-        winnerName = winner.name;
-        p1Hero = p1.hero.nome;
-        p2Hero = p2.hero.nome;
-        participants = [
-            { name: p1.name, hero: p1.hero.nome, colorClass: 'player-1', won: winnerNum === 1 },
-            { name: p2.name, hero: p2.hero.nome, colorClass: 'player-2', won: winnerNum === 2 }
-        ];
-    } else {
-        const teamA = quickState.teams[match.teamA];
-        const teamB = quickState.teams[match.teamB];
-        const winnerTeam = winnerNum === 1 ? teamA : teamB;
-        winnerTeam.wins++;
-        winnerName = winnerNum === 1
-            ? teamA.members.map(i => quickState.players[i].name).join(' + ')
-            : teamB.members.map(i => quickState.players[i].name).join(' + ');
-        p1Hero = teamA.members.map(i => quickState.players[i].hero.nome).join(', ');
-        p2Hero = teamB.members.map(i => quickState.players[i].hero.nome).join(', ');
-        participants = [
-            ...teamA.members.map(i => ({ name: quickState.players[i].name, hero: quickState.players[i].hero.nome, colorClass: 'player-1', won: winnerNum === 1 })),
-            ...teamB.members.map(i => ({ name: quickState.players[i].name, hero: quickState.players[i].hero.nome, colorClass: 'player-2', won: winnerNum === 2 }))
-        ];
+    const participants = match.players.map((idx, i) => ({
+        name: quickState.players[idx].name,
+        hero: quickState.players[idx].hero.nome,
+        colorClass: 'player-' + ((i % 10) + 1),
+        won: idx === winnerIdx
+    }));
+
+    const combatEntry = {
+        round: quickState.matchIndex + 1,
+        winnerName: winner.name,
+        durationMs: elapsed,
+        mapName: match.map ? match.map.nome : null
+    };
+    if (match.players.length === 2) {
+        combatEntry.p1Hero = quickState.players[match.players[0]].hero.nome;
+        combatEntry.p2Hero = quickState.players[match.players[1]].hero.nome;
     }
+
+    db.ref('posts').push({
+        participants,
+        mode: 'quick',
+        combats: [combatEntry],
+        durationMs: elapsed,
+        timestamp: Date.now()
+    });
+
+    quickState.matchIndex++;
+
+    if (quickState.matchIndex < quickState.matches.length) {
+        renderQuickCombat();
+    } else {
+        stopQuickTimer();
+        showQuickResult(elapsed);
+    }
+};
+
+window.registerTeamMatchWinner = function(winnerNum) {
+    if (!quickState) return;
+
+    const match = quickState.matches[quickState.matchIndex];
+    const elapsed = getElapsedMs(quickState.timer);
+
+    const teamA = quickState.teams[match.teamA];
+    const teamB = quickState.teams[match.teamB];
+    const winnerTeam = winnerNum === 1 ? teamA : teamB;
+    winnerTeam.wins++;
+    const winnerName = winnerNum === 1
+        ? teamA.members.map(i => quickState.players[i].name).join(' + ')
+        : teamB.members.map(i => quickState.players[i].name).join(' + ');
+    const p1Hero = teamA.members.map(i => quickState.players[i].hero.nome).join(', ');
+    const p2Hero = teamB.members.map(i => quickState.players[i].hero.nome).join(', ');
+    const participants = [
+        ...teamA.members.map(i => ({ name: quickState.players[i].name, hero: quickState.players[i].hero.nome, colorClass: 'player-1', won: winnerNum === 1 })),
+        ...teamB.members.map(i => ({ name: quickState.players[i].name, hero: quickState.players[i].hero.nome, colorClass: 'player-2', won: winnerNum === 2 }))
+    ];
 
     db.ref('posts').push({
         participants,
