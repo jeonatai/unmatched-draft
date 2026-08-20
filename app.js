@@ -58,7 +58,10 @@ const PERSONAGENS = [
     { nome: "Spike | Drusilla", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/NK3Qs9KU2YSv7HERD-zm4.webp" },
     { nome: "Buffy | Giles", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/jQ74IjwVi4uRKQfRxjE2i.webp" },
     { nome: "Willow | Tara", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/rsxAPjEmhngg8mZ-yXDIk.webp" },
-    { nome: "Lampião | Corisco", img: "https://storage.googleapis.com/ludopedia-imagens-jogo/3741e_230447.jpg" }
+    { nome: "Lampião | Corisco", img: "https://storage.googleapis.com/ludopedia-imagens-jogo/3741e_230447.jpg" },
+    { nome: "Manto e Adaga", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/WK4lDtMPBv8cTVuZXVBzv.webp" },
+    { nome: "Garota esquilos | Esquilos", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/5eoggYWJKVJ_PNs8bQOCr.webp" },
+    { nome: "Ms. Marvel", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/MFiQb6grYsbNNYwR_hoh1.webp" }
 ];
 
 // ============================================================
