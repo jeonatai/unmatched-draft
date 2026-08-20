@@ -175,11 +175,13 @@ function shuffleArray(arr) {
 // ============================================================
 // SORTEIO DE HERÓIS COM MEMÓRIA (evita repetir sempre os mesmos)
 // ============================================================
-// Guarda, neste navegador, os últimos heróis sorteados no Sorteio Rápido.
-// Assim, novos sorteios priorizam heróis que não saíram recentemente,
-// dando mais variedade em vez de "sempre cair nos mesmos".
+// Guarda, neste navegador (localStorage — não afeta outros dispositivos),
+// os heróis sorteados no ÚLTIMO Sorteio Rápido feito aqui. A cada novo
+// sorteio, existe 90% de chance de esses heróis ficarem de fora (dando
+// espaço pros que ainda não saíram) e 10% de chance de o sorteio ser
+// totalmente livre, podendo repetir algum deles normalmente.
 const RECENT_HEROES_KEY = 'unmatched_recent_heroes';
-const RECENT_HEROES_LIMIT = 24;
+const RECENT_HEROES_REPEAT_CHANCE = 0.10; // 10% de chance de não filtrar nada
 
 function getRecentHeroNames() {
     try {
@@ -191,26 +193,41 @@ function getRecentHeroNames() {
     }
 }
 
-function pushRecentHeroNames(names) {
+function setRecentHeroNames(names) {
     try {
-        const recent = getRecentHeroNames();
-        const updated = [...names, ...recent].slice(0, RECENT_HEROES_LIMIT);
-        localStorage.setItem(RECENT_HEROES_KEY, JSON.stringify(updated));
+        localStorage.setItem(RECENT_HEROES_KEY, JSON.stringify(names));
     } catch (e) {
         // localStorage indisponível (modo privado etc.) — segue sem memória, sem quebrar o sorteio
     }
 }
 
-// Sorteia `count` heróis únicos entre si, priorizando os que não saíram
-// recentemente. Se não houver heróis "frescos" suficientes, completa com
-// os demais (nunca deixa de sortear por falta de heróis inéditos).
+// Gera um número decimal aleatório em [0, 1) usando o mesmo gerador
+// criptograficamente seguro usado no resto do sorteio.
+function secureRandomFloat() {
+    const arr = new Uint32Array(1);
+    crypto.getRandomValues(arr);
+    return arr[0] / 4294967296;
+}
+
+// Sorteia `count` heróis únicos entre si. Na maioria das vezes (90%),
+// os heróis do último sorteio feito neste navegador ficam de fora,
+// abrindo espaço pros que ainda não saíram. Em 10% dos sorteios, o
+// filtro não é aplicado e qualquer herói pode sair normalmente —
+// então mesmo o herói mais recente ainda pode voltar de vez em quando.
+// Em outro dispositivo, sem essa memória local, o sorteio é sempre livre.
 function drawUniqueHeroes(count) {
-    const recent = new Set(getRecentHeroNames());
-    const fresh = shuffleArray(PERSONAGENS.filter(p => !recent.has(p.nome)));
-    const stale = shuffleArray(PERSONAGENS.filter(p => recent.has(p.nome)));
-    const pool = [...fresh, ...stale];
-    const picked = pool.slice(0, Math.min(count, pool.length));
-    pushRecentHeroNames(picked.map(p => p.nome));
+    const n = Math.min(count, PERSONAGENS.length);
+    const recentNames = new Set(getRecentHeroNames());
+    const allowRepeat = recentNames.size === 0 || secureRandomFloat() < RECENT_HEROES_REPEAT_CHANCE;
+
+    let pool = PERSONAGENS;
+    if (!allowRepeat) {
+        const filtered = PERSONAGENS.filter(p => !recentNames.has(p.nome));
+        if (filtered.length >= n) pool = filtered;
+    }
+
+    const picked = shuffleArray(pool).slice(0, n);
+    setRecentHeroNames(picked.map(p => p.nome));
     return picked;
 }
 
