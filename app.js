@@ -1633,6 +1633,200 @@ async function renderMatchupOdds(cardP1El, heroP1, cardP2El, heroP2) {
 }
 
 // ============================================================
+// TELA "HERÓIS": busca um herói e mostra contra quem ele costuma
+// vencer/perder, olhando o contador leve (heroStats) inteiro de uma vez.
+// ============================================================
+// Como o heroStats cresce com o número de HERÓIS (fixo, ~60), não com o
+// número de PARTIDAS, dá pra baixar a árvore inteira de uma vez só (é
+// pequena) e fazer todos os cálculos localmente, sem nenhuma consulta
+// extra ao Firebase por herói pesquisado.
+let heroStatsCache = null;
+let heroStatsCachePromise = null;
+
+async function ensureHeroStatsCache(forceRefresh) {
+    if (!forceRefresh && heroStatsCache) return heroStatsCache;
+    if (!forceRefresh && heroStatsCachePromise) return heroStatsCachePromise;
+
+    heroStatsCachePromise = db.ref('heroStats').once('value').then(snap => {
+        heroStatsCache = snap.val() || {};
+        heroStatsCachePromise = null;
+        return heroStatsCache;
+    });
+    return heroStatsCachePromise;
+}
+
+function populateHeroDatalist() {
+    const list = document.getElementById('hero-names-list');
+    if (!list || list.children.length > 0) return; // já preenchido
+    const frag = document.createDocumentFragment();
+    PERSONAGENS.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.nome;
+        frag.appendChild(opt);
+    });
+    list.appendChild(frag);
+}
+
+// Classifica uma porcentagem de vitória numa categoria (igual referência).
+function classifyMatchup(pct, total) {
+    if (total === 0) return { key: 'unknown', label: 'Desconhecido' };
+    if (pct >= 65) return { key: 'favoured', label: 'Favorito' };
+    if (pct >= 55) return { key: 'slightly-favoured', label: 'Levemente Favorito' };
+    if (pct >= 45) return { key: 'balanced', label: 'Equilibrado' };
+    if (pct >= 35) return { key: 'slightly-losing', label: 'Levemente Perdendo' };
+    if (pct >= 25) return { key: 'losing', label: 'Perdendo' };
+    return { key: 'nightmare', label: 'Pesadelo' };
+}
+
+// Monta, pra um herói escolhido, o confronto contra TODOS os outros
+// heróis da lista de personagens — usando só o cache já baixado.
+function computeHeroMatchups(heroName) {
+    const heroKeyX = heroKey(heroName);
+    const heroNode = (heroStatsCache && heroStatsCache[heroKeyX]) || {};
+
+    return PERSONAGENS
+        .filter(p => p.nome !== heroName)
+        .map(p => {
+            const keyY = heroKey(p.nome);
+            const winsX = (heroNode.vs && heroNode.vs[keyY] && heroNode.vs[keyY].wins) || 0;
+            const oppNode = (heroStatsCache && heroStatsCache[keyY]) || {};
+            const winsY = (oppNode.vs && oppNode.vs[heroKeyX] && oppNode.vs[heroKeyX].wins) || 0;
+            const total = winsX + winsY;
+            const pct = total === 0 ? 50 : Math.round((winsX / total) * 100);
+            return {
+                hero: p,
+                winsX,
+                winsY,
+                total,
+                pct,
+                bucket: classifyMatchup(pct, total)
+            };
+        });
+}
+
+async function renderHeroStatsResults(heroName) {
+    const hero = PERSONAGENS.find(p => p.nome.toLowerCase() === heroName.trim().toLowerCase());
+    const errorEl = document.getElementById('hero-search-error');
+    const summaryEl = document.getElementById('hero-stats-summary');
+    const resultsEl = document.getElementById('hero-stats-results');
+    const loadingEl = document.getElementById('hero-stats-loading');
+
+    if (!hero) {
+        errorEl.style.display = 'block';
+        errorEl.innerText = '⚠️ Herói não encontrado. Escolha um nome da lista.';
+        summaryEl.style.display = 'none';
+        resultsEl.innerHTML = '';
+        return;
+    }
+    errorEl.style.display = 'none';
+
+    resultsEl.innerHTML = '';
+    summaryEl.style.display = 'none';
+    loadingEl.style.display = 'block';
+
+    await ensureHeroStatsCache(false);
+    loadingEl.style.display = 'none';
+
+    const heroKeyX = heroKey(hero.nome);
+    const heroNode = (heroStatsCache && heroStatsCache[heroKeyX]) || {};
+    const overallWins = heroNode.wins || 0;
+    const overallLosses = heroNode.losses || 0;
+    const overallTotal = overallWins + overallLosses;
+    const overallPct = overallTotal === 0 ? null : Math.round((overallWins / overallTotal) * 100);
+
+    summaryEl.style.display = 'flex';
+    summaryEl.className = 'hero-stats-summary-card';
+    summaryEl.innerHTML = '';
+    if (hero.img) {
+        const img = document.createElement('img');
+        img.src = hero.img;
+        img.alt = hero.nome;
+        summaryEl.appendChild(img);
+    }
+    const textWrap = document.createElement('div');
+    const nameEl = document.createElement('div');
+    nameEl.className = 'hero-stats-summary-name';
+    nameEl.innerText = hero.nome;
+    textWrap.appendChild(nameEl);
+    const recordEl = document.createElement('div');
+    recordEl.className = 'hero-stats-summary-record';
+    recordEl.innerText = overallTotal === 0
+        ? 'Ainda sem partidas registradas'
+        : overallWins + ' vitórias, ' + overallLosses + ' derrotas no total (' + overallPct + '% de vitória geral)';
+    textWrap.appendChild(recordEl);
+    summaryEl.appendChild(textWrap);
+
+    const matchups = computeHeroMatchups(hero.nome);
+
+    const order = ['favoured', 'slightly-favoured', 'balanced', 'slightly-losing', 'losing', 'nightmare', 'unknown'];
+    const grouped = {};
+    order.forEach(k => grouped[k] = []);
+    matchups.forEach(m => grouped[m.bucket.key].push(m));
+
+    // Dentro de cada categoria, mostra primeiro quem tem mais jogos (mais confiável)
+    order.forEach(k => grouped[k].sort((a, b) => b.total - a.total));
+
+    resultsEl.innerHTML = '';
+    order.forEach(key => {
+        const items = grouped[key];
+        if (items.length === 0) return;
+
+        const section = document.createElement('div');
+        section.className = 'hero-stat-section ' + key;
+
+        const label = document.createElement('span');
+        label.className = 'hero-stat-section-label';
+        label.innerText = items[0].bucket.label;
+        section.appendChild(label);
+
+        const grid = document.createElement('div');
+        grid.className = 'hero-stat-grid';
+
+        items.forEach(m => {
+            const card = document.createElement('div');
+            card.className = 'hero-stat-card';
+
+            if (m.hero.img) {
+                const img = document.createElement('img');
+                img.src = m.hero.img;
+                img.alt = m.hero.nome;
+                card.appendChild(img);
+            }
+
+            const nameTag = document.createElement('div');
+            nameTag.className = 'hero-stat-card-name';
+            nameTag.innerText = m.hero.nome;
+            card.appendChild(nameTag);
+
+            const recordTag = document.createElement('div');
+            recordTag.className = 'hero-stat-card-record';
+            recordTag.innerText = m.total + ' jogo' + (m.total === 1 ? '' : 's');
+            card.appendChild(recordTag);
+
+            const pctTag = document.createElement('div');
+            pctTag.className = 'hero-stat-card-pct';
+            pctTag.innerText = m.pct + '%';
+            card.appendChild(pctTag);
+
+            grid.appendChild(card);
+        });
+
+        section.appendChild(grid);
+        resultsEl.appendChild(section);
+    });
+}
+
+function goToHeroStatsScreen() {
+    showScreen('screen-hero-stats');
+    populateHeroDatalist();
+    document.getElementById('hero-search-input').value = '';
+    document.getElementById('hero-search-error').style.display = 'none';
+    document.getElementById('hero-stats-summary').style.display = 'none';
+    document.getElementById('hero-stats-results').innerHTML = '';
+    ensureHeroStatsCache(false); // já começa a baixar em segundo plano
+}
+
+// ============================================================
 // MIGRAÇÃO ÚNICA: preenche o contador separado com as partidas que já
 // aconteceram e estão salvas no feed (posts). Roda sozinha, uma única
 // vez, na primeira vez que qualquer pessoa abrir o site depois desta
@@ -2495,6 +2689,17 @@ window.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-go-join').onclick = () => showScreen('screen-enter-code');
 
     document.getElementById('btn-go-quick').onclick = startQuickSetup;
+    document.getElementById('btn-go-heroes').onclick = goToHeroStatsScreen;
+    document.getElementById('btn-hero-stats-back').onclick = () => showScreen('screen-home');
+    document.getElementById('btn-hero-search-confirm').onclick = () => {
+        const val = document.getElementById('hero-search-input').value;
+        renderHeroStatsResults(val);
+    };
+    document.getElementById('hero-search-input').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            renderHeroStatsResults(e.target.value);
+        }
+    });
     document.getElementById('btn-quick-back').onclick = () => showScreen('screen-home');
     document.getElementById('btn-quick-start').onclick = startQuickDraft;
     document.getElementById('btn-quick-again').onclick = () => startQuickSetup();

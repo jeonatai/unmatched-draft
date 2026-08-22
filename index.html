@@ -19,7 +19,7 @@
     <meta name="twitter:title" content="Unmatched Draft — Sorteio e Draft Online para Unmatched">
     <meta name="twitter:description" content="Sorteie heróis, monte salas e organize partidas de Unmatched online, de graça, com amigos.">
 
-    <link rel="stylesheet" href="style.css?v=20260821e">
+    <link rel="stylesheet" href="style.css?v=20260822f">
 </head>
 <body>
 
@@ -38,6 +38,7 @@
             <button id="btn-go-create" style="background-color: #2ecc71;">Criar Sala</button>
             <button id="btn-go-join" style="background-color: #3498db; margin-top: 12px;">Entrar em Sala</button>
             <button id="btn-go-quick" class="btn-secondary" style="margin-top: 12px;">🎲 Sorteio Rápido</button>
+            <button id="btn-go-heroes" class="btn-secondary" style="margin-top: 12px;">🦸 Heróis</button>
 
             <div id="home-feed-section" class="home-feed-section">
                 <h3>📰 Últimas Partidas</h3>
@@ -159,6 +160,25 @@
             <p class="waiting-text">Todas as partidas já foram postadas automaticamente no feed.</p>
             <button id="btn-quick-again" style="background-color: #2ecc71;">🎲 Novo Sorteio</button>
             <button id="btn-quick-home" class="btn-secondary">Voltar ao Início</button>
+        </div>
+
+        <!-- TELA: Heróis — estatísticas de confronto -->
+        <div id="screen-hero-stats" class="screen" style="display: none;">
+            <h1>🦸 Heróis</h1>
+            <p>Pesquise um herói pra ver contra quem ele costuma vencer e contra quem costuma perder, com base em todas as partidas já registradas no site.</p>
+
+            <div class="hero-search-bar">
+                <input type="text" id="hero-search-input" class="text-input" list="hero-names-list" placeholder="Digite o nome do herói...">
+                <datalist id="hero-names-list"></datalist>
+                <button id="btn-hero-search-confirm">Confirmar</button>
+            </div>
+            <p id="hero-search-error" class="waiting-text" style="display: none; color: #ff6b81;"></p>
+
+            <div id="hero-stats-summary" style="display: none;"></div>
+            <div id="hero-stats-results"></div>
+            <p id="hero-stats-loading" class="waiting-text" style="display: none;">Carregando estatísticas...</p>
+
+            <button id="btn-hero-stats-back" class="btn-secondary" style="margin-top: 18px;">Voltar ao Início</button>
         </div>
 
         <!-- TELA: Entrar com código -->
@@ -364,6 +384,6 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
     <script src="firebase-config.js"></script>
-    <script src="app.js?v=20260821e"></script>
+    <script src="app.js?v=20260822f"></script>
 </body>
 </html>

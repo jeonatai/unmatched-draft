@@ -738,6 +738,150 @@ button:disabled {
 }
 
 /* ==========================================================================
+   TELA DE HERÓIS — ESTATÍSTICAS DE CONFRONTO
+   ========================================================================== */
+.hero-search-bar {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.hero-search-bar .text-input {
+    flex: 1;
+    margin: 0 !important;
+}
+
+.hero-search-bar button {
+    width: auto !important;
+    flex-shrink: 0;
+    padding: 12px 18px !important;
+}
+
+.hero-stats-summary-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: #1e1e24;
+    border: 1px solid #2f3542;
+    border-radius: 14px;
+    padding: 12px 14px;
+    margin: 18px 0 6px;
+    text-align: left;
+}
+
+.hero-stats-summary-card img {
+    width: 56px;
+    height: 74px;
+    object-fit: cover;
+    border-radius: 8px;
+    flex-shrink: 0;
+}
+
+.hero-stats-summary-name {
+    font-size: 16px;
+    font-weight: 800;
+    color: #fff;
+}
+
+.hero-stats-summary-record {
+    font-size: 12.5px;
+    color: #a4b0be;
+    margin-top: 2px;
+}
+
+.hero-stat-section {
+    margin-top: 22px;
+    text-align: left;
+}
+
+.hero-stat-section-label {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.3px;
+    margin-bottom: 10px;
+}
+
+.hero-stat-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.hero-stat-card {
+    flex: 0 0 calc(33.333% - 7px);
+    max-width: calc(33.333% - 7px);
+    background: #1a1a1f;
+    border: 2px solid #33333c;
+    border-radius: 12px;
+    padding: 8px 4px 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    text-align: center;
+}
+
+.hero-stat-card img {
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    object-fit: cover;
+    border-radius: 8px;
+}
+
+.hero-stat-card-name {
+    font-size: 11px;
+    font-weight: 800;
+    color: #fff;
+    line-height: 1.2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+}
+
+.hero-stat-card-record {
+    font-size: 10px;
+    color: #a4b0be;
+}
+
+.hero-stat-card-pct {
+    font-size: 13px;
+    font-weight: 800;
+}
+
+/* Cores por categoria (favorito -> pesadelo) */
+.hero-stat-section.favoured .hero-stat-section-label { background: rgba(46, 204, 113, 0.2); color: #2ecc71; }
+.hero-stat-section.favoured .hero-stat-card { border-color: rgba(46, 204, 113, 0.5); }
+.hero-stat-section.favoured .hero-stat-card-pct { color: #2ecc71; }
+
+.hero-stat-section.slightly-favoured .hero-stat-section-label { background: rgba(155, 216, 106, 0.2); color: #9bd86a; }
+.hero-stat-section.slightly-favoured .hero-stat-card { border-color: rgba(155, 216, 106, 0.4); }
+.hero-stat-section.slightly-favoured .hero-stat-card-pct { color: #9bd86a; }
+
+.hero-stat-section.balanced .hero-stat-section-label { background: rgba(52, 152, 219, 0.2); color: #5dade2; }
+.hero-stat-section.balanced .hero-stat-card { border-color: rgba(52, 152, 219, 0.4); }
+.hero-stat-section.balanced .hero-stat-card-pct { color: #5dade2; }
+
+.hero-stat-section.slightly-losing .hero-stat-section-label { background: rgba(243, 156, 18, 0.2); color: #f39c12; }
+.hero-stat-section.slightly-losing .hero-stat-card { border-color: rgba(243, 156, 18, 0.4); }
+.hero-stat-section.slightly-losing .hero-stat-card-pct { color: #f39c12; }
+
+.hero-stat-section.losing .hero-stat-section-label { background: rgba(230, 126, 34, 0.2); color: #e67e22; }
+.hero-stat-section.losing .hero-stat-card { border-color: rgba(230, 126, 34, 0.45); }
+.hero-stat-section.losing .hero-stat-card-pct { color: #e67e22; }
+
+.hero-stat-section.nightmare .hero-stat-section-label { background: rgba(231, 76, 60, 0.22); color: #ff6b81; }
+.hero-stat-section.nightmare .hero-stat-card { border-color: rgba(231, 76, 60, 0.5); }
+.hero-stat-section.nightmare .hero-stat-card-pct { color: #ff6b81; }
+
+.hero-stat-section.unknown .hero-stat-section-label { background: rgba(164, 176, 190, 0.18); color: #a4b0be; }
+.hero-stat-section.unknown .hero-stat-card { border-color: #33333c; opacity: 0.75; }
+.hero-stat-section.unknown .hero-stat-card-pct { color: #a4b0be; }
+
+/* ==========================================================================
    SORTEIO DE MAPA
    ========================================================================== */
 .map-draw-section {
