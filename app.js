@@ -1169,6 +1169,7 @@ function buildCombatInterface() {
         p2Tag.className = 'fighter-player-name';
         p2Tag.innerText = getPlayerDisplayName(2);
         fP2.appendChild(p2Tag);
+        renderMatchupOdds(fP1, gameState.p1Pick, fP2, gameState.p2Pick);
 
         document.getElementById('judge-1v1').innerHTML =
             '<button onclick="registerWinner(1)">' + getPlayerDisplayName(1) + ' Venceu</button>' +
@@ -1284,6 +1285,7 @@ function buildCombatInterface() {
         p2Tag2.className = 'fighter-player-name';
         p2Tag2.innerText = getPlayerDisplayName(2);
         fP2.appendChild(p2Tag2);
+        renderMatchupOdds(fP1, gameState.p1CombatChoice, fP2, gameState.p2CombatChoice);
 
         document.getElementById('judge-1v1').innerHTML =
             '<button onclick="registerWinner(1)">' + getPlayerDisplayName(1) + ' Venceu</button>' +
@@ -1297,10 +1299,17 @@ window.registerWinner = function(winnerNum) {
     const mapName = gameState.currentMap ? gameState.currentMap.nome : null;
 
     if (gameState.mode === 'single') {
+        const p1HeroName = gameState.p1Pick ? gameState.p1Pick.nome : null;
+        const p2HeroName = gameState.p2Pick ? gameState.p2Pick.nome : null;
+        recordHeroBattleResult(
+            [winnerNum === 1 ? p1HeroName : p2HeroName],
+            [winnerNum === 1 ? p2HeroName : p1HeroName]
+        );
+
         const combatLogs = [{
             round: 1,
-            p1Hero: gameState.p1Pick ? gameState.p1Pick.nome : '?',
-            p2Hero: gameState.p2Pick ? gameState.p2Pick.nome : '?',
+            p1Hero: p1HeroName || '?',
+            p2Hero: p2HeroName || '?',
             winnerName: getPlayerDisplayName(winnerNum),
             durationMs: elapsed,
             mapName
@@ -1323,11 +1332,18 @@ window.registerWinner = function(winnerNum) {
     let newP1Score = gameState.p1Score || 0;
     let newP2Score = gameState.p2Score || 0;
 
+    const p1HeroName = gameState.p1CombatChoice ? gameState.p1CombatChoice.nome : null;
+    const p2HeroName = gameState.p2CombatChoice ? gameState.p2CombatChoice.nome : null;
+    recordHeroBattleResult(
+        [winnerNum === 1 ? p1HeroName : p2HeroName],
+        [winnerNum === 1 ? p2HeroName : p1HeroName]
+    );
+
     const priorLogs = gameState.combatLogs || [];
     const roundLog = {
         round: priorLogs.length + 1,
-        p1Hero: gameState.p1CombatChoice ? gameState.p1CombatChoice.nome : '?',
-        p2Hero: gameState.p2CombatChoice ? gameState.p2CombatChoice.nome : '?',
+        p1Hero: p1HeroName || '?',
+        p2Hero: p2HeroName || '?',
         winnerName: getPlayerDisplayName(winnerNum),
         durationMs: elapsed,
         mapName
@@ -1365,10 +1381,17 @@ window.registerTeamWinner = function(team) {
     const elapsed = getElapsedMs(gameState.combatTimer);
     const picks = gameState.teamPicks || {};
     const mapName = gameState.currentMap ? gameState.currentMap.nome : null;
+    const teamAHeroes = [1, 3].map(s => picks[s] ? picks[s].nome : null).filter(Boolean);
+    const teamBHeroes = [2, 4].map(s => picks[s] ? picks[s].nome : null).filter(Boolean);
+    recordHeroBattleResult(
+        team === 'A' ? teamAHeroes : teamBHeroes,
+        team === 'A' ? teamBHeroes : teamAHeroes
+    );
+
     const combatLogs = [{
         round: 1,
-        p1Hero: [1, 3].map(s => picks[s] ? picks[s].nome : '?').join(' & '),
-        p2Hero: [2, 4].map(s => picks[s] ? picks[s].nome : '?').join(' & '),
+        p1Hero: teamAHeroes.join(' & ') || '?',
+        p2Hero: teamBHeroes.join(' & ') || '?',
         winnerName: 'Equipe ' + team,
         durationMs: elapsed,
         mapName
@@ -1486,18 +1509,211 @@ function buildMatchParticipants() {
 }
 
 let feedRef = null;
+let allPostsData = {};
 
 function attachFeedListener() {
     if (feedRef) return; // já conectado
     feedRef = db.ref('posts');
     feedRef.on('value', snapshot => {
-        renderFeed(snapshot.val() || {});
+        allPostsData = snapshot.val() || {};
+        renderFeed(allPostsData);
     });
 }
 
 function detachFeedListener() {
     if (feedRef) feedRef.off();
     feedRef = null;
+}
+
+// ============================================================
+// CONTADOR SEPARADO DE ESTATÍSTICAS (heroStats) — leve e rápido
+// ============================================================
+// Em vez de reler o feed inteiro toda vez (o que pesaria conforme o
+// número de partidas cresce), cada resultado de combate 1x1 atualiza
+// direto um pequeno "banco de dados" próprio no Firebase:
+//   heroStats/{heroKey}/wins            -> vitórias totais do herói
+//   heroStats/{heroKey}/losses          -> derrotas totais do herói
+//   heroStats/{heroKey}/vs/{oppKey}/wins -> vitórias desse herói especificamente contra o outro
+// Consultar a porcentagem entre dois heróis vira uma leitura direta de
+// 2 valores (O(1)), em vez de varrer todas as partidas já jogadas.
+
+// Nomes de heróis podem ter caracteres que o Firebase não aceita em
+// chaves (. # $ [ ] /), então codificamos em base64 seguro pra URL.
+function heroKey(name) {
+    const b64 = btoa(unescape(encodeURIComponent(name)));
+    return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+}
+
+// Registra o resultado de um combate no contador separado.
+// winnerNames/loserNames: listas de nomes de heróis (normalmente 1 de
+// cada lado numa luta 1x1; podem ter mais de 1 em combates de equipe,
+// caso em que só as vitórias/derrotas gerais são contadas — o confronto
+// direto "A vs B" só é gravado quando é claramente 1 herói contra 1).
+function recordHeroBattleResult(winnerNames, loserNames) {
+    winnerNames = (winnerNames || []).filter(Boolean);
+    loserNames = (loserNames || []).filter(Boolean);
+    if (winnerNames.length === 0) return;
+
+    const updates = {};
+
+    winnerNames.forEach(name => {
+        const k = heroKey(name);
+        updates['heroStats/' + k + '/name'] = name;
+    });
+    loserNames.forEach(name => {
+        const k = heroKey(name);
+        updates['heroStats/' + k + '/name'] = name;
+    });
+
+    if (Object.keys(updates).length > 0) {
+        db.ref().update(updates);
+    }
+
+    winnerNames.forEach(name => {
+        db.ref('heroStats/' + heroKey(name) + '/wins').transaction(v => (v || 0) + 1);
+    });
+    loserNames.forEach(name => {
+        db.ref('heroStats/' + heroKey(name) + '/losses').transaction(v => (v || 0) + 1);
+    });
+
+    if (winnerNames.length === 1 && loserNames.length === 1 && winnerNames[0] !== loserNames[0]) {
+        const wKey = heroKey(winnerNames[0]);
+        const lKey = heroKey(loserNames[0]);
+        db.ref('heroStats/' + wKey + '/vs/' + lKey + '/wins').transaction(v => (v || 0) + 1);
+        db.ref('heroStats/' + wKey + '/vs/' + lKey + '/name').set(loserNames[0]);
+        db.ref('heroStats/' + lKey + '/vs/' + wKey + '/name').set(winnerNames[0]);
+    }
+}
+
+// Lê direto do contador separado (2 leituras rápidas, sem varrer partidas).
+async function getHeroHeadToHead(heroA, heroB) {
+    if (!heroA || !heroB || heroA === heroB) {
+        return { pctA: 50, pctB: 50, total: 0 };
+    }
+
+    const kA = heroKey(heroA);
+    const kB = heroKey(heroB);
+
+    const [snapAB, snapBA] = await Promise.all([
+        db.ref('heroStats/' + kA + '/vs/' + kB + '/wins').once('value'),
+        db.ref('heroStats/' + kB + '/vs/' + kA + '/wins').once('value')
+    ]);
+
+    const winsA = snapAB.val() || 0;
+    const winsB = snapBA.val() || 0;
+    const total = winsA + winsB;
+    if (total === 0) return { pctA: 50, pctB: 50, total: 0 };
+
+    const pctA = Math.round((winsA / total) * 100);
+    return { pctA, pctB: 100 - pctA, total };
+}
+
+// Cria (ou atualiza) o selo de porcentagem dentro do card do lutador.
+function renderMatchupOddsBadge(cardEl, text) {
+    if (!cardEl) return;
+    let badge = cardEl.querySelector('.matchup-odds-badge');
+    if (!badge) {
+        badge = document.createElement('div');
+        badge.className = 'matchup-odds-badge';
+        cardEl.appendChild(badge);
+    }
+    badge.innerText = text;
+}
+
+// Calcula e exibe a porcentagem de vitória de cada lado dentro dos cards
+// de dois lutadores 1x1, lendo do contador separado (rápido, não pesa
+// conforme o site acumula partidas).
+async function renderMatchupOdds(cardP1El, heroP1, cardP2El, heroP2) {
+    if (!heroP1 || !heroP2) return;
+    renderMatchupOddsBadge(cardP1El, '...');
+    renderMatchupOddsBadge(cardP2El, '...');
+    const odds = await getHeroHeadToHead(heroP1.nome, heroP2.nome);
+    renderMatchupOddsBadge(cardP1El, odds.pctA + '%');
+    renderMatchupOddsBadge(cardP2El, odds.pctB + '%');
+}
+
+// ============================================================
+// MIGRAÇÃO ÚNICA: preenche o contador separado com as partidas que já
+// aconteceram e estão salvas no feed (posts). Roda sozinha, uma única
+// vez, na primeira vez que qualquer pessoa abrir o site depois desta
+// atualização — usa uma trava (transaction) pra garantir que só um
+// dispositivo faça a migração, mesmo que várias pessoas abram o site
+// ao mesmo tempo. Depois disso, cada partida nova já atualiza o
+// contador na hora (recordHeroBattleResult), sem precisar migrar de novo.
+async function runHeroStatsMigrationIfNeeded() {
+    try {
+        const flagRef = db.ref('migrations/heroStatsV1Done');
+        const already = await flagRef.once('value');
+        if (already.val()) return;
+
+        const lock = await flagRef.transaction(current => current ? undefined : 'running');
+        if (!lock.committed || lock.snapshot.val() !== 'running') return;
+
+        const postsSnap = await db.ref('posts').once('value');
+        const posts = postsSnap.val() || {};
+
+        // Agrega tudo em memória primeiro, pra gravar no Firebase de uma vez só
+        const agg = {}; // nome do herói -> { wins, losses, vs: { nomeAdversario: vitórias } }
+        function bump(name, field) {
+            if (!agg[name]) agg[name] = { wins: 0, losses: 0, vs: {} };
+            agg[name][field]++;
+        }
+
+        Object.values(posts).forEach(post => {
+            const participants = post.participants || [];
+
+            // Vitórias/derrotas gerais: usa os participantes de qualquer modo
+            // (single, melhor de 3, equipe, sorteio rápido e battle royale).
+            participants.forEach(p => {
+                if (!p || !p.hero) return;
+                bump(p.hero, p.won ? 'wins' : 'losses');
+            });
+
+            // Confronto direto (vs): só combates realmente 1 herói contra 1.
+            (post.combats || []).forEach(c => {
+                if (!c.p1Hero || !c.p2Hero) return;
+                if (c.p1Hero.includes(',') || c.p2Hero.includes(',')) return;
+                if (c.p1Hero === c.p2Hero) return;
+
+                let winningHero = null;
+                let losingHero = null;
+                if (participants[0] && participants[0].name === c.winnerName) {
+                    winningHero = c.p1Hero;
+                    losingHero = c.p2Hero;
+                } else if (participants[1] && participants[1].name === c.winnerName) {
+                    winningHero = c.p2Hero;
+                    losingHero = c.p1Hero;
+                } else {
+                    return;
+                }
+
+                if (!agg[winningHero]) agg[winningHero] = { wins: 0, losses: 0, vs: {} };
+                agg[winningHero].vs[losingHero] = (agg[winningHero].vs[losingHero] || 0) + 1;
+            });
+        });
+
+        const updates = {};
+        Object.entries(agg).forEach(([heroName, stats]) => {
+            const k = heroKey(heroName);
+            updates['heroStats/' + k + '/name'] = heroName;
+            updates['heroStats/' + k + '/wins'] = stats.wins;
+            updates['heroStats/' + k + '/losses'] = stats.losses;
+            Object.entries(stats.vs).forEach(([oppName, wins]) => {
+                const ok = heroKey(oppName);
+                updates['heroStats/' + k + '/vs/' + ok + '/wins'] = wins;
+                updates['heroStats/' + k + '/vs/' + ok + '/name'] = oppName;
+            });
+        });
+
+        if (Object.keys(updates).length > 0) {
+            await db.ref().update(updates);
+        }
+
+        await flagRef.set(true);
+    } catch (e) {
+        // Se algo falhar (ex: sem permissão), não trava o site — só não migra agora.
+        console.warn('Migração de heroStats não concluída:', e);
+    }
 }
 
 function escapeHtml(str) {
@@ -1922,6 +2138,7 @@ function renderQuickCombat() {
         p2NameTag.className = 'fighter-player-name';
         p2NameTag.innerText = p2.name;
         fP2.appendChild(p2NameTag);
+        renderMatchupOdds(fP1, p1.hero, fP2, p2.hero);
 
         judgeText.style.display = 'block';
         judgeText.innerText = p1.name + ' vs ' + p2.name + ' — Quem venceu?';
@@ -2109,6 +2326,12 @@ window.registerFfaWinner = function(winnerIdx) {
     const winner = quickState.players[winnerIdx];
     winner.wins++;
 
+    const winnerHeroName = winner.hero.nome;
+    const loserHeroNames = match.players
+        .filter(idx => idx !== winnerIdx)
+        .map(idx => quickState.players[idx].hero.nome);
+    recordHeroBattleResult([winnerHeroName], loserHeroNames);
+
     const participants = match.players.map((idx, i) => ({
         name: quickState.players[idx].name,
         hero: quickState.players[idx].hero.nome,
@@ -2160,6 +2383,12 @@ window.registerTeamMatchWinner = function(winnerNum) {
         : teamB.members.map(i => quickState.players[i].name).join(' + ');
     const p1Hero = teamA.members.map(i => quickState.players[i].hero.nome).join(', ');
     const p2Hero = teamB.members.map(i => quickState.players[i].hero.nome).join(', ');
+    const teamAHeroNames = teamA.members.map(i => quickState.players[i].hero.nome);
+    const teamBHeroNames = teamB.members.map(i => quickState.players[i].hero.nome);
+    recordHeroBattleResult(
+        winnerNum === 1 ? teamAHeroNames : teamBHeroNames,
+        winnerNum === 1 ? teamBHeroNames : teamAHeroNames
+    );
     const participants = [
         ...teamA.members.map(i => ({ name: quickState.players[i].name, hero: quickState.players[i].hero.nome, colorClass: 'player-1', won: winnerNum === 1 })),
         ...teamB.members.map(i => ({ name: quickState.players[i].name, hero: quickState.players[i].hero.nome, colorClass: 'player-2', won: winnerNum === 2 }))
@@ -2330,13 +2559,15 @@ window.addEventListener('DOMContentLoaded', () => {
     const params = new URLSearchParams(window.location.search);
     const urlRoom = params.get('room');
 
+    attachFeedListener();
+    runHeroStatsMigrationIfNeeded();
+
     if (urlRoom) {
         roomId = urlRoom.toUpperCase();
         updateRoomHeader();
         tryJoinRoom();
     } else {
         showScreen('screen-home');
-        attachFeedListener();
     }
 });
 

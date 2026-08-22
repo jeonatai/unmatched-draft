@@ -551,6 +551,18 @@ button:disabled {
     letter-spacing: 0.3px;
 }
 
+.matchup-odds-badge {
+    margin-top: 2px;
+    padding: 2px 10px;
+    border-radius: 999px;
+    background: rgba(255, 71, 87, 0.16);
+    border: 1px solid rgba(255, 71, 87, 0.5);
+    color: #ff6b81;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.3px;
+}
+
 .fighter-card {
     background: linear-gradient(135deg, #1e1e24, #2a2a35);
     color: #ffffff;
