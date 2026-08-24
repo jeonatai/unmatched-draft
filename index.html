@@ -39,6 +39,7 @@
             <button id="btn-go-join" style="background-color: #3498db; margin-top: 12px;">Entrar em Sala</button>
             <button id="btn-go-tournament" class="btn-secondary" style="margin-top: 12px;">🏆 Torneio</button>
             <button id="btn-go-quick" class="btn-secondary" style="margin-top: 12px;">🎲 Sorteio Rápido</button>
+            <button id="btn-go-add-match" class="btn-secondary" style="margin-top: 12px;">📝 Adicionar Partida</button>
             <button id="btn-go-heroes" class="btn-secondary" style="margin-top: 12px;">🦸 Heróis</button>
 
             <div id="home-feed-section" class="home-feed-section">
@@ -180,6 +181,64 @@
             <p id="hero-stats-loading" class="waiting-text" style="display: none;">Carregando estatísticas...</p>
 
             <button id="btn-hero-stats-back" class="btn-secondary" style="margin-top: 18px;">Voltar ao Início</button>
+        </div>
+
+        <!-- TELA: Adicionar Partida Manual -->
+        <div id="screen-add-match" class="screen" style="display: none;">
+            <h1>📝 Adicionar Partida</h1>
+            <p>Registre uma partida que aconteceu fora do site. Os dados serão adicionados ao feed e às estatísticas dos heróis.</p>
+
+            <div class="config-section">
+                <h3>Jogador 1</h3>
+                <input type="text" id="add-match-p1-name" class="text-input" placeholder="Nome do Jogador 1">
+                <select id="add-match-p1-hero" class="text-input" style="margin-top: 8px;">
+                    <option value="">Selecione o herói...</option>
+                </select>
+            </div>
+
+            <div class="config-section">
+                <h3>Jogador 2</h3>
+                <input type="text" id="add-match-p2-name" class="text-input" placeholder="Nome do Jogador 2">
+                <select id="add-match-p2-hero" class="text-input" style="margin-top: 8px;">
+                    <option value="">Selecione o herói...</option>
+                </select>
+            </div>
+
+            <div class="config-section">
+                <h3>Quem Venceu?</h3>
+                <div class="mode-options">
+                    <label class="mode-option">
+                        <input type="radio" name="add-match-winner" value="1" checked>
+                        <span class="mode-label">
+                            <strong>Jogador 1</strong>
+                        </span>
+                    </label>
+                    <label class="mode-option">
+                        <input type="radio" name="add-match-winner" value="2">
+                        <span class="mode-label">
+                            <strong>Jogador 2</strong>
+                        </span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="config-section">
+                <h3>Data da Partida</h3>
+                <input type="date" id="add-match-date" class="text-input">
+            </div>
+
+            <div class="config-section">
+                <h3>Duração (opcional)</h3>
+                <input type="text" id="add-match-duration" class="text-input" placeholder="Ex: 15:30">
+            </div>
+
+            <div class="config-section">
+                <h3>Observações (opcional)</h3>
+                <textarea id="add-match-notes" class="text-input" rows="3" placeholder="Detalhes adicionais sobre a partida..."></textarea>
+            </div>
+
+            <button id="btn-add-match-submit" style="background-color: #2ecc71;">Registrar Partida</button>
+            <button id="btn-add-match-back" class="btn-secondary">Voltar</button>
         </div>
 
         <!-- TELA: Entrar com código -->

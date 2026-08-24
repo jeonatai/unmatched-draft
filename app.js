@@ -2787,6 +2787,15 @@ window.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-tournament-create').onclick = createTournament;
     document.getElementById('btn-copy-tournament-link').onclick = copyTournamentLink;
 
+    // Eventos de Adicionar Partida Manual
+    document.getElementById('btn-go-add-match').onclick = () => {
+        showScreen('screen-add-match');
+        populateHeroSelects();
+        setDefaultDate();
+    };
+    document.getElementById('btn-add-match-back').onclick = () => showScreen('screen-home');
+    document.getElementById('btn-add-match-submit').onclick = submitManualMatch;
+
     const params = new URLSearchParams(window.location.search);
     const urlRoom = params.get('room');
     const urlTournament = params.get('tournament');
@@ -3551,3 +3560,127 @@ document.getElementById('btn-tournament-home').onclick = () => {
     window.history.replaceState({}, '', window.location.pathname);
     showScreen('screen-home');
 };
+
+// ============================================================
+// ADICIONAR PARTIDA MANUAL
+// ============================================================
+function populateHeroSelects() {
+    const p1Select = document.getElementById('add-match-p1-hero');
+    const p2Select = document.getElementById('add-match-p2-hero');
+    
+    // Limpar opções existentes (mantendo a primeira)
+    p1Select.innerHTML = '<option value="">Selecione o herói...</option>';
+    p2Select.innerHTML = '<option value="">Selecione o herói...</option>';
+    
+    // Adicionar heróis ordenados alfabeticamente
+    const sortedHeroes = [...PERSONAGENS].sort((a, b) => a.nome.localeCompare(b.nome));
+    
+    sortedHeroes.forEach(hero => {
+        const option1 = document.createElement('option');
+        option1.value = hero.nome;
+        option1.textContent = hero.nome;
+        p1Select.appendChild(option1);
+        
+        const option2 = document.createElement('option');
+        option2.value = hero.nome;
+        option2.textContent = hero.nome;
+        p2Select.appendChild(option2);
+    });
+}
+
+function setDefaultDate() {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('add-match-date').value = today;
+}
+
+function submitManualMatch() {
+    const p1Name = document.getElementById('add-match-p1-name').value.trim();
+    const p1Hero = document.getElementById('add-match-p1-hero').value;
+    const p2Name = document.getElementById('add-match-p2-name').value.trim();
+    const p2Hero = document.getElementById('add-match-p2-hero').value;
+    const winner = document.querySelector('input[name="add-match-winner"]:checked').value;
+    const dateStr = document.getElementById('add-match-date').value;
+    const durationStr = document.getElementById('add-match-duration').value.trim();
+    const notes = document.getElementById('add-match-notes').value.trim();
+    
+    // Validação
+    if (!p1Name || !p1Hero || !p2Name || !p2Hero) {
+        alert('Preencha o nome e herói de ambos os jogadores');
+        return;
+    }
+    
+    if (p1Hero === p2Hero) {
+        alert('Os jogadores não podem usar o mesmo herói');
+        return;
+    }
+    
+    if (!dateStr) {
+        alert('Selecione a data da partida');
+        return;
+    }
+    
+    // Calcular duração em milissegundos se fornecida
+    let durationMs = null;
+    if (durationStr) {
+        const parts = durationStr.split(':');
+        if (parts.length === 2) {
+            const minutes = parseInt(parts[0]) || 0;
+            const seconds = parseInt(parts[1]) || 0;
+            durationMs = (minutes * 60 + seconds) * 1000;
+        }
+    }
+    
+    // Converter data para timestamp
+    const matchDate = new Date(dateStr + 'T00:00:00').getTime();
+    
+    // Criar registro no feed
+    const participants = [
+        {
+            name: p1Name,
+            hero: p1Hero,
+            colorClass: 'player-1',
+            won: winner === '1'
+        },
+        {
+            name: p2Name,
+            hero: p2Hero,
+            colorClass: 'player-2',
+            won: winner === '2'
+        }
+    ];
+    
+    const winnerHero = winner === '1' ? p1Hero : p2Hero;
+    const loserHero = winner === '1' ? p2Hero : p1Hero;
+    
+    db.ref('posts').push({
+        participants,
+        mode: 'manual',
+        combats: [{
+            p1Hero: p1Hero,
+            p2Hero: p2Hero,
+            winner: parseInt(winner)
+        }],
+        durationMs: durationMs,
+        timestamp: matchDate,
+        notes: notes || null
+    }).then(() => {
+        // Atualizar estatísticas dos heróis
+        updateHeroStats(winnerHero, loserHero, true);
+        updateHeroStats(loserHero, winnerHero, false);
+        
+        // Limpar formulário e voltar para home
+        document.getElementById('add-match-p1-name').value = '';
+        document.getElementById('add-match-p1-hero').value = '';
+        document.getElementById('add-match-p2-name').value = '';
+        document.getElementById('add-match-p2-hero').value = '';
+        document.getElementById('add-match-duration').value = '';
+        document.getElementById('add-match-notes').value = '';
+        setDefaultDate();
+        
+        alert('Partida registrada com sucesso!');
+        showScreen('screen-home');
+    }).catch(error => {
+        console.error('Erro ao registrar partida:', error);
+        alert('Erro ao registrar partida. Tente novamente.');
+    });
+}

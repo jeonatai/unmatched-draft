@@ -1384,3 +1384,45 @@ button:disabled {
 #tournament-final-bracket {
     margin: 20px 0;
 }
+
+/* ==========================================================================
+   ADICIONAR PARTIDA MANUAL
+   ========================================================================== */
+#screen-add-match .config-section {
+    margin-bottom: 20px;
+    text-align: left;
+}
+
+#screen-add-match .config-section h3 {
+    font-size: 14px;
+    color: #ffd166;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+#screen-add-match select {
+    width: 100%;
+    padding: 12px;
+    background: #1e1e24;
+    border: 1px solid #2f3542;
+    border-radius: 10px;
+    color: #f1f2f6;
+    font-size: 14px;
+    cursor: pointer;
+    margin-top: 8px;
+}
+
+#screen-add-match select:focus {
+    outline: none;
+    border-color: #2ecc71;
+}
+
+#screen-add-match textarea {
+    min-height: 80px;
+    resize: vertical;
+    font-family: inherit;
+    text-transform: none;
+    letter-spacing: normal;
+    text-align: left;
+}
