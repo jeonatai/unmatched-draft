@@ -122,6 +122,14 @@ let combatTimerInterval = null;
 let quickState = null;
 let quickTimerInterval = null;
 
+// Estado do Torneio
+let tournamentId = null;
+let tournamentRef = null;
+let tournamentState = null;
+let myTournamentIndex = null;
+let myTournamentHero = null;
+let tournamentTimerInterval = null;
+
 // ============================================================
 // TIMER COM PAUSE/PLAY
 // ============================================================
@@ -336,13 +344,21 @@ document.getElementById('btn-pause-combat')?.addEventListener('click', () => {
 
 function goHome() {
     stopCombatTimerDisplay();
+    stopTournamentCombatTimerDisplay();
     if (roomRef) roomRef.off();
+    if (tournamentRef) tournamentRef.off();
     roomId = null;
     myRole = null;
     myNameIndex = null;
     roomRef = null;
     gameState = null;
+    tournamentId = null;
+    tournamentRef = null;
+    tournamentState = null;
+    myTournamentIndex = null;
+    myTournamentHero = null;
     updateRoomHeader();
+    updateTournamentHeader();
     window.history.replaceState({}, '', window.location.pathname);
     showScreen('screen-home');
     attachFeedListener();
@@ -2761,8 +2777,19 @@ window.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-copy-link').onclick = copyRoomLink;
     document.getElementById('btn-copy-code').onclick = copyRoomCode;
 
+    // Eventos do Torneio
+    document.getElementById('btn-go-tournament').onclick = () => {
+        showScreen('screen-tournament-setup');
+        updateTournamentSetupUI();
+    };
+    document.getElementById('btn-tournament-back').onclick = () => showScreen('screen-home');
+    document.getElementById('tournament-player-count').addEventListener('input', updateTournamentSetupUI);
+    document.getElementById('btn-tournament-create').onclick = createTournament;
+    document.getElementById('btn-copy-tournament-link').onclick = copyTournamentLink;
+
     const params = new URLSearchParams(window.location.search);
     const urlRoom = params.get('room');
+    const urlTournament = params.get('tournament');
 
     attachFeedListener();
     runHeroStatsMigrationIfNeeded();
@@ -2771,9 +2798,756 @@ window.addEventListener('DOMContentLoaded', () => {
         roomId = urlRoom.toUpperCase();
         updateRoomHeader();
         tryJoinRoom();
+    } else if (urlTournament) {
+        tournamentId = urlTournament.toUpperCase();
+        updateTournamentHeader();
+        tryJoinTournament();
     } else {
         showScreen('screen-home');
     }
 });
 
 window.goHome = goHome;
+
+// ============================================================
+// SISTEMA DE TORNEIO
+// ============================================================
+
+function updateTournamentSetupUI() {
+    const count = parseInt(document.getElementById('tournament-player-count').value) || 4;
+    const container = document.getElementById('tournament-names-inputs');
+    container.innerHTML = '';
+    for (let i = 0; i < count; i++) {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'text-input name-input';
+        input.placeholder = 'Jogador ' + (i + 1);
+        input.value = 'Jogador ' + (i + 1);
+        input.dataset.index = i;
+        container.appendChild(input);
+    }
+}
+
+function getTournamentNames() {
+    return Array.from(document.querySelectorAll('#tournament-names-inputs .name-input'))
+        .map(inp => inp.value.trim() || inp.placeholder);
+}
+
+function generateTournamentBracket(playerCount) {
+    const rounds = Math.log2(playerCount);
+    const bracket = [];
+    
+    // Gerar primeira rodada com todos os jogadores
+    const firstRound = [];
+    for (let i = 0; i < playerCount; i += 2) {
+        firstRound.push({
+            matchId: `r1m${i/2}`,
+            player1: i,
+            player2: i + 1,
+            winner: null,
+            hero1: null,
+            hero2: null,
+            ready1: false,
+            ready2: false,
+            combatStarted: false,
+            combatEnded: false
+        });
+    }
+    bracket.push(firstRound);
+    
+    // Gerar rodadas subsequentes
+    let matchCount = playerCount / 2;
+    for (let r = 1; r < rounds; r++) {
+        const round = [];
+        for (let i = 0; i < matchCount; i++) {
+            round.push({
+                matchId: `r${r+1}m${i}`,
+                player1: null, // Será preenchido pelo vencedor da rodada anterior
+                player2: null,
+                winner: null,
+                hero1: null,
+                hero2: null,
+                ready1: false,
+                ready2: false,
+                combatStarted: false,
+                combatEnded: false
+            });
+        }
+        bracket.push(round);
+        matchCount /= 2;
+    }
+    
+    return bracket;
+}
+
+function createTournament() {
+    const playerCount = parseInt(document.getElementById('tournament-player-count').value);
+    const validCounts = [2, 4, 8, 16];
+    
+    if (!validCounts.includes(playerCount)) {
+        alert('Número de jogadores deve ser 2, 4, 8 ou 16');
+        return;
+    }
+    
+    const playerNames = getTournamentNames();
+    if (playerNames.length !== playerCount) {
+        alert('Preencha todos os nomes dos jogadores');
+        return;
+    }
+    
+    tournamentId = generateRoomId();
+    
+    // Sortear 2 heróis únicos para cada jogador
+    const heroOptions = {};
+    const totalHeroesNeeded = playerCount * 2;
+    const shuffledHeroes = shuffleArray(PERSONAGENS).slice(0, totalHeroesNeeded);
+    
+    for (let i = 0; i < playerCount; i++) {
+        heroOptions[i] = shuffledHeroes.slice(i * 2, (i + 1) * 2);
+    }
+    
+    const initialState = {
+        playerCount,
+        playerNames,
+        heroOptions,
+        heroSelections: {}, // Índice do jogador -> herói escolhido
+        bracket: generateTournamentBracket(playerCount),
+        phase: 'lobby',
+        nameClaims: {},
+        currentRound: 0,
+        tournamentEnded: false,
+        champion: null,
+        createdAt: Date.now()
+    };
+    
+    tournamentRef = db.ref('tournaments/' + tournamentId);
+    tournamentRef.set(initialState).then(() => {
+        const link = window.location.origin + window.location.pathname + '?tournament=' + tournamentId;
+        document.getElementById('tournament-link-input').value = link;
+        document.getElementById('tournament-room-code').innerText = tournamentId;
+        updateTournamentHeader();
+        window.history.replaceState({}, '', link);
+        showScreen('screen-tournament-lobby');
+        attachTournamentListener();
+    });
+}
+
+function copyTournamentLink() {
+    const input = document.getElementById('tournament-link-input');
+    input.select();
+    navigator.clipboard.writeText(input.value).then(() => {
+        const btn = document.getElementById('btn-copy-tournament-link');
+        const original = btn.innerText;
+        btn.innerText = 'Copiado! ✅';
+        setTimeout(() => { btn.innerText = original; }, 1500);
+    });
+}
+
+function updateTournamentHeader() {
+    const header = document.getElementById('room-code-header');
+    if (tournamentId) {
+        header.style.display = 'flex';
+        document.getElementById('room-code-display').innerText = tournamentId;
+    } else {
+        header.style.display = 'none';
+    }
+}
+
+function tryJoinTournament() {
+    updateTournamentHeader();
+    const savedIndex = localStorage.getItem('unmatched_tournament_idx_' + tournamentId);
+    
+    if (savedIndex !== null) {
+        myTournamentIndex = parseInt(savedIndex, 10);
+        attachTournamentListener();
+        return;
+    }
+    
+    const ref = db.ref('tournaments/' + tournamentId);
+    ref.get().then(snapshot => {
+        if (!snapshot.exists()) {
+            alert('Torneio não encontrado');
+            showScreen('screen-home');
+            return;
+        }
+        
+        tournamentRef = ref;
+        attachTournamentListener();
+    }).catch(() => {
+        alert('Erro ao conectar ao torneio');
+        showScreen('screen-home');
+    });
+}
+
+function attachTournamentListener() {
+    tournamentRef = db.ref('tournaments/' + tournamentId);
+    tournamentRef.on('value', snapshot => {
+        tournamentState = snapshot.val();
+        if (!tournamentState) {
+            goHome();
+            return;
+        }
+        renderTournament();
+    });
+}
+
+function renderTournament() {
+    updateTournamentHeader();
+    
+    const phase = tournamentState.phase;
+    
+    if (phase === 'lobby') {
+        renderTournamentLobby();
+        return;
+    }
+    
+    if (phase === 'hero-selection') {
+        renderTournamentHeroSelection();
+        return;
+    }
+    
+    if (phase === 'bracket') {
+        renderTournamentBracket();
+        return;
+    }
+    
+    if (phase === 'combat') {
+        renderTournamentCombat();
+        return;
+    }
+    
+    if (phase === 'ended') {
+        renderTournamentResult();
+        return;
+    }
+}
+
+function renderTournamentLobby() {
+    showScreen('screen-tournament-lobby');
+    const link = window.location.origin + window.location.pathname + '?tournament=' + tournamentId;
+    document.getElementById('tournament-link-input').value = link;
+    document.getElementById('tournament-room-code').innerText = tournamentId;
+    
+    const list = document.getElementById('tournament-players-list');
+    list.innerHTML = '';
+    
+    tournamentState.playerNames.forEach((name, idx) => {
+        const claimed = tournamentState.nameClaims && tournamentState.nameClaims[idx];
+        const isMe = claimed === getDeviceId();
+        const div = document.createElement('div');
+        div.className = 'name-claim-item' + (claimed ? ' claimed' : '') + (isMe ? ' is-me' : '');
+        div.innerHTML = '<span class="player-tag player-' + ((idx % 4) + 1) + '">J' + (idx + 1) + '</span><span>' + name + '</span>';
+        
+        if (!claimed) {
+            div.onclick = () => claimTournamentName(idx);
+        } else if (isMe) {
+            div.innerHTML += ' <span class="you-badge">(Você)</span>';
+        } else {
+            div.innerHTML += ' <span class="taken-badge">✓</span>';
+        }
+        
+        list.appendChild(div);
+    });
+    
+    const claimedCount = tournamentState.nameClaims ? Object.keys(tournamentState.nameClaims).length : 0;
+    const totalPlayers = tournamentState.playerCount;
+    
+    if (claimedCount < totalPlayers) {
+        document.getElementById('tournament-waiting-status').innerText = `⏳ ${claimedCount}/${totalPlayers} jogadores entraram...`;
+    } else {
+        document.getElementById('tournament-waiting-status').innerText = '✅ Todos entraram! Iniciando seleção de heróis...';
+        
+        // Se todos entraram e eu sou o primeiro, iniciar fase de seleção
+        if (claimedCount === totalPlayers && tournamentState.phase === 'lobby') {
+            tournamentRef.update({ phase: 'hero-selection' });
+        }
+    }
+}
+
+function claimTournamentName(nameIndex) {
+    const deviceId = getDeviceId();
+    const claims = tournamentState.nameClaims || {};
+    
+    // Verificar se já reivindiquei algum nome
+    for (const [idx, dev] of Object.entries(claims)) {
+        if (dev === deviceId) return;
+    }
+    
+    const alreadyClaimed = !!claims[nameIndex];
+    if (alreadyClaimed) {
+        alert('Este nome já foi escolhido');
+        return;
+    }
+    
+    claims[nameIndex] = deviceId;
+    myTournamentIndex = nameIndex;
+    localStorage.setItem('unmatched_tournament_idx_' + tournamentId, nameIndex);
+    
+    tournamentRef.update({ nameClaims: claims });
+}
+
+function renderTournamentHeroSelection() {
+    showScreen('screen-tournament-hero-selection');
+    
+    // Se já escolhi herói, mostrar waiting
+    if (tournamentState.heroSelections && tournamentState.heroSelections[myTournamentIndex] !== undefined) {
+        document.getElementById('tournament-hero-cards').style.display = 'none';
+        document.getElementById('btn-confirm-tournament-hero').style.display = 'none';
+        document.getElementById('tournament-hero-waiting').style.display = 'block';
+        return;
+    }
+    
+    // Mostrar heróis disponíveis para mim
+    const myOptions = tournamentState.heroOptions[myTournamentIndex];
+    const container = document.getElementById('tournament-hero-cards');
+    container.innerHTML = '';
+    
+    myOptions.forEach((hero, idx) => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.onclick = () => selectTournamentHero(idx);
+        fillCardContent(card, hero);
+        container.appendChild(card);
+    });
+    
+    document.getElementById('tournament-hero-cards').style.display = 'grid';
+    document.getElementById('btn-confirm-tournament-hero').style.display = 'block';
+    document.getElementById('tournament-hero-waiting').style.display = 'none';
+    document.getElementById('btn-confirm-tournament-hero').disabled = true;
+}
+
+let selectedTournamentHeroIndex = null;
+
+function selectTournamentHero(index) {
+    selectedTournamentHeroIndex = index;
+    document.querySelectorAll('#tournament-hero-cards .card').forEach((card, idx) => {
+        card.classList.toggle('selected', idx === index);
+    });
+    document.getElementById('btn-confirm-tournament-hero').disabled = false;
+}
+
+document.getElementById('btn-confirm-tournament-hero').onclick = () => {
+    if (selectedTournamentHeroIndex === null) return;
+    
+    const myOptions = tournamentState.heroOptions[myTournamentIndex];
+    const selectedHero = myOptions[selectedTournamentHeroIndex];
+    
+    const selections = tournamentState.heroSelections || {};
+    selections[myTournamentIndex] = selectedHero;
+    
+    tournamentRef.update({ heroSelections: selections });
+    selectedTournamentHeroIndex = null;
+};
+
+function renderTournamentBracket() {
+    showScreen('screen-tournament-bracket');
+    
+    myTournamentHero = tournamentState.heroSelections[myTournamentIndex];
+    
+    // Renderizar bracket visual
+    const container = document.getElementById('tournament-bracket-container');
+    container.innerHTML = '';
+    
+    tournamentState.bracket.forEach((round, roundIdx) => {
+        const roundDiv = document.createElement('div');
+        roundDiv.className = 'bracket-round';
+        roundDiv.innerHTML = `<h4>Rodada ${roundIdx + 1}</h4>`;
+        
+        round.forEach(match => {
+            const matchDiv = document.createElement('div');
+            matchDiv.className = 'bracket-match';
+            
+            const p1Name = match.player1 !== null ? tournamentState.playerNames[match.player1] : '???';
+            const p2Name = match.player2 !== null ? tournamentState.playerNames[match.player2] : '???';
+            const hero1Name = match.hero1 ? match.hero1.nome : '???';
+            const hero2Name = match.hero2 ? match.hero2.nome : '???';
+            
+            matchDiv.innerHTML = `
+                <div class="match-player ${match.winner === 1 ? 'winner' : ''}">
+                    <span class="player-name">${p1Name}</span>
+                    <span class="hero-name">${hero1Name}</span>
+                </div>
+                <div class="match-vs">VS</div>
+                <div class="match-player ${match.winner === 2 ? 'winner' : ''}">
+                    <span class="player-name">${p2Name}</span>
+                    <span class="hero-name">${hero2Name}</span>
+                </div>
+            `;
+            
+            roundDiv.appendChild(matchDiv);
+        });
+        
+        container.appendChild(roundDiv);
+    });
+    
+    // Encontrar minha próxima luta
+    const myMatch = findMyCurrentMatch();
+    
+    if (myMatch) {
+        document.getElementById('tournament-current-match').style.display = 'block';
+        
+        const opponentIndex = myMatch.player1 === myTournamentIndex ? myMatch.player2 : myMatch.player1;
+        const opponentName = tournamentState.playerNames[opponentIndex];
+        const opponentHero = tournamentState.heroSelections[opponentIndex];
+        
+        document.getElementById('tournament-matchup-display').innerHTML = `
+            <div class="fighter-card">
+                <img src="${myTournamentHero.img}" alt="${myTournamentHero.nome}">
+                <span>${myTournamentHero.nome}</span>
+            </div>
+            <div class="vs">VS</div>
+            <div class="fighter-card">
+                <img src="${opponentHero.img}" alt="${opponentHero.nome}">
+                <span>${opponentHero.nome}</span>
+            </div>
+        `;
+        
+        const myReady = myMatch.player1 === myTournamentIndex ? myMatch.ready1 : myMatch.ready2;
+        const opponentReady = myMatch.player1 === myTournamentIndex ? myMatch.ready2 : myMatch.ready1;
+        
+        document.getElementById('btn-tournament-ready').disabled = myReady;
+        document.getElementById('btn-tournament-ready').innerText = myReady ? 'Aguardando oponente...' : 'Pronto para Combate';
+        
+        if (opponentReady) {
+            document.getElementById('tournament-opponent-status').innerText = '✅ Oponente pronto!';
+        } else {
+            document.getElementById('tournament-opponent-status').innerText = '⏳ Aguardando oponente...';
+        }
+        
+        // Se ambos prontos, iniciar combate
+        if (myReady && opponentReady && !myMatch.combatStarted) {
+            tournamentRef.update({
+                [`bracket/${tournamentState.currentRound}/${myMatch.matchId}/combatStarted`]: true,
+                phase: 'combat'
+            });
+        }
+    } else {
+        document.getElementById('tournament-current-match').style.display = 'none';
+    }
+}
+
+function findMyCurrentMatch() {
+    const currentRound = tournamentState.bracket[tournamentState.currentRound];
+    if (!currentRound) return null;
+    
+    for (const match of currentRound) {
+        if (match.player1 === myTournamentIndex || match.player2 === myTournamentIndex) {
+            if (!match.combatEnded) {
+                return match;
+            }
+        }
+    }
+    return null;
+}
+
+document.getElementById('btn-tournament-ready').onclick = () => {
+    const myMatch = findMyCurrentMatch();
+    if (!myMatch) return;
+    
+    const updatePath = `bracket/${tournamentState.currentRound}/${myMatch.matchId}`;
+    const updates = {};
+    
+    if (myMatch.player1 === myTournamentIndex) {
+        updates[`${updatePath}/ready1`] = true;
+    } else {
+        updates[`${updatePath}/ready2`] = true;
+    }
+    
+    tournamentRef.update(updates);
+};
+
+function renderTournamentCombat() {
+    showScreen('screen-tournament-combat');
+    
+    const myMatch = findMyCurrentMatch();
+    if (!myMatch) {
+        // Não estou em combate, aguardar
+        showScreen('screen-tournament-bracket');
+        return;
+    }
+    
+    const opponentIndex = myMatch.player1 === myTournamentIndex ? myMatch.player2 : myMatch.player1;
+    const opponentHero = tournamentState.heroSelections[opponentIndex];
+    
+    document.getElementById('tournament-fighter-you').innerHTML = `
+        <img src="${myTournamentHero.img}" alt="${myTournamentHero.nome}">
+        <span>${myTournamentHero.nome}</span>
+    `;
+    
+    document.getElementById('tournament-fighter-opponent').innerHTML = `
+        <img src="${opponentHero.img}" alt="${opponentHero.nome}">
+        <span>${opponentHero.nome}</span>
+    `;
+    
+    // Timer
+    if (!tournamentState.combatTimer) {
+        tournamentRef.update({ combatTimer: newTimer() });
+    }
+    
+    startTournamentCombatTimerDisplay();
+}
+
+function startTournamentCombatTimerDisplay() {
+    stopTournamentCombatTimerDisplay();
+    updateTournamentCombatTimerDisplay();
+    tournamentTimerInterval = setInterval(updateTournamentCombatTimerDisplay, 1000);
+}
+
+function stopTournamentCombatTimerDisplay() {
+    if (tournamentTimerInterval) {
+        clearInterval(tournamentTimerInterval);
+        tournamentTimerInterval = null;
+    }
+}
+
+function updateTournamentCombatTimerDisplay() {
+    const el = document.getElementById('tournament-combat-timer');
+    if (el && tournamentState && tournamentState.combatTimer) {
+        el.innerText = '⏱️ ' + formatDuration(getElapsedMs(tournamentState.combatTimer));
+    }
+    
+    const pauseBtn = document.getElementById('btn-pause-tournament-combat');
+    if (pauseBtn && tournamentState && tournamentState.combatTimer) {
+        pauseBtn.innerText = pauseBtnLabel(tournamentState.combatTimer);
+    }
+}
+
+document.getElementById('btn-pause-tournament-combat').onclick = () => {
+    if (!tournamentState || !tournamentRef) return;
+    const timer = tournamentState.combatTimer;
+    const updated = (timer && !timer.paused) ? pauseTimer(timer) : resumeTimer(timer);
+    tournamentRef.update({ combatTimer: updated });
+};
+
+document.getElementById('btn-tournament-draw-map').onclick = () => {
+    const map = drawRandomMap(false);
+    document.getElementById('tournament-map-draw-image').src = map.img;
+    document.getElementById('tournament-map-draw-name').innerText = map.nome;
+    document.getElementById('tournament-map-draw-result').style.display = 'block';
+    document.getElementById('btn-tournament-draw-map').style.display = 'none';
+};
+
+document.getElementById('btn-tournament-winner-you').onclick = () => endTournamentMatch(true);
+document.getElementById('btn-tournament-winner-opponent').onclick = () => endTournamentMatch(false);
+
+function endTournamentMatch(iWon) {
+    const myMatch = findMyCurrentMatch();
+    if (!myMatch) return;
+    
+    const updatePath = `bracket/${tournamentState.currentRound}/${myMatch.matchId}`;
+    const updates = {};
+    
+    // Determinar vencedor
+    let winnerIndex;
+    if (iWon) {
+        winnerIndex = myTournamentIndex;
+    } else {
+        winnerIndex = myMatch.player1 === myTournamentIndex ? myMatch.player2 : myMatch.player1;
+    }
+    
+    const loserIndex = myMatch.player1 === winnerIndex ? myMatch.player2 : myMatch.player1;
+    const winnerHero = tournamentState.heroSelections[winnerIndex];
+    const loserHero = tournamentState.heroSelections[loserIndex];
+    
+    updates[`${updatePath}/winner`] = myMatch.player1 === winnerIndex ? 1 : 2;
+    updates[`${updatePath}/combatEnded`] = true;
+    
+    tournamentRef.update(updates).then(() => {
+        // Registrar duelo no feed e nas estatísticas
+        postTournamentDuel(winnerIndex, loserIndex, winnerHero, loserHero, myMatch);
+        updateHeroStats(winnerHero.nome, loserHero.nome, true);
+        updateHeroStats(loserHero.nome, winnerHero.nome, false);
+        
+        // Verificar se a rodada terminou
+        checkRoundCompletion();
+    });
+}
+
+function postTournamentDuel(winnerIndex, loserIndex, winnerHero, loserHero, match) {
+    const durationMs = tournamentState.combatTimer ? getElapsedMs(tournamentState.combatTimer) : null;
+    
+    const participants = [
+        {
+            name: tournamentState.playerNames[winnerIndex],
+            hero: winnerHero.nome,
+            colorClass: 'player-' + ((winnerIndex % 4) + 1),
+            won: true
+        },
+        {
+            name: tournamentState.playerNames[loserIndex],
+            hero: loserHero.nome,
+            colorClass: 'player-' + ((loserIndex % 4) + 1),
+            won: false
+        }
+    ];
+    
+    db.ref('posts').push({
+        participants,
+        mode: 'tournament',
+        tournamentId: tournamentId,
+        round: tournamentState.currentRound + 1,
+        combats: [{
+            p1Hero: winnerHero.nome,
+            p2Hero: loserHero.nome,
+            winner: winnerIndex === match?.player1 ? 1 : 2
+        }],
+        durationMs: durationMs,
+        timestamp: Date.now()
+    });
+}
+
+function updateHeroStats(heroName, opponentName, won) {
+    const hKey = heroKey(heroName);
+    const oKey = heroKey(opponentName);
+    
+    const updates = {};
+    
+    // Atualizar contadores gerais
+    updates[`heroStats/${hKey}/${won ? 'wins' : 'losses'}`] = firebase.database.ServerValue.increment(1);
+    
+    // Atualizar contadores específicos contra o oponente
+    updates[`heroStats/${hKey}/vs/${oKey}/${won ? 'wins' : 'losses'}`] = firebase.database.ServerValue.increment(1);
+    
+    db.ref().update(updates);
+}
+
+function postTournamentFinalResult(championIndex, championHero) {
+    const participants = tournamentState.playerNames.map((name, idx) => ({
+        name: name,
+        hero: tournamentState.heroSelections[idx].nome,
+        colorClass: 'player-' + ((idx % 4) + 1),
+        won: idx === championIndex,
+        note: idx === championIndex ? '🏆 Campeão' : ''
+    }));
+    
+    db.ref('posts').push({
+        participants,
+        mode: 'tournament-final',
+        tournamentId: tournamentId,
+        champion: championIndex,
+        championHero: championHero.nome,
+        timestamp: Date.now()
+    });
+}
+
+function checkRoundCompletion() {
+    const currentRound = tournamentState.bracket[tournamentState.currentRound];
+    const allMatchesEnded = currentRound.every(match => match.combatEnded);
+    
+    if (allMatchesEnded) {
+        // Avançar vencedores para próxima rodada
+        advanceRound();
+    }
+}
+
+function advanceRound() {
+    const currentRound = tournamentState.bracket[tournamentState.currentRound];
+    const nextRoundIndex = tournamentState.currentRound + 1;
+    
+    if (nextRoundIndex >= tournamentState.bracket.length) {
+        // Torneio acabou
+        const finalMatch = currentRound[0];
+        const championIndex = finalMatch.winner === 1 ? finalMatch.player1 : finalMatch.player2;
+        const championHero = tournamentState.heroSelections[championIndex];
+        
+        tournamentRef.update({
+            tournamentEnded: true,
+            champion: championIndex,
+            phase: 'ended'
+        });
+        
+        // Postar resultado final do torneio no feed
+        postTournamentFinalResult(championIndex, championHero);
+        return;
+    }
+    
+    const nextRound = tournamentState.bracket[nextRoundIndex];
+    
+    // Avançar vencedores
+    for (let i = 0; i < currentRound.length; i++) {
+        const match = currentRound[i];
+        const winnerIndex = match.winner === 1 ? match.player1 : match.player2;
+        const winnerHero = tournamentState.heroSelections[winnerIndex];
+        
+        const nextMatchIndex = Math.floor(i / 2);
+        const nextMatch = nextRound[nextMatchIndex];
+        
+        if (i % 2 === 0) {
+            nextMatch.player1 = winnerIndex;
+            nextMatch.hero1 = winnerHero;
+        } else {
+            nextMatch.player2 = winnerIndex;
+            nextMatch.hero2 = winnerHero;
+        }
+    }
+    
+    tournamentRef.update({
+        bracket: tournamentState.bracket,
+        currentRound: nextRoundIndex,
+        phase: 'bracket'
+    });
+}
+
+function renderTournamentResult() {
+    showScreen('screen-tournament-result');
+    
+    const championIndex = tournamentState.champion;
+    const championName = tournamentState.playerNames[championIndex];
+    const championHero = tournamentState.heroSelections[championIndex];
+    
+    document.getElementById('tournament-result-title').innerText = 
+        championIndex === myTournamentIndex ? '🏆 Você Venceu o Torneio!' : '🏆 Torneio Encerrado!';
+    
+    document.getElementById('tournament-result-message').innerHTML = `
+        <strong>Campeão:</strong> ${championName} com ${championHero.nome}
+    `;
+    
+    // Mostrar bracket final
+    const container = document.getElementById('tournament-final-bracket');
+    container.innerHTML = '';
+    
+    tournamentState.bracket.forEach((round, roundIdx) => {
+        const roundDiv = document.createElement('div');
+        roundDiv.className = 'bracket-round';
+        roundDiv.innerHTML = `<h4>Rodada ${roundIdx + 1}</h4>`;
+        
+        round.forEach(match => {
+            const matchDiv = document.createElement('div');
+            matchDiv.className = 'bracket-match';
+            
+            const p1Name = match.player1 !== null ? tournamentState.playerNames[match.player1] : '???';
+            const p2Name = match.player2 !== null ? tournamentState.playerNames[match.player2] : '???';
+            const hero1Name = match.hero1 ? match.hero1.nome : '???';
+            const hero2Name = match.hero2 ? match.hero2.nome : '???';
+            
+            matchDiv.innerHTML = `
+                <div class="match-player ${match.winner === 1 ? 'winner' : ''}">
+                    <span class="player-name">${p1Name}</span>
+                    <span class="hero-name">${hero1Name}</span>
+                </div>
+                <div class="match-vs">VS</div>
+                <div class="match-player ${match.winner === 2 ? 'winner' : ''}">
+                    <span class="player-name">${p2Name}</span>
+                    <span class="hero-name">${hero2Name}</span>
+                </div>
+            `;
+            
+            roundDiv.appendChild(matchDiv);
+        });
+        
+        container.appendChild(roundDiv);
+    });
+}
+
+document.getElementById('btn-tournament-home').onclick = () => {
+    stopTournamentCombatTimerDisplay();
+    if (tournamentRef) tournamentRef.off();
+    tournamentId = null;
+    tournamentRef = null;
+    tournamentState = null;
+    myTournamentIndex = null;
+    myTournamentHero = null;
+    updateTournamentHeader();
+    window.history.replaceState({}, '', window.location.pathname);
+    showScreen('screen-home');
+};
