@@ -1068,6 +1068,38 @@ button:disabled {
     padding: 14px;
 }
 
+.feed-pagination {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    margin: 16px 0 8px;
+}
+
+.feed-page-btn {
+    width: auto;
+    min-width: 38px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 2px solid #2f3542;
+    background: #1e1e24;
+    color: #f1f2f6;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.feed-page-btn:hover {
+    border-color: #2ecc71;
+}
+
+.feed-page-btn.active {
+    border-color: #2ecc71;
+    background: rgba(46, 204, 113, 0.15);
+    color: #2ecc71;
+}
+
 .feed-post-top {
     display: flex;
     align-items: flex-start;
@@ -1383,46 +1415,4 @@ button:disabled {
 
 #tournament-final-bracket {
     margin: 20px 0;
-}
-
-/* ==========================================================================
-   ADICIONAR PARTIDA MANUAL
-   ========================================================================== */
-#screen-add-match .config-section {
-    margin-bottom: 20px;
-    text-align: left;
-}
-
-#screen-add-match .config-section h3 {
-    font-size: 14px;
-    color: #ffd166;
-    margin-bottom: 8px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-#screen-add-match select {
-    width: 100%;
-    padding: 12px;
-    background: #1e1e24;
-    border: 1px solid #2f3542;
-    border-radius: 10px;
-    color: #f1f2f6;
-    font-size: 14px;
-    cursor: pointer;
-    margin-top: 8px;
-}
-
-#screen-add-match select:focus {
-    outline: none;
-    border-color: #2ecc71;
-}
-
-#screen-add-match textarea {
-    min-height: 80px;
-    resize: vertical;
-    font-family: inherit;
-    text-transform: none;
-    letter-spacing: normal;
-    text-align: left;
 }

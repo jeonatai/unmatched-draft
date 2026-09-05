@@ -342,6 +342,10 @@ document.getElementById('btn-pause-combat')?.addEventListener('click', () => {
     roomRef.update({ combatTimer: updated });
 });
 
+document.getElementById('btn-finish-bestof3')?.addEventListener('click', () => {
+    window.finishBestOf3Early();
+});
+
 function goHome() {
     stopCombatTimerDisplay();
     stopTournamentCombatTimerDisplay();
@@ -1145,6 +1149,9 @@ function buildCombatInterface() {
     document.getElementById('judge-1v1').style.display = isTeam ? 'none' : 'flex';
     document.getElementById('judge-teams').style.display = isTeam ? 'flex' : 'none';
 
+    const finishBtn = document.getElementById('btn-finish-bestof3');
+    if (finishBtn) finishBtn.style.display = (!isSingle && !isTeam) ? 'inline-block' : 'none';
+
     if (!isSingle && !isTeam) {
         document.getElementById('score-p1').innerText = gameState.p1Score;
         document.getElementById('score-p2').innerText = gameState.p2Score;
@@ -1393,6 +1400,70 @@ window.registerWinner = function(winnerNum) {
     roomRef.update(updates);
 };
 
+// Encerra uma "Melhor de 3" antes dos 3 combates (ex: um jogador precisa
+// sair, ou os dois concordam em não jogar o combate decisivo). O placar
+// atual decide tudo, sem perguntar quem deve vencer: quem estiver na
+// frente vence; se estiver empatado (0x0 ou 1x1), a série termina em
+// EMPATE. Não conta vitória/derrota extra nas estatísticas — só fecha a
+// série com o que já foi jogado até aqui.
+window.finishBestOf3Early = function() {
+    if (!gameState || gameState.mode !== 'bestof3' || !roomRef) return;
+
+    const p1s = gameState.p1Score || 0;
+    const p2s = gameState.p2Score || 0;
+
+    const p1Used = gameState.p1Used || [];
+    const p2Used = gameState.p2Used || [];
+    const p1LastHero = gameState.p1CombatChoice || p1Used[p1Used.length - 1] || null;
+    const p2LastHero = gameState.p2CombatChoice || p2Used[p2Used.length - 1] || null;
+    const combatLogs = gameState.combatLogs || [];
+    const durationMs = combatLogs.reduce((sum, c) => sum + (c.durationMs || 0), 0);
+
+    if (p1s === p2s) {
+        const ok = window.confirm('Finalizar a Melhor de 3 agora? Placar ' + p1s + ' x ' + p2s + ' — vai terminar em EMPATE.');
+        if (!ok) return;
+
+        roomRef.update({
+            phase: 'post-game',
+            winner: null,
+            winnerTeam: null,
+            isDraw: true,
+            finalWinnerHero: null,
+            finalLoserHero: null,
+            finalP1Hero: p1LastHero,
+            finalP2Hero: p2LastHero,
+            matchDurationMs: durationMs,
+            combatTimer: null,
+            p1CombatChoice: null,
+            p2CombatChoice: null
+        });
+        return;
+    }
+
+    const winnerNum = p1s > p2s ? 1 : 2;
+    const winnerName = getPlayerDisplayName(winnerNum);
+    const ok = window.confirm('Finalizar a Melhor de 3 agora?\n\nPlacar: ' + p1s + ' x ' + p2s + '\nVencedor: ' + winnerName);
+    if (!ok) return;
+
+    const winnerHero = winnerNum === 1 ? p1LastHero : p2LastHero;
+    const loserHero = winnerNum === 1 ? p2LastHero : p1LastHero;
+
+    roomRef.update({
+        phase: 'post-game',
+        winner: winnerNum,
+        winnerTeam: null,
+        isDraw: false,
+        finalWinnerHero: winnerHero,
+        finalLoserHero: loserHero,
+        finalP1Hero: null,
+        finalP2Hero: null,
+        matchDurationMs: durationMs,
+        combatTimer: null,
+        p1CombatChoice: null,
+        p2CombatChoice: null
+    });
+};
+
 window.registerTeamWinner = function(team) {
     const elapsed = getElapsedMs(gameState.combatTimer);
     const picks = gameState.teamPicks || {};
@@ -1430,7 +1501,9 @@ function renderPostGame() {
     postMatchAutomatically();
 
     let msg = '';
-    if (gameState.mode === 'team' && gameState.winnerTeam) {
+    if (gameState.mode === 'bestof3' && gameState.isDraw) {
+        msg = '🤝 Empate! (' + (gameState.p1Score || 0) + ' x ' + (gameState.p2Score || 0) + ')';
+    } else if (gameState.mode === 'team' && gameState.winnerTeam) {
         const teamName = gameState.winnerTeam === 'A'
             ? [1, 3].map(s => getPlayerDisplayName(s)).join(' + ')
             : [2, 4].map(s => getPlayerDisplayName(s)).join(' + ');
@@ -1495,13 +1568,16 @@ function buildMatchParticipants() {
 
     if (gameState.mode === 'bestof3') {
         const winnerRole = gameState.winner;
-        if (!winnerRole) return null;
+        if (!winnerRole && !gameState.isDraw) return null;
+        const scoreNote = (gameState.p1Score || 0) + ' x ' + (gameState.p2Score || 0) + (gameState.isDraw ? ' (Empate)' : '');
         return [1, 2].map(role => ({
             name: getPlayerDisplayName(role),
-            hero: (role === winnerRole ? gameState.finalWinnerHero : gameState.finalLoserHero)?.nome || '?',
+            hero: (gameState.isDraw
+                ? (role === 1 ? gameState.finalP1Hero : gameState.finalP2Hero)
+                : (role === winnerRole ? gameState.finalWinnerHero : gameState.finalLoserHero))?.nome || '?',
             colorClass: PLAYER_COLORS[role].class,
-            won: role === winnerRole,
-            note: (gameState.p1Score || 0) + ' x ' + (gameState.p2Score || 0)
+            won: !gameState.isDraw && role === winnerRole,
+            note: scoreNote
         }));
     }
 
@@ -1599,6 +1675,12 @@ function recordHeroBattleResult(winnerNames, loserNames) {
         db.ref('heroStats/' + wKey + '/vs/' + lKey + '/name').set(loserNames[0]);
         db.ref('heroStats/' + lKey + '/vs/' + wKey + '/name').set(winnerNames[0]);
     }
+
+    // Invalida o cache local da tela "Heróis": assim, se alguém consultar as
+    // estatísticas no meio de uma Melhor de 3 (depois só do 1º combate, por
+    // exemplo), a busca já baixa os números atualizados na hora, em vez de
+    // mostrar dados de antes desse combate.
+    heroStatsCache = null;
 }
 
 // Lê direto do contador separado (2 leituras rápidas, sem varrer partidas).
@@ -1686,12 +1768,12 @@ function populateHeroDatalist() {
 // Classifica uma porcentagem de vitória numa categoria (igual referência).
 function classifyMatchup(pct, total) {
     if (total === 0) return { key: 'unknown', label: 'Desconhecido' };
-    if (pct >= 65) return { key: 'favoured', label: 'Favorito' };
+    if (pct >= 65) return { key: 'favoured', label: 'Ganha contra' };
     if (pct >= 55) return { key: 'slightly-favoured', label: 'Levemente Favorito' };
     if (pct >= 45) return { key: 'balanced', label: 'Equilibrado' };
     if (pct >= 35) return { key: 'slightly-losing', label: 'Levemente Perdendo' };
     if (pct >= 25) return { key: 'losing', label: 'Perdendo' };
-    return { key: 'nightmare', label: 'Pesadelo' };
+    return { key: 'nightmare', label: 'Perde contra' };
 }
 
 // Monta, pra um herói escolhido, o confronto contra TODOS os outros
@@ -1926,6 +2008,118 @@ async function runHeroStatsMigrationIfNeeded() {
     }
 }
 
+// ============================================================
+// MIGRAÇÃO V2: corrige a contagem de vitórias/derrotas da Melhor de 3.
+// ------------------------------------------------------------
+// A migração V1 (acima) e o post do feed só guardam, pra cada jogador,
+// o herói FINAL da série (post.participants). Numa melhor de 3, isso faz
+// cada série contar como "1 vitória/1 derrota" no total geral de um herói,
+// mesmo quando ele venceu 2 combates diferentes (ou usou mais de 1 herói
+// ao longo da série). Esta migração refaz o total geral (wins/losses) e o
+// confronto direto (vs) usando o registro round a round (post.combats),
+// que é o que realmente aconteceu em cada combate da série. Roda uma
+// única vez (nova trava, independente da V1) e RECALCULA os números do
+// zero a partir de todas as partidas já postadas — corrigindo o que a
+// migração antiga (e partidas antigas) deixaram errado.
+async function runHeroStatsMigrationV3IfNeeded() {
+    try {
+        const flagRef = db.ref('migrations/heroStatsV3Done');
+        const already = await flagRef.once('value');
+        if (already.val()) return;
+
+        const lock = await flagRef.transaction(current => current ? undefined : 'running');
+        if (!lock.committed || lock.snapshot.val() !== 'running') return;
+
+        const postsSnap = await db.ref('posts').once('value');
+        const posts = postsSnap.val() || {};
+
+        const agg = {}; // nome do herói -> { wins, losses, vs: { nomeAdversario: vitórias } }
+        function bump(name, field) {
+            if (!name) return;
+            if (!agg[name]) agg[name] = { wins: 0, losses: 0, vs: {} };
+            agg[name][field]++;
+        }
+        function bumpVs(winner, loser) {
+            if (!winner || !loser || winner === loser) return;
+            if (!agg[winner]) agg[winner] = { wins: 0, losses: 0, vs: {} };
+            agg[winner].vs[loser] = (agg[winner].vs[loser] || 0) + 1;
+        }
+
+        // Extrai o herói vencedor/perdedor de UM combate individual (1 herói
+        // contra 1), usando participants pra descobrir de que lado (p1/p2)
+        // veio a vitória. Ignora combates de equipe (heróis juntados com
+        // ", " ou " & ") e combates sem os dois lados definidos.
+        function combatResult(c, participants) {
+            if (!c || !c.p1Hero || !c.p2Hero) return null;
+            if (c.p1Hero.includes(',') || c.p2Hero.includes(',')) return null;
+            if (c.p1Hero.includes(' & ') || c.p2Hero.includes(' & ')) return null;
+            if (c.p1Hero === c.p2Hero) return null;
+
+            let side = null;
+            if (c.winnerName != null && participants[0] && participants[0].name === c.winnerName) side = 1;
+            else if (c.winnerName != null && participants[1] && participants[1].name === c.winnerName) side = 2;
+            else if (c.winner === 1 || c.winner === 2) side = c.winner;
+            else return null;
+
+            return side === 1
+                ? { winner: c.p1Hero, loser: c.p2Hero }
+                : { winner: c.p2Hero, loser: c.p1Hero };
+        }
+
+        Object.values(posts).forEach(post => {
+            const participants = post.participants || [];
+            const combats = post.combats || [];
+
+            if (post.mode === 'bestof3') {
+                // Cada combate da série conta separadamente pro total geral.
+                // Se a série foi finalizada sem nenhum combate jogado (ex:
+                // encerrada logo de cara como empate), não há nada a somar.
+                combats.forEach(c => {
+                    const r = combatResult(c, participants);
+                    if (!r) return;
+                    bump(r.winner, 'wins');
+                    bump(r.loser, 'losses');
+                    bumpVs(r.winner, r.loser);
+                });
+            } else {
+                // Modos com 1 combate por post (single, equipe, sorteio
+                // rápido, torneio): os participantes já refletem o resultado
+                // exato daquele único combate.
+                participants.forEach(p => {
+                    if (!p || !p.hero) return;
+                    bump(p.hero, p.won ? 'wins' : 'losses');
+                });
+                if (combats.length === 1) {
+                    const r = combatResult(combats[0], participants);
+                    if (r) bumpVs(r.winner, r.loser);
+                }
+            }
+        });
+
+        const updates = {};
+        Object.entries(agg).forEach(([heroName, stats]) => {
+            const k = heroKey(heroName);
+            updates['heroStats/' + k + '/name'] = heroName;
+            updates['heroStats/' + k + '/wins'] = stats.wins;
+            updates['heroStats/' + k + '/losses'] = stats.losses;
+            Object.entries(stats.vs).forEach(([oppName, wins]) => {
+                const ok = heroKey(oppName);
+                updates['heroStats/' + k + '/vs/' + ok + '/wins'] = wins;
+                updates['heroStats/' + k + '/vs/' + ok + '/name'] = oppName;
+            });
+        });
+
+        if (Object.keys(updates).length > 0) {
+            await db.ref().update(updates);
+        }
+
+        await flagRef.set(true);
+        heroStatsCache = null; // força recarregar o cache com os números corrigidos
+    } catch (e) {
+        console.warn('Migração V2 de heroStats não concluída:', e);
+    }
+}
+
 function escapeHtml(str) {
     const div = document.createElement('div');
     div.innerText = str == null ? '' : str;
@@ -1941,8 +2135,30 @@ function formatTimestamp(ts) {
     }
 }
 
+const FEED_PAGE_SIZE = 5;
+let feedCurrentPage = 0;
+
+function renderFeedPagination(container, totalEntries) {
+    container.innerHTML = '';
+    const totalPages = Math.max(1, Math.ceil(totalEntries / FEED_PAGE_SIZE));
+    if (totalPages <= 1) return;
+
+    for (let i = 0; i < totalPages; i++) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'feed-page-btn' + (i === feedCurrentPage ? ' active' : '');
+        btn.innerText = String(i + 1);
+        btn.onclick = () => {
+            feedCurrentPage = i;
+            renderFeed(allPostsData);
+        };
+        container.appendChild(btn);
+    }
+}
+
 function renderFeed(posts) {
     const list = document.getElementById('home-feed-list');
+    const paginationEl = document.getElementById('home-feed-pagination');
     if (!list) return;
     list.innerHTML = '';
 
@@ -1950,10 +2166,17 @@ function renderFeed(posts) {
 
     if (entries.length === 0) {
         list.innerHTML = '<p class="feed-empty">Nenhuma partida postada ainda. Jogue uma partida para ela aparecer aqui automaticamente!</p>';
+        if (paginationEl) paginationEl.innerHTML = '';
         return;
     }
 
-    entries.forEach(([postId, post]) => {
+    const totalPages = Math.max(1, Math.ceil(entries.length / FEED_PAGE_SIZE));
+    if (feedCurrentPage >= totalPages) feedCurrentPage = totalPages - 1;
+    if (feedCurrentPage < 0) feedCurrentPage = 0;
+
+    const pageEntries = entries.slice(feedCurrentPage * FEED_PAGE_SIZE, feedCurrentPage * FEED_PAGE_SIZE + FEED_PAGE_SIZE);
+
+    pageEntries.forEach(([postId, post]) => {
         const div = document.createElement('div');
         div.className = 'feed-post';
 
@@ -1965,10 +2188,30 @@ function renderFeed(posts) {
         if (participants.length > 0) {
             const chipsRow = document.createElement('div');
             chipsRow.className = 'feed-participants';
-            participants.forEach(p => {
+            const isBestOf3 = post.mode === 'bestof3';
+            const combats = post.combats || [];
+            participants.forEach((p, i) => {
                 const chip = document.createElement('span');
                 chip.className = 'feed-chip ' + (p.colorClass || '') + (p.won ? '' : ' feed-chip-loser');
-                chip.innerText = (p.won ? '🏆 ' : '') + p.name + ' · ' + p.hero;
+
+                if (isBestOf3) {
+                    // Heróis com os quais ESTE jogador venceu cada combate da série
+                    // (participants[0] = jogador 1 / p1Hero, participants[1] = jogador 2 / p2Hero
+                    // em todos os combates registrados, independente de quem venceu a série).
+                    const winHeroes = combats
+                        .filter(c => c.winnerName === p.name)
+                        .map(c => (i === 0 ? c.p1Hero : c.p2Hero))
+                        .filter(Boolean);
+
+                    const trophies = winHeroes.length > 0 ? '🏆'.repeat(winHeroes.length) + ' ' : '';
+                    const heroesText = winHeroes.length > 0
+                        ? ' · venceu com ' + winHeroes.join(', ')
+                        : ' · ' + p.hero;
+                    chip.innerText = trophies + p.name + heroesText;
+                } else {
+                    chip.innerText = (p.won ? '🏆 ' : '') + p.name + ' · ' + p.hero;
+                }
+
                 chipsRow.appendChild(chip);
             });
             topRow.appendChild(chipsRow);
@@ -2121,11 +2364,13 @@ function renderFeed(posts) {
 
         list.appendChild(div);
     });
+
+    if (paginationEl) renderFeedPagination(paginationEl, entries.length);
 }
 
 document.getElementById('btn-rematch')?.addEventListener('click', () => {
     if (!roomRef) return;
-    let updates = { phase: null, winner: null, winnerTeam: null, matchPosted: false, finalWinnerHero: null, finalLoserHero: null, combatTimer: null, combatLogs: [], matchDurationMs: null };
+    let updates = { phase: null, winner: null, winnerTeam: null, isDraw: null, matchPosted: false, finalWinnerHero: null, finalLoserHero: null, finalP1Hero: null, finalP2Hero: null, combatTimer: null, combatLogs: [], matchDurationMs: null };
 
     if (gameState.mode === 'single') {
         const shuffled = drawUniqueHeroes(4);
@@ -2787,21 +3032,12 @@ window.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-tournament-create').onclick = createTournament;
     document.getElementById('btn-copy-tournament-link').onclick = copyTournamentLink;
 
-    // Eventos de Adicionar Partida Manual
-    document.getElementById('btn-go-add-match').onclick = () => {
-        showScreen('screen-add-match');
-        populateHeroSelects();
-        setDefaultDate();
-    };
-    document.getElementById('btn-add-match-back').onclick = () => showScreen('screen-home');
-    document.getElementById('btn-add-match-submit').onclick = submitManualMatch;
-
     const params = new URLSearchParams(window.location.search);
     const urlRoom = params.get('room');
     const urlTournament = params.get('tournament');
 
     attachFeedListener();
-    runHeroStatsMigrationIfNeeded();
+    runHeroStatsMigrationIfNeeded().then(() => runHeroStatsMigrationV3IfNeeded());
 
     if (urlRoom) {
         roomId = urlRoom.toUpperCase();
@@ -3560,127 +3796,3 @@ document.getElementById('btn-tournament-home').onclick = () => {
     window.history.replaceState({}, '', window.location.pathname);
     showScreen('screen-home');
 };
-
-// ============================================================
-// ADICIONAR PARTIDA MANUAL
-// ============================================================
-function populateHeroSelects() {
-    const p1Select = document.getElementById('add-match-p1-hero');
-    const p2Select = document.getElementById('add-match-p2-hero');
-    
-    // Limpar opções existentes (mantendo a primeira)
-    p1Select.innerHTML = '<option value="">Selecione o herói...</option>';
-    p2Select.innerHTML = '<option value="">Selecione o herói...</option>';
-    
-    // Adicionar heróis ordenados alfabeticamente
-    const sortedHeroes = [...PERSONAGENS].sort((a, b) => a.nome.localeCompare(b.nome));
-    
-    sortedHeroes.forEach(hero => {
-        const option1 = document.createElement('option');
-        option1.value = hero.nome;
-        option1.textContent = hero.nome;
-        p1Select.appendChild(option1);
-        
-        const option2 = document.createElement('option');
-        option2.value = hero.nome;
-        option2.textContent = hero.nome;
-        p2Select.appendChild(option2);
-    });
-}
-
-function setDefaultDate() {
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('add-match-date').value = today;
-}
-
-function submitManualMatch() {
-    const p1Name = document.getElementById('add-match-p1-name').value.trim();
-    const p1Hero = document.getElementById('add-match-p1-hero').value;
-    const p2Name = document.getElementById('add-match-p2-name').value.trim();
-    const p2Hero = document.getElementById('add-match-p2-hero').value;
-    const winner = document.querySelector('input[name="add-match-winner"]:checked').value;
-    const dateStr = document.getElementById('add-match-date').value;
-    const durationStr = document.getElementById('add-match-duration').value.trim();
-    const notes = document.getElementById('add-match-notes').value.trim();
-    
-    // Validação
-    if (!p1Name || !p1Hero || !p2Name || !p2Hero) {
-        alert('Preencha o nome e herói de ambos os jogadores');
-        return;
-    }
-    
-    if (p1Hero === p2Hero) {
-        alert('Os jogadores não podem usar o mesmo herói');
-        return;
-    }
-    
-    if (!dateStr) {
-        alert('Selecione a data da partida');
-        return;
-    }
-    
-    // Calcular duração em milissegundos se fornecida
-    let durationMs = null;
-    if (durationStr) {
-        const parts = durationStr.split(':');
-        if (parts.length === 2) {
-            const minutes = parseInt(parts[0]) || 0;
-            const seconds = parseInt(parts[1]) || 0;
-            durationMs = (minutes * 60 + seconds) * 1000;
-        }
-    }
-    
-    // Converter data para timestamp
-    const matchDate = new Date(dateStr + 'T00:00:00').getTime();
-    
-    // Criar registro no feed
-    const participants = [
-        {
-            name: p1Name,
-            hero: p1Hero,
-            colorClass: 'player-1',
-            won: winner === '1'
-        },
-        {
-            name: p2Name,
-            hero: p2Hero,
-            colorClass: 'player-2',
-            won: winner === '2'
-        }
-    ];
-    
-    const winnerHero = winner === '1' ? p1Hero : p2Hero;
-    const loserHero = winner === '1' ? p2Hero : p1Hero;
-    
-    db.ref('posts').push({
-        participants,
-        mode: 'manual',
-        combats: [{
-            p1Hero: p1Hero,
-            p2Hero: p2Hero,
-            winner: parseInt(winner)
-        }],
-        durationMs: durationMs,
-        timestamp: matchDate,
-        notes: notes || null
-    }).then(() => {
-        // Atualizar estatísticas dos heróis
-        updateHeroStats(winnerHero, loserHero, true);
-        updateHeroStats(loserHero, winnerHero, false);
-        
-        // Limpar formulário e voltar para home
-        document.getElementById('add-match-p1-name').value = '';
-        document.getElementById('add-match-p1-hero').value = '';
-        document.getElementById('add-match-p2-name').value = '';
-        document.getElementById('add-match-p2-hero').value = '';
-        document.getElementById('add-match-duration').value = '';
-        document.getElementById('add-match-notes').value = '';
-        setDefaultDate();
-        
-        alert('Partida registrada com sucesso!');
-        showScreen('screen-home');
-    }).catch(error => {
-        console.error('Erro ao registrar partida:', error);
-        alert('Erro ao registrar partida. Tente novamente.');
-    });
-}
