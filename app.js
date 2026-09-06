@@ -1822,6 +1822,137 @@ function buildMatchParticipants() {
     return null;
 }
 
+// ============================================================
+// ADICIONAR PARTIDA MANUALMENTE (Ferramentas)
+// ============================================================
+// Registra no feed e nas estatísticas uma partida jogada fora do site
+// (ex: presencialmente), sem precisar criar sala nem jogar pelo app.
+function updateAddMatchModeUI() {
+    const mode = document.querySelector('input[name="add-match-mode"]:checked')?.value || '1v1';
+    document.getElementById('add-match-1v1-fields').style.display = (mode === '1v1') ? 'block' : 'none';
+    document.getElementById('add-match-2v2-fields').style.display = (mode === '2v2') ? 'block' : 'none';
+}
+
+function openAddMatchScreen() {
+    const datalist = document.getElementById('add-match-heroes-datalist');
+    if (datalist && datalist.children.length === 0) {
+        PERSONAGENS.forEach(h => {
+            const opt = document.createElement('option');
+            opt.value = h.nome;
+            datalist.appendChild(opt);
+        });
+    }
+
+    ['add-match-p1-name', 'add-match-p1-hero', 'add-match-p2-name', 'add-match-p2-hero',
+     'add-match-a1-name', 'add-match-a1-hero', 'add-match-a2-name', 'add-match-a2-hero',
+     'add-match-b1-name', 'add-match-b1-hero', 'add-match-b2-name', 'add-match-b2-hero'
+    ].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+
+    document.querySelector('input[name="add-match-mode"][value="1v1"]').checked = true;
+    updateAddMatchModeUI();
+}
+
+// Acha o herói pelo nome digitado (via datalist). Aceita correspondência
+// exata (ignorando maiúsculas/espaços) — se não encontrar, retorna null.
+function findHeroByName(typedName) {
+    const clean = (typedName || '').trim().toLowerCase();
+    if (!clean) return null;
+    return PERSONAGENS.find(h => h.nome.trim().toLowerCase() === clean) || null;
+}
+
+function submitAddMatch() {
+    const mode = document.querySelector('input[name="add-match-mode"]:checked')?.value || '1v1';
+
+    if (mode === '1v1') {
+        const p1Name = document.getElementById('add-match-p1-name').value.trim() || 'Jogador 1';
+        const p2Name = document.getElementById('add-match-p2-name').value.trim() || 'Jogador 2';
+        const p1Hero = findHeroByName(document.getElementById('add-match-p1-hero').value);
+        const p2Hero = findHeroByName(document.getElementById('add-match-p2-hero').value);
+        const winnerVal = document.getElementById('add-match-1v1-winner').value;
+
+        if (!p1Hero || !p2Hero) {
+            alert('Escolha os heróis dos 2 jogadores a partir da lista sugerida.');
+            return;
+        }
+
+        const isDraw = winnerVal === 'draw';
+        const p1 = { name: p1Name, hero: p1Hero.nome, colorClass: PLAYER_COLORS[1].class, won: winnerVal === '1' };
+        const p2 = { name: p2Name, hero: p2Hero.nome, colorClass: PLAYER_COLORS[2].class, won: winnerVal === '2' };
+        if (isDraw) p1.note = 'Empate';
+        const participants = [p1, p2];
+        const combats = [{
+            round: 1,
+            p1Hero: p1Hero.nome,
+            p2Hero: p2Hero.nome,
+            winnerName: isDraw ? null : (winnerVal === '1' ? p1Name : p2Name)
+        }];
+
+        db.ref('posts').push({
+            participants,
+            mode: 'manual-1v1',
+            combats,
+            durationMs: null,
+            timestamp: Date.now()
+        });
+
+        if (!isDraw) {
+            const winnerHero = winnerVal === '1' ? p1Hero.nome : p2Hero.nome;
+            const loserHero = winnerVal === '1' ? p2Hero.nome : p1Hero.nome;
+            recordHeroBattleResult([winnerHero], [loserHero]);
+        }
+    } else {
+        const a1Name = document.getElementById('add-match-a1-name').value.trim() || 'Jogador 1';
+        const a2Name = document.getElementById('add-match-a2-name').value.trim() || 'Jogador 2';
+        const b1Name = document.getElementById('add-match-b1-name').value.trim() || 'Jogador 3';
+        const b2Name = document.getElementById('add-match-b2-name').value.trim() || 'Jogador 4';
+        const a1Hero = findHeroByName(document.getElementById('add-match-a1-hero').value);
+        const a2Hero = findHeroByName(document.getElementById('add-match-a2-hero').value);
+        const b1Hero = findHeroByName(document.getElementById('add-match-b1-hero').value);
+        const b2Hero = findHeroByName(document.getElementById('add-match-b2-hero').value);
+        const winnerVal = document.getElementById('add-match-2v2-winner').value;
+
+        if (!a1Hero || !a2Hero || !b1Hero || !b2Hero) {
+            alert('Escolha os heróis dos 4 jogadores a partir da lista sugerida.');
+            return;
+        }
+
+        const isDraw = winnerVal === 'draw';
+        const teamAHeroes = [a1Hero.nome, a2Hero.nome];
+        const teamBHeroes = [b1Hero.nome, b2Hero.nome];
+
+        const participants = [
+            { name: a1Name, hero: a1Hero.nome, colorClass: PLAYER_COLORS[1].class, won: winnerVal === 'A', note: 'Equipe A' + (isDraw ? ' (Empate)' : '') },
+            { name: b1Name, hero: b1Hero.nome, colorClass: PLAYER_COLORS[2].class, won: winnerVal === 'B', note: 'Equipe B' + (isDraw ? ' (Empate)' : '') },
+            { name: a2Name, hero: a2Hero.nome, colorClass: PLAYER_COLORS[3].class, won: winnerVal === 'A', note: 'Equipe A' + (isDraw ? ' (Empate)' : '') },
+            { name: b2Name, hero: b2Hero.nome, colorClass: PLAYER_COLORS[4].class, won: winnerVal === 'B', note: 'Equipe B' + (isDraw ? ' (Empate)' : '') }
+        ];
+        const combats = [{
+            round: 1,
+            p1Hero: teamAHeroes.join(' & '),
+            p2Hero: teamBHeroes.join(' & '),
+            winnerName: isDraw ? null : ('Equipe ' + winnerVal)
+        }];
+
+        db.ref('posts').push({
+            participants,
+            mode: 'manual-team',
+            combats,
+            durationMs: null,
+            timestamp: Date.now()
+        });
+
+        if (!isDraw) {
+            recordHeroBattleResult(
+                winnerVal === 'A' ? teamAHeroes : teamBHeroes,
+                winnerVal === 'A' ? teamBHeroes : teamAHeroes
+            );
+        }
+    }
+
+    alert('Partida registrada! Ela já aparece no feed e nas estatísticas dos heróis.');
+    showScreen('screen-tools');
+}
+
 let feedRef = null;
 let allPostsData = {};
 
@@ -3172,8 +3303,19 @@ window.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-go-join').onclick = () => showScreen('screen-enter-code');
 
     document.getElementById('btn-go-quick').onclick = startQuickSetup;
+    document.getElementById('btn-go-tools').onclick = () => showScreen('screen-tools');
+    document.getElementById('btn-tools-back').onclick = () => showScreen('screen-home');
+    document.getElementById('btn-go-add-match').onclick = () => {
+        showScreen('screen-add-match');
+        openAddMatchScreen();
+    };
+    document.getElementById('btn-back-add-match').onclick = () => showScreen('screen-tools');
+    document.querySelectorAll('input[name="add-match-mode"]').forEach(radio => {
+        radio.addEventListener('change', updateAddMatchModeUI);
+    });
+    document.getElementById('btn-submit-add-match').onclick = submitAddMatch;
     document.getElementById('btn-go-heroes').onclick = goToHeroStatsScreen;
-    document.getElementById('btn-hero-stats-back').onclick = () => showScreen('screen-home');
+    document.getElementById('btn-hero-stats-back').onclick = () => showScreen('screen-tools');
     document.getElementById('btn-hero-search-confirm').onclick = () => {
         const val = document.getElementById('hero-search-input').value;
         renderHeroStatsResults(val);
@@ -3250,7 +3392,7 @@ window.addEventListener('DOMContentLoaded', () => {
         showScreen('screen-tournament-setup');
         updateTournamentSetupUI();
     };
-    document.getElementById('btn-tournament-back').onclick = () => showScreen('screen-home');
+    document.getElementById('btn-tournament-back').onclick = () => showScreen('screen-tools');
     document.getElementById('tournament-player-count').addEventListener('input', updateTournamentSetupUI);
     document.getElementById('btn-tournament-create').onclick = createTournament;
     document.getElementById('btn-copy-tournament-link').onclick = copyTournamentLink;

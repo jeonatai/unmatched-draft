@@ -19,7 +19,7 @@
     <meta name="twitter:title" content="Unmatched Draft — Sorteio e Draft Online para Unmatched">
     <meta name="twitter:description" content="Sorteie heróis, monte salas e organize partidas de Unmatched online, de graça, com amigos.">
 
-    <link rel="stylesheet" href="style.css?v=20260903a">
+    <link rel="stylesheet" href="style.css?v=20260906a">
 </head>
 <body>
 
@@ -37,15 +37,97 @@
             <p>Crie uma nova sala ou entre em uma existente com o código.</p>
             <button id="btn-go-create" style="background-color: #2ecc71;">Criar Sala</button>
             <button id="btn-go-join" style="background-color: #3498db; margin-top: 12px;">Entrar em Sala</button>
-            <button id="btn-go-tournament" class="btn-secondary" style="margin-top: 12px;">🏆 Torneio</button>
-            <button id="btn-go-quick" class="btn-secondary" style="margin-top: 12px;">🎲 Sorteio Rápido</button>
-            <button id="btn-go-heroes" class="btn-secondary" style="margin-top: 12px;">🦸 Heróis</button>
+            <button id="btn-go-quick" style="margin-top: 12px;">🎲 Sorteio Rápido</button>
+            <button id="btn-go-tools" class="btn-secondary" style="margin-top: 12px;">🛠️ Ferramentas</button>
 
             <div id="home-feed-section" class="home-feed-section">
                 <h3>📰 Últimas Partidas</h3>
                 <div id="home-feed-list" class="feed-list"></div>
                 <div id="home-feed-pagination" class="feed-pagination"></div>
             </div>
+        </div>
+
+        <!-- TELA: Ferramentas -->
+        <div id="screen-tools" class="screen" style="display: none;">
+            <h1>🛠️ Ferramentas</h1>
+            <button id="btn-go-tournament" class="btn-secondary">🏆 Torneio</button>
+            <button id="btn-go-heroes" class="btn-secondary" style="margin-top: 12px;">🦸 Heróis</button>
+            <button id="btn-go-add-match" class="btn-secondary" style="margin-top: 12px;">➕ Adicionar Partida</button>
+            <button id="btn-tools-back" class="btn-secondary" style="margin-top: 20px;">Voltar</button>
+        </div>
+
+        <!-- TELA: Adicionar Partida manualmente -->
+        <div id="screen-add-match" class="screen" style="display: none;">
+            <h1>➕ Adicionar Partida</h1>
+            <p>Registre uma partida já jogada (fora do site) no feed e nas estatísticas dos heróis.</p>
+
+            <div class="mode-options">
+                <label class="mode-option">
+                    <input type="radio" name="add-match-mode" value="1v1" checked>
+                    <span class="mode-label">
+                        <strong>1v1</strong>
+                        <small>Partida entre 2 jogadores</small>
+                    </span>
+                </label>
+                <label class="mode-option">
+                    <input type="radio" name="add-match-mode" value="2v2">
+                    <span class="mode-label">
+                        <strong>Equipe (2v2)</strong>
+                        <small>4 jogadores, 2 times</small>
+                    </span>
+                </label>
+            </div>
+
+            <div id="add-match-1v1-fields">
+                <div class="config-section">
+                    <h3>Jogador 1</h3>
+                    <input type="text" id="add-match-p1-name" class="text-input" placeholder="Nome do Jogador 1" style="margin-bottom: 10px;">
+                    <input type="text" id="add-match-p1-hero" class="text-input" list="add-match-heroes-datalist" placeholder="Herói do Jogador 1">
+                </div>
+                <div class="config-section">
+                    <h3>Jogador 2</h3>
+                    <input type="text" id="add-match-p2-name" class="text-input" placeholder="Nome do Jogador 2" style="margin-bottom: 10px;">
+                    <input type="text" id="add-match-p2-hero" class="text-input" list="add-match-heroes-datalist" placeholder="Herói do Jogador 2">
+                </div>
+                <div class="config-section">
+                    <h3>Vencedor</h3>
+                    <select id="add-match-1v1-winner" class="text-input">
+                        <option value="1">Jogador 1</option>
+                        <option value="2">Jogador 2</option>
+                        <option value="draw">Empate</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="add-match-2v2-fields" style="display: none;">
+                <div class="config-section">
+                    <h3>Equipe A</h3>
+                    <input type="text" id="add-match-a1-name" class="text-input" placeholder="Jogador 1 (Equipe A)" style="margin-bottom: 10px;">
+                    <input type="text" id="add-match-a1-hero" class="text-input" list="add-match-heroes-datalist" placeholder="Herói" style="margin-bottom: 10px;">
+                    <input type="text" id="add-match-a2-name" class="text-input" placeholder="Jogador 2 (Equipe A)" style="margin-bottom: 10px;">
+                    <input type="text" id="add-match-a2-hero" class="text-input" list="add-match-heroes-datalist" placeholder="Herói">
+                </div>
+                <div class="config-section">
+                    <h3>Equipe B</h3>
+                    <input type="text" id="add-match-b1-name" class="text-input" placeholder="Jogador 1 (Equipe B)" style="margin-bottom: 10px;">
+                    <input type="text" id="add-match-b1-hero" class="text-input" list="add-match-heroes-datalist" placeholder="Herói" style="margin-bottom: 10px;">
+                    <input type="text" id="add-match-b2-name" class="text-input" placeholder="Jogador 2 (Equipe B)" style="margin-bottom: 10px;">
+                    <input type="text" id="add-match-b2-hero" class="text-input" list="add-match-heroes-datalist" placeholder="Herói">
+                </div>
+                <div class="config-section">
+                    <h3>Vencedor</h3>
+                    <select id="add-match-2v2-winner" class="text-input">
+                        <option value="A">Equipe A</option>
+                        <option value="B">Equipe B</option>
+                        <option value="draw">Empate</option>
+                    </select>
+                </div>
+            </div>
+
+            <datalist id="add-match-heroes-datalist"></datalist>
+
+            <button id="btn-submit-add-match">Registrar Partida</button>
+            <button id="btn-back-add-match" class="btn-secondary">Voltar</button>
         </div>
 
         <!-- TELA: Sorteio Rápido - configuração -->
@@ -496,6 +578,6 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
     <script src="firebase-config.js"></script>
-    <script src="app.js?v=20260903a"></script>
+    <script src="app.js?v=20260906a"></script>
 </body>
 </html>
