@@ -252,11 +252,46 @@ function getDeviceId() {
     return id;
 }
 
+// Telas de menu/configuração que ficam "navegáveis" pelo botão Voltar do
+// navegador (ou gesto de voltar no celular). Fora de uma sala/partida ativa,
+// isso evita que a pessoa saia do site sem querer ao usar o voltar do
+// aparelho — ele volta pra tela anterior dentro do próprio site.
+const BACK_TRACKED_SCREENS = new Set([
+    'screen-home', 'screen-configure', 'screen-enter-code', 'screen-creator-role-pick',
+    'screen-quick-setup', 'screen-quick-result', 'screen-tools', 'screen-add-match',
+    'screen-hero-stats', 'screen-tournament-setup', 'screen-join-error'
+]);
+let suppressHistoryPush = false;
+
 function showScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
     const el = document.getElementById(id);
     if (el) el.style.display = 'block';
+
+    if (!suppressHistoryPush && BACK_TRACKED_SCREENS.has(id)) {
+        const currentTracked = window.history.state && window.history.state.appScreen;
+        if (currentTracked !== id) {
+            window.history.pushState({ appScreen: id }, '', window.location.href);
+        }
+    }
 }
+
+// Enquanto uma sala, sorteio rápido ou torneio está em andamento, o botão
+// Voltar do navegador encerra essa sessão com segurança (mesma limpeza do
+// botão "Voltar ao Início") em vez de deixar a tela dessincronizada.
+window.addEventListener('popstate', (e) => {
+    const sessionActive = !!roomRef || !!quickState || !!tournamentRef;
+    if (sessionActive) {
+        goHome();
+        return;
+    }
+    const target = (e.state && e.state.appScreen) || 'screen-home';
+    if (document.getElementById(target)) {
+        suppressHistoryPush = true;
+        showScreen(target);
+        suppressHistoryPush = false;
+    }
+});
 
 function updateRoomHeader() {
     const header = document.getElementById('room-code-header');
@@ -363,7 +398,7 @@ function goHome() {
     myTournamentHero = null;
     updateRoomHeader();
     updateTournamentHeader();
-    window.history.replaceState({}, '', window.location.pathname);
+    window.history.replaceState({ appScreen: 'screen-home' }, '', window.location.pathname);
     showScreen('screen-home');
     attachFeedListener();
 }
@@ -3294,6 +3329,9 @@ function cleanupOldRooms() {
 // ============================================================
 window.addEventListener('DOMContentLoaded', () => {
     cleanupOldRooms();
+    if (!window.history.state || !window.history.state.appScreen) {
+        window.history.replaceState({ appScreen: 'screen-home' }, '', window.location.href);
+    }
     document.getElementById('btn-go-create').onclick = () => {
         pendingConfig = null;
         buildNameInputs(2, 'single');
@@ -4158,6 +4196,6 @@ document.getElementById('btn-tournament-home').onclick = () => {
     myTournamentIndex = null;
     myTournamentHero = null;
     updateTournamentHeader();
-    window.history.replaceState({}, '', window.location.pathname);
+    window.history.replaceState({ appScreen: 'screen-home' }, '', window.location.pathname);
     showScreen('screen-home');
 };
