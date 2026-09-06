@@ -140,7 +140,40 @@ button:disabled {
     text-transform: none;
     letter-spacing: normal;
     text-align: left;
+    margin-bottom: 0;
+}
+
+.name-input-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
     margin-bottom: 10px;
+}
+
+.name-input-row .name-input {
+    flex: 1;
+}
+
+.cafe-checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    font-size: 13px;
+    color: #d9a441;
+    background: rgba(217, 164, 65, 0.12);
+    border: 1px solid rgba(217, 164, 65, 0.4);
+    border-radius: 8px;
+    padding: 8px 10px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.cafe-checkbox {
+    width: 16px;
+    height: 16px;
+    accent-color: #d9a441;
+    cursor: pointer;
 }
 
 .screen {

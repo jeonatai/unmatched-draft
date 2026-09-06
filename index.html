@@ -407,6 +407,20 @@
             </div>
         </div>
 
+        <!-- TELA: Café com Leite - escolha manual antes do sorteio -->
+        <div id="screen-cafe-pick" class="screen" style="display: none;">
+            <h2 id="cafe-pick-title">☕ Café com Leite</h2>
+            <div id="cafe-pick-active">
+                <p id="cafe-pick-instructions">Escolha o herói que você vai usar (sem sorteio).</p>
+                <p class="waiting-text" id="cafe-pick-counter">0 / 1</p>
+                <div id="cafe-pick-cards" class="cards-grid"></div>
+                <button id="btn-confirm-cafe-pick" disabled>Confirmar Escolha</button>
+            </div>
+            <div id="cafe-pick-waiting" style="display: none;">
+                <p class="waiting-text" id="cafe-pick-waiting-text">⏳ Aguardando...</p>
+            </div>
+        </div>
+
         <!-- TELA: Combate -->
         <div id="screen-combat" class="screen" style="display: none;">
             <div id="combat-timer" class="combat-timer">⏱️ 00:00</div>

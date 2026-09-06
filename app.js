@@ -371,18 +371,44 @@ function goHome() {
 // ============================================================
 // CONFIGURAÇÃO DE SALA
 // ============================================================
-function buildNameInputs(count) {
+function buildNameInputs(count, mode) {
     const container = document.getElementById('player-names-inputs');
     container.innerHTML = '';
+    const showCafe = mode !== 'team';
     for (let i = 0; i < count; i++) {
+        const row = document.createElement('div');
+        row.className = 'name-input-row';
+
         const input = document.createElement('input');
         input.type = 'text';
         input.className = 'text-input name-input';
         input.placeholder = 'Jogador ' + (i + 1);
         input.value = 'Jogador ' + (i + 1);
         input.dataset.index = i;
-        container.appendChild(input);
+        row.appendChild(input);
+
+        if (showCafe) {
+            const label = document.createElement('label');
+            label.className = 'cafe-checkbox-label';
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.className = 'cafe-checkbox';
+            checkbox.dataset.index = i;
+            label.appendChild(checkbox);
+            label.appendChild(document.createTextNode('☕ Café com leite'));
+            row.appendChild(label);
+        }
+
+        container.appendChild(row);
     }
+}
+
+function getCafeComLeiteFlags() {
+    const flags = {};
+    document.querySelectorAll('.cafe-checkbox').forEach(cb => {
+        flags[cb.dataset.index] = cb.checked;
+    });
+    return flags;
 }
 
 function getSelectedMode() {
@@ -429,6 +455,7 @@ function createRoomFromConfig(creatorRole) {
         mode,
         phase: 'lobby',
         playerNames,
+        cafeComLeite: pendingConfig.cafeComLeite || {},
         creatorRole: mode === 'team' ? null : myRole,
         player2Joined: false,
         nameClaims: {},
@@ -466,10 +493,8 @@ function createRoomFromConfig(creatorRole) {
 }
 
 function buildBestOf3State() {
-    const shuffled = drawUniqueHeroes(8);
     return {
-        p1Cards: shuffled.slice(0, 4),
-        p2Cards: shuffled.slice(4, 8),
+        p1Cards: null, p2Cards: null,
         p1Saved: null, p2Saved: null,
         p1Banned: null, p2Banned: null,
         p1Final: null, p2Final: null,
@@ -529,15 +554,31 @@ function tryJoinRoom() {
             localStorage.setItem('unmatched_role_' + roomId, String(freeRole));
 
             const updates = { player2Joined: true };
+            const cafeFlags = data.cafeComLeite || {};
+            const hasCafe = Object.values(cafeFlags).some(Boolean);
+
             if (data.mode === 'single') {
-                const shuffled = drawUniqueHeroes(4);
-                updates.phase = 'single-pick';
-                updates.p1Cards = shuffled.slice(0, 2);
-                updates.p2Cards = shuffled.slice(2, 4);
-                updates.p1Pick = null;
-                updates.p2Pick = null;
+                if (hasCafe) {
+                    updates.phase = 'cafe-pick-single';
+                    updates.cafePicks = {};
+                } else {
+                    const shuffled = drawUniqueHeroes(4);
+                    updates.phase = 'single-pick';
+                    updates.p1Cards = shuffled.slice(0, 2);
+                    updates.p2Cards = shuffled.slice(2, 4);
+                    updates.p1Pick = null;
+                    updates.p2Pick = null;
+                }
             } else if (data.mode === 'bestof3') {
-                updates.phase = 'phase1-j1-save';
+                if (hasCafe) {
+                    updates.phase = 'cafe-pick-b3';
+                    updates.cafePicks = {};
+                } else {
+                    const shuffled = drawUniqueHeroes(8);
+                    updates.p1Cards = shuffled.slice(0, 4);
+                    updates.p2Cards = shuffled.slice(4, 8);
+                    updates.phase = 'phase1-j1-save';
+                }
             }
 
             roomRef.update(updates).then(() => attachRoomListener());
@@ -644,6 +685,12 @@ function renderGame() {
 
     if (phase === 'team-assignment') {
         renderTeamAssignment();
+        return;
+    }
+
+    if (phase === 'cafe-pick-single' || phase === 'cafe-pick-b3') {
+        showScreen('screen-cafe-pick');
+        renderCafePick();
         return;
     }
 
@@ -898,6 +945,181 @@ document.getElementById('btn-confirm-single-pick')?.addEventListener('click', ()
 
     roomRef.update({ [field]: pick });
 });
+
+// ============================================================
+// CAFÉ COM LEITE — escolha manual de herói(s), sem sorteio
+// ============================================================
+// Jogador(es) marcados como "café com leite" na criação da sala escolhem
+// livremente seu(s) próprio(s) herói(s) (1 no Combate Único, 4 na Melhor
+// de 3) ANTES do sorteio normal acontecer. Depois que todos os jogadores
+// café com leite confirmarem, o(s) jogador(es) normal(is) recebe(m) o
+// sorteio de sempre (agora sem os heróis já escolhidos) e o jogo segue
+// no fluxo de sempre (single-pick / fase de banimentos).
+let cafeTempSelection = [];
+
+function cafeRequiredCount() {
+    return gameState.phase === 'cafe-pick-b3' ? 4 : 1;
+}
+
+function renderCafePick() {
+    const cafeFlags = gameState.cafeComLeite || {};
+    const cafeRoles = [1, 2].filter(r => cafeFlags[r - 1]);
+    const amCafe = myRole && cafeFlags[myRole - 1];
+    const required = cafeRequiredCount();
+
+    const titleEl = document.getElementById('cafe-pick-title');
+    const instructionsEl = document.getElementById('cafe-pick-instructions');
+    const activeDiv = document.getElementById('cafe-pick-active');
+    const waitingDiv = document.getElementById('cafe-pick-waiting');
+    const gridEl = document.getElementById('cafe-pick-cards');
+    const confirmBtn = document.getElementById('btn-confirm-cafe-pick');
+    const counterEl = document.getElementById('cafe-pick-counter');
+
+    if (titleEl) titleEl.innerText = '☕ Café com Leite';
+
+    const cafePicks = gameState.cafePicks || {};
+
+    // Ordem de escolha: sempre o café com leite de menor número de jogador
+    // que ainda não completou sua escolha. Um café com leite só escolhe
+    // depois que o(s) anterior(es) já tiverem confirmado os seus.
+    const currentTurnRole = cafeRoles.find(r => (cafePicks[r] || []).length < required);
+
+    // Todo mundo já escolheu: um cliente qualquer finaliza o sorteio pros
+    // jogadores normais (protegido por transaction).
+    if (!currentTurnRole) {
+        finalizeCafePickIfNeeded();
+    }
+
+    if (!amCafe) {
+        activeDiv.style.display = 'none';
+        waitingDiv.style.display = 'block';
+        if (currentTurnRole) {
+            document.getElementById('cafe-pick-waiting-text').innerText =
+                '⏳ Aguardando ' + getPlayerDisplayName(currentTurnRole) + ' (café com leite) escolher ' +
+                (required > 1 ? ('os ' + required + ' heróis') : 'o herói') +
+                ' — depois disso o sorteio acontece normalmente pra você.';
+        } else {
+            document.getElementById('cafe-pick-waiting-text').innerText = '⏳ Preparando o sorteio...';
+        }
+        return;
+    }
+
+    const myPicks = cafePicks[myRole] || [];
+    if (myPicks.length === required) {
+        activeDiv.style.display = 'none';
+        waitingDiv.style.display = 'block';
+        document.getElementById('cafe-pick-waiting-text').innerText = '⏳ Escolha confirmada! Aguardando os outros jogadores...';
+        return;
+    }
+
+    if (currentTurnRole !== myRole) {
+        // Sou café com leite, mas ainda não é minha vez (outro café com
+        // leite de número menor ainda está escolhendo).
+        activeDiv.style.display = 'none';
+        waitingDiv.style.display = 'block';
+        document.getElementById('cafe-pick-waiting-text').innerText =
+            '⏳ Aguarde sua vez! Agora é a vez de ' + getPlayerDisplayName(currentTurnRole) + ' escolher.';
+        return;
+    }
+
+    activeDiv.style.display = 'block';
+    waitingDiv.style.display = 'none';
+    if (instructionsEl) {
+        instructionsEl.innerText = required > 1
+            ? ('Escolha ' + required + ' heróis pra usar na sua Melhor de 3 (sem sorteio).')
+            : 'Escolha o herói que você vai usar (sem sorteio).';
+    }
+
+    // Heróis já escolhidos por QUALQUER café com leite (inclusive de uma
+    // vez anterior) ficam fora da lista, pra nunca repetir.
+    const takenNames = new Set();
+    cafeRoles.forEach(r => (cafePicks[r] || []).forEach(h => takenNames.add(h.nome)));
+
+    gridEl.innerHTML = '';
+    confirmBtn.disabled = cafeTempSelection.length !== required;
+    if (counterEl) counterEl.innerText = cafeTempSelection.length + ' / ' + required;
+
+    PERSONAGENS.filter(char => !takenNames.has(char.nome)).forEach(char => {
+        const div = document.createElement('div');
+        const isSelected = cafeTempSelection.some(h => h.nome === char.nome);
+        div.className = 'card' + (isSelected ? ' selected' : '');
+        fillCardContent(div, char);
+        div.onclick = () => {
+            const idx = cafeTempSelection.findIndex(h => h.nome === char.nome);
+            if (idx >= 0) {
+                cafeTempSelection.splice(idx, 1);
+            } else {
+                if (cafeTempSelection.length >= required) return;
+                cafeTempSelection.push(char);
+            }
+            renderCafePick();
+        };
+        gridEl.appendChild(div);
+    });
+}
+
+document.getElementById('btn-confirm-cafe-pick')?.addEventListener('click', () => {
+    const required = cafeRequiredCount();
+    if (cafeTempSelection.length !== required || !myRole || !roomRef) return;
+    const cafeFlags = gameState.cafeComLeite || {};
+    const cafeRoles = [1, 2].filter(r => cafeFlags[r - 1]);
+    const cafePicks = gameState.cafePicks || {};
+    const currentTurnRole = cafeRoles.find(r => (cafePicks[r] || []).length < required);
+    if (currentTurnRole !== myRole) return; // não é minha vez ainda
+    roomRef.update({ ['cafePicks/' + myRole]: cafeTempSelection }).then(() => {
+        cafeTempSelection = [];
+    });
+});
+
+// Sorteia os heróis dos jogadores NÃO marcados como café com leite
+// (excluindo os heróis já escolhidos manualmente) e segue o fluxo normal
+// do modo. Protegido por transaction pra rodar uma única vez, mesmo com
+// os dois dispositivos percebendo a condição ao mesmo tempo.
+function finalizeCafePickIfNeeded() {
+    if (!roomRef) return;
+    roomRef.child('cafeResolving').transaction(current => {
+        if (current) return; // já está sendo (ou já foi) resolvido
+        return true;
+    }, (error, committed) => {
+        if (error || !committed) return;
+
+        const isB3 = gameState.phase === 'cafe-pick-b3';
+        const cafeFlags = gameState.cafeComLeite || {};
+        const cafePicks = gameState.cafePicks || {};
+        const cafeRoles = [1, 2].filter(r => cafeFlags[r - 1]);
+        const normalRoles = [1, 2].filter(r => !cafeFlags[r - 1]);
+        const perPlayer = isB3 ? 4 : 2;
+
+        const chosenNames = new Set();
+        cafeRoles.forEach(r => (cafePicks[r] || []).forEach(h => chosenNames.add(h.nome)));
+
+        const pool = PERSONAGENS.filter(p => !chosenNames.has(p.nome));
+        const drawn = shuffleArray(pool).slice(0, normalRoles.length * perPlayer);
+
+        const updates = {};
+        let idx = 0;
+        normalRoles.forEach(r => {
+            updates['p' + r + 'Cards'] = drawn.slice(idx, idx + perPlayer);
+            idx += perPlayer;
+        });
+
+        if (isB3) {
+            cafeRoles.forEach(r => {
+                updates['p' + r + 'Cards'] = cafePicks[r] || [];
+            });
+            updates.phase = 'phase1-j1-save';
+        } else {
+            cafeRoles.forEach(r => {
+                updates['p' + r + 'Pick'] = (cafePicks[r] || [])[0] || null;
+            });
+            updates.p1Pick = updates.hasOwnProperty('p1Pick') ? updates.p1Pick : (gameState.p1Pick || null);
+            updates.p2Pick = updates.hasOwnProperty('p2Pick') ? updates.p2Pick : (gameState.p2Pick || null);
+            updates.phase = 'single-pick';
+        }
+
+        roomRef.update(updates);
+    });
+}
 
 // ============================================================
 // DRAFT MELHOR DE 3
@@ -2943,7 +3165,7 @@ window.addEventListener('DOMContentLoaded', () => {
     cleanupOldRooms();
     document.getElementById('btn-go-create').onclick = () => {
         pendingConfig = null;
-        buildNameInputs(2);
+        buildNameInputs(2, 'single');
         showScreen('screen-configure');
     };
 
@@ -3001,14 +3223,15 @@ window.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('input[name="game-mode"]').forEach(radio => {
         radio.addEventListener('change', () => {
             const mode = getSelectedMode();
-            buildNameInputs(mode === 'team' ? 4 : 2);
+            buildNameInputs(mode === 'team' ? 4 : 2, mode);
         });
     });
 
     document.getElementById('btn-confirm-create').onclick = () => {
         const mode = getSelectedMode();
         const playerNames = getNameInputs();
-        pendingConfig = { mode, playerNames };
+        const cafeComLeite = mode === 'team' ? {} : getCafeComLeiteFlags();
+        pendingConfig = { mode, playerNames, cafeComLeite };
 
         if (mode === 'team') {
             createRoomFromConfig();
