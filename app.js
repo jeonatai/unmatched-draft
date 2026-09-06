@@ -125,6 +125,7 @@ let quickTimerInterval = null;
 // Estado do Torneio
 let tournamentId = null;
 let tournamentRef = null;
+let devMode = (localStorage.getItem('unmatched_dev_mode') === '1');
 let tournamentState = null;
 let myTournamentIndex = null;
 let myTournamentHero = null;
@@ -406,6 +407,7 @@ function goHome() {
     myTournamentHero = null;
     updateRoomHeader();
     updateTournamentHeader();
+    renderDevTournamentPanel();
     window.history.replaceState({ appScreen: 'screen-home' }, '', window.location.pathname);
     showScreen('screen-home');
     attachFeedListener();
@@ -3384,6 +3386,36 @@ window.addEventListener('DOMContentLoaded', () => {
     if (!window.history.state || !window.history.state.appScreen) {
         window.history.replaceState({ appScreen: 'screen-home' }, '', window.location.href);
     }
+
+    // Bolinha discreta do Modo Dev: clique + senha "bolas" liga/desliga.
+    // Serve pra testar um torneio inteiro sozinho, num único aparelho.
+    const devDot = document.getElementById('dev-mode-dot');
+    if (devDot) {
+        if (devMode) devDot.classList.add('active');
+        devDot.onclick = () => {
+            if (devMode) {
+                const off = window.confirm('Modo Dev está ativo. Quer desativar?');
+                if (!off) return;
+                devMode = false;
+                localStorage.setItem('unmatched_dev_mode', '0');
+                devDot.classList.remove('active');
+                renderDevTournamentPanel();
+                return;
+            }
+            const pass = window.prompt('Senha do Modo Dev:');
+            if (pass === null) return;
+            if (pass !== 'bolas') {
+                alert('Senha incorreta.');
+                return;
+            }
+            devMode = true;
+            localStorage.setItem('unmatched_dev_mode', '1');
+            devDot.classList.add('active');
+            alert('🧪 Modo Dev ativado! Agora você pode reivindicar todos os nomes de um torneio no mesmo aparelho e trocar de jogador pelo painel que aparece embaixo da tela.');
+            renderDevTournamentPanel();
+        };
+    }
+
     document.getElementById('btn-go-create').onclick = () => {
         pendingConfig = null;
         buildNameInputs(2, 'single');
@@ -3693,7 +3725,8 @@ function attachTournamentListener() {
 
 function renderTournament() {
     updateTournamentHeader();
-    
+    renderDevTournamentPanel();
+
     const phase = tournamentState.phase;
     
     if (phase === 'lobby') {
@@ -3733,7 +3766,7 @@ function renderTournamentLobby() {
     
     tournamentState.playerNames.forEach((name, idx) => {
         const claimed = tournamentState.nameClaims && tournamentState.nameClaims[idx];
-        const isMe = claimed === getDeviceId();
+        const isMe = devMode ? (idx === myTournamentIndex) : (claimed === getDeviceId());
         const div = document.createElement('div');
         div.className = 'name-claim-item' + (claimed ? ' claimed' : '') + (isMe ? ' is-me' : '');
         div.innerHTML = '<span class="player-tag player-' + ((idx % 4) + 1) + '">J' + (idx + 1) + '</span><span>' + name + '</span>';
@@ -3765,25 +3798,68 @@ function renderTournamentLobby() {
 }
 
 function claimTournamentName(nameIndex) {
-    const deviceId = getDeviceId();
     const claims = tournamentState.nameClaims || {};
-    
-    // Verificar se já reivindiquei algum nome
-    for (const [idx, dev] of Object.entries(claims)) {
-        if (dev === deviceId) return;
-    }
-    
     const alreadyClaimed = !!claims[nameIndex];
     if (alreadyClaimed) {
         alert('Este nome já foi escolhido');
         return;
     }
-    
+
+    if (devMode) {
+        // Em Modo Dev, o mesmo aparelho pode reivindicar vários (ou todos os)
+        // nomes, pra dar pra testar o torneio inteiro sozinho. Cada nome usa
+        // um "device id" fake e próprio, só pra passar pela trava normal de
+        // "1 nome por aparelho" — depois é só trocar de jogador no painel
+        //🧪 que aparece embaixo da tela.
+        claims[nameIndex] = 'dev-' + tournamentId + '-' + nameIndex;
+        myTournamentIndex = nameIndex;
+        localStorage.setItem('unmatched_tournament_idx_' + tournamentId, nameIndex);
+        tournamentRef.update({ nameClaims: claims });
+        return;
+    }
+
+    const deviceId = getDeviceId();
+
+    // Verificar se já reivindiquei algum nome
+    for (const [idx, dev] of Object.entries(claims)) {
+        if (dev === deviceId) return;
+    }
+
     claims[nameIndex] = deviceId;
     myTournamentIndex = nameIndex;
     localStorage.setItem('unmatched_tournament_idx_' + tournamentId, nameIndex);
-    
+
     tournamentRef.update({ nameClaims: claims });
+}
+
+// Painel flutuante do Modo Dev: enquanto estiver dentro de um torneio,
+// deixa trocar instantaneamente qual jogador este aparelho está controlando
+// (só pra teste — em uso normal cada jogador usa o próprio aparelho).
+function renderDevTournamentPanel() {
+    const panel = document.getElementById('dev-tournament-panel');
+    if (!panel) return;
+
+    if (!devMode || !tournamentState || !tournamentRef) {
+        panel.style.display = 'none';
+        panel.innerHTML = '';
+        return;
+    }
+
+    panel.style.display = 'flex';
+    panel.innerHTML = '<strong>🧪 Modo Dev — jogar como:</strong>';
+
+    (tournamentState.playerNames || []).forEach((name, idx) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.innerText = (idx + 1) + '. ' + name;
+        btn.className = 'dev-panel-btn' + (idx === myTournamentIndex ? ' active' : '');
+        btn.onclick = () => {
+            myTournamentIndex = idx;
+            localStorage.setItem('unmatched_tournament_idx_' + tournamentId, idx);
+            renderTournament();
+        };
+        panel.appendChild(btn);
+    });
 }
 
 function renderTournamentHeroSelection() {
@@ -4248,6 +4324,7 @@ document.getElementById('btn-tournament-home').onclick = () => {
     myTournamentIndex = null;
     myTournamentHero = null;
     updateTournamentHeader();
+    renderDevTournamentPanel();
     window.history.replaceState({ appScreen: 'screen-home' }, '', window.location.pathname);
     showScreen('screen-home');
 };

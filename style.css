@@ -1,3 +1,63 @@
+/* Bolinha discreta do Modo Dev */
+#dev-mode-dot {
+    position: fixed;
+    top: 8px;
+    right: 10px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #ff4757;
+    opacity: 0.35;
+    cursor: pointer;
+    z-index: 999;
+    transition: all 0.2s;
+}
+
+#dev-mode-dot:hover {
+    opacity: 0.7;
+}
+
+#dev-mode-dot.active {
+    opacity: 1;
+    box-shadow: 0 0 10px 3px rgba(255, 71, 87, 0.85);
+}
+
+#dev-tournament-panel {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #16161a;
+    border-top: 2px solid #ff4757;
+    padding: 10px 12px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    z-index: 998;
+    box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.5);
+}
+
+#dev-tournament-panel strong {
+    color: #ff4757;
+    font-size: 12px;
+    width: 100%;
+}
+
+.dev-panel-btn {
+    width: auto !important;
+    padding: 8px 12px !important;
+    font-size: 12px !important;
+    background: #2f3542 !important;
+    box-shadow: none !important;
+    border: 2px solid transparent !important;
+}
+
+.dev-panel-btn.active {
+    border-color: #ff4757 !important;
+    color: #ff4757 !important;
+}
+
 /* ==========================================================================
    RESET & CONFIGURAÇÕES GERAIS
    ========================================================================== */
