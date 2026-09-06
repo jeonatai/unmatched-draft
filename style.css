@@ -1133,6 +1133,12 @@ button:disabled {
     color: #2ecc71;
 }
 
+.feed-page-btn.feed-page-nav {
+    font-weight: 900;
+    font-size: 16px;
+    color: #a4b0be;
+}
+
 .feed-post-top {
     display: flex;
     align-items: flex-start;

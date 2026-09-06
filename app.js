@@ -277,20 +277,28 @@ function showScreen(id) {
 }
 
 // Enquanto uma sala, sorteio rápido ou torneio está em andamento, o botão
-// Voltar do navegador encerra essa sessão com segurança (mesma limpeza do
-// botão "Voltar ao Início") em vez de deixar a tela dessincronizada.
+// Voltar (do navegador OU o botão/gesto físico de voltar do sistema do
+// celular — os dois disparam esse mesmo evento "popstate") encerra essa
+// sessão com segurança (mesma limpeza do botão "Voltar ao Início") em vez
+// de deixar a tela dessincronizada.
 window.addEventListener('popstate', (e) => {
     const sessionActive = !!roomRef || !!quickState || !!tournamentRef;
     if (sessionActive) {
         goHome();
-        return;
+    } else {
+        const target = (e.state && e.state.appScreen) || 'screen-home';
+        if (document.getElementById(target)) {
+            suppressHistoryPush = true;
+            showScreen(target);
+            suppressHistoryPush = false;
+        }
     }
-    const target = (e.state && e.state.appScreen) || 'screen-home';
-    if (document.getElementById(target)) {
-        suppressHistoryPush = true;
-        showScreen(target);
-        suppressHistoryPush = false;
-    }
+
+    // Repõe uma entrada no histórico logo em seguida. Assim, tanto o botão
+    // de voltar do navegador quanto o botão/gesto de voltar do próprio
+    // sistema do celular nunca "esgotam" o histórico e saem do site — eles
+    // sempre continuam presos dentro do app, navegando pelas telas.
+    window.history.pushState(window.history.state || { appScreen: 'screen-home' }, '', window.location.href);
 });
 
 function updateRoomHeader() {
@@ -2526,12 +2534,32 @@ function formatTimestamp(ts) {
 const FEED_PAGE_SIZE = 5;
 let feedCurrentPage = 0;
 
+const PAGE_BUTTONS_GROUP_SIZE = 5;
+
 function renderFeedPagination(container, totalEntries) {
     container.innerHTML = '';
     const totalPages = Math.max(1, Math.ceil(totalEntries / FEED_PAGE_SIZE));
     if (totalPages <= 1) return;
 
-    for (let i = 0; i < totalPages; i++) {
+    // Mostra só um grupo de 5 números de página por vez, com setas pra
+    // navegar entre os grupos (em vez de mostrar todos os números de uma vez).
+    const groupStart = Math.floor(feedCurrentPage / PAGE_BUTTONS_GROUP_SIZE) * PAGE_BUTTONS_GROUP_SIZE;
+    const groupEnd = Math.min(groupStart + PAGE_BUTTONS_GROUP_SIZE, totalPages);
+
+    if (groupStart > 0) {
+        const prevBtn = document.createElement('button');
+        prevBtn.type = 'button';
+        prevBtn.className = 'feed-page-btn feed-page-nav';
+        prevBtn.innerText = '‹';
+        prevBtn.title = 'Páginas anteriores';
+        prevBtn.onclick = () => {
+            feedCurrentPage = groupStart - 1;
+            renderFeed(allPostsData);
+        };
+        container.appendChild(prevBtn);
+    }
+
+    for (let i = groupStart; i < groupEnd; i++) {
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'feed-page-btn' + (i === feedCurrentPage ? ' active' : '');
@@ -2542,6 +2570,19 @@ function renderFeedPagination(container, totalEntries) {
         };
         container.appendChild(btn);
     }
+
+    if (groupEnd < totalPages) {
+        const nextBtn = document.createElement('button');
+        nextBtn.type = 'button';
+        nextBtn.className = 'feed-page-btn feed-page-nav';
+        nextBtn.innerText = '›';
+        nextBtn.title = 'Próximas páginas';
+        nextBtn.onclick = () => {
+            feedCurrentPage = groupEnd;
+            renderFeed(allPostsData);
+        };
+        container.appendChild(nextBtn);
+    }
 }
 
 function renderFeed(posts) {
@@ -2550,7 +2591,9 @@ function renderFeed(posts) {
     if (!list) return;
     list.innerHTML = '';
 
-    const entries = Object.entries(posts).sort((a, b) => (b[1].timestamp || 0) - (a[1].timestamp || 0));
+    const entries = Object.entries(posts)
+        .filter(([, p]) => !p.hidden)
+        .sort((a, b) => (b[1].timestamp || 0) - (a[1].timestamp || 0));
 
     if (entries.length === 0) {
         list.innerHTML = '<p class="feed-empty">Nenhuma partida postada ainda. Jogue uma partida para ela aparecer aqui automaticamente!</p>';
@@ -2613,13 +2656,22 @@ function renderFeed(posts) {
         deleteBtn.innerText = '🗑️';
         deleteBtn.title = 'Apagar post';
         deleteBtn.onclick = () => {
-            const pass = window.prompt('Digite a senha para apagar este post:');
+            const pass = window.prompt('Digite a senha para gerenciar este post:');
             if (pass === null) return;
             if (pass !== 'bolas') {
-                alert('Senha incorreta. O post não foi apagado.');
+                alert('Senha incorreta. Nada foi alterado.');
                 return;
             }
-            db.ref('posts/' + postId).remove();
+            const wantsDelete = window.confirm(
+                'Senha correta!\n\n' +
+                'Toque OK para APAGAR esse post definitivamente,\n' +
+                'ou Cancelar para apenas OCULTAR ele do feed (fica escondido, mas não é apagado).'
+            );
+            if (wantsDelete) {
+                db.ref('posts/' + postId).remove();
+            } else {
+                db.ref('posts/' + postId + '/hidden').set(true);
+            }
         };
         topRow.appendChild(deleteBtn);
 
