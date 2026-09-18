@@ -80,6 +80,8 @@ const MAPAS_GRANDES = [
     { nome: "Point Pleasant", img: "maps/grande/point-pleasant.webp", tamanho: "grande" },
     { nome: "Sarpedon", img: "maps/grande/sarpedon.webp", tamanho: "grande" },
     { nome: "Soho", img: "maps/grande/soho.webp", tamanho: "grande" },
+    { nome: "sunnydale", img: "maps/grande/sunnydale-high.webp", tamanho: "grande" },
+    { nome: "The Bronze", img: "maps/grande/the-bronze.webp", tamanho: "grande" },
     { nome: "Streets of Novigrad", img: "maps/grande/streets-of-novigrad.webp", tamanho: "grande" }
 ];
 
@@ -89,6 +91,7 @@ const MAPAS_PEQUENOS = [
     { nome: "Raptor Paddock", img: "maps/pequena/raptor-paddock.webp", tamanho: "pequena" },
     { nome: "Sherwood Forest", img: "maps/pequena/sherwood-forest.webp", tamanho: "pequena" },
     { nome: "Yukon", img: "maps/pequena/yukon.webp", tamanho: "pequena" },
+    { nome: "t.rex pardock", img: "maps/pequena/t.rex-paddock.webp", tamanho: "pequena" },
     { nome: "king Solomon's Mine", img: "maps/pequena/king-solomon-s-mine.webp", tamanho: "pequena" }
 ];
 
