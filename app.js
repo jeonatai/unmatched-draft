@@ -2265,8 +2265,15 @@ function recordHeroBattleResult(winnerNames, loserNames) {
     if (winnerNames.length === 1 && loserNames.length === 1 && winnerNames[0] !== loserNames[0]) {
         const wKey = heroKey(winnerNames[0]);
         const lKey = heroKey(loserNames[0]);
+        // IMPORTANTE: grava dos DOIS lados do confronto — as vitórias do
+        // vencedor contra o perdedor E as derrotas do perdedor contra o
+        // vencedor. Antes só gravava o lado do vencedor, então quando o
+        // perdedor nunca tinha vencido esse confronto específico (em outra
+        // partida), o confronto direto ficava sempre em 0x0 = 50%, mesmo
+        // já tendo sido jogado várias vezes.
         db.ref('heroStats/' + wKey + '/vs/' + lKey + '/wins').transaction(v => (v || 0) + 1);
         db.ref('heroStats/' + wKey + '/vs/' + lKey + '/name').set(loserNames[0]);
+        db.ref('heroStats/' + lKey + '/vs/' + wKey + '/losses').transaction(v => (v || 0) + 1);
         db.ref('heroStats/' + lKey + '/vs/' + wKey + '/name').set(winnerNames[0]);
     }
 
@@ -2286,13 +2293,19 @@ async function getHeroHeadToHead(heroA, heroB) {
     const kA = heroKey(heroA);
     const kB = heroKey(heroB);
 
-    const [snapAB, snapBA] = await Promise.all([
+    const [snapABwins, snapBAwins, snapABlosses, snapBAlosses] = await Promise.all([
         db.ref('heroStats/' + kA + '/vs/' + kB + '/wins').once('value'),
-        db.ref('heroStats/' + kB + '/vs/' + kA + '/wins').once('value')
+        db.ref('heroStats/' + kB + '/vs/' + kA + '/wins').once('value'),
+        db.ref('heroStats/' + kB + '/vs/' + kA + '/losses').once('value'),
+        db.ref('heroStats/' + kA + '/vs/' + kB + '/losses').once('value')
     ]);
 
-    const winsA = snapAB.val() || 0;
-    const winsB = snapBA.val() || 0;
+    // Usa o maior dos dois sinais possíveis pra cada lado: o próprio "wins"
+    // contra o outro, ou o "losses" que o outro registrou contra ele —
+    // cobre tanto partidas novas (grava os dois) quanto antigas (só
+    // gravavam o lado do vencedor).
+    const winsA = Math.max(snapABwins.val() || 0, snapABlosses.val() || 0);
+    const winsB = Math.max(snapBAwins.val() || 0, snapBAlosses.val() || 0);
     const total = winsA + winsB;
     if (total === 0) return { pctA: 50, pctB: 50, total: 0 };
 
@@ -2380,9 +2393,17 @@ function computeHeroMatchups(heroName) {
         .filter(p => p.nome !== heroName)
         .map(p => {
             const keyY = heroKey(p.nome);
-            const winsX = (heroNode.vs && heroNode.vs[keyY] && heroNode.vs[keyY].wins) || 0;
             const oppNode = (heroStatsCache && heroStatsCache[keyY]) || {};
-            const winsY = (oppNode.vs && oppNode.vs[heroKeyX] && oppNode.vs[heroKeyX].wins) || 0;
+            // Mesma lógica robusta do getHeroHeadToHead: usa o maior entre o
+            // "wins" do próprio lado e o "losses" que o outro lado gravou.
+            const winsX = Math.max(
+                (heroNode.vs && heroNode.vs[keyY] && heroNode.vs[keyY].wins) || 0,
+                (oppNode.vs && oppNode.vs[heroKeyX] && oppNode.vs[heroKeyX].losses) || 0
+            );
+            const winsY = Math.max(
+                (oppNode.vs && oppNode.vs[heroKeyX] && oppNode.vs[heroKeyX].wins) || 0,
+                (heroNode.vs && heroNode.vs[keyY] && heroNode.vs[keyY].losses) || 0
+            );
             const total = winsX + winsY;
             const pct = total === 0 ? 50 : Math.round((winsX / total) * 100);
             return {
@@ -2711,6 +2732,117 @@ async function runHeroStatsMigrationV3IfNeeded() {
         heroStatsCache = null; // força recarregar o cache com os números corrigidos
     } catch (e) {
         console.warn('Migração V2 de heroStats não concluída:', e);
+    }
+}
+
+// ============================================================
+// MIGRAÇÃO V4: corrige o confronto direto (vs) que só gravava o lado de
+// quem VENCIA, nunca o lado de quem PERDIA.
+// ------------------------------------------------------------
+// heroStats/{herói}/vs/{adversário}/wins só era gravado pro VENCEDOR do
+// confronto — o perdedor nunca tinha nada gravado sobre aquele confronto
+// específico (só o nome do adversário, sem número). Resultado: até um
+// herói jogar contra o mesmo adversário e VENCER pelo menos uma vez, o
+// confronto direto sempre aparecia como 0 x 0 = 50%, mesmo já tendo sido
+// jogado várias vezes (e sempre com o mesmo lado ganhando). Esta migração
+// recalcula o confronto direto do zero, gravando os dois lados (vitórias
+// de quem venceu E derrotas de quem perdeu), pra ficar completo mesmo que
+// um dos lados nunca tenha vencido esse confronto específico.
+async function runHeroStatsMigrationV4IfNeeded() {
+    try {
+        const flagRef = db.ref('migrations/heroStatsV4Done');
+        const already = await flagRef.once('value');
+        if (already.val()) return;
+
+        const lock = await flagRef.transaction(current => current ? undefined : 'running');
+        if (!lock.committed || lock.snapshot.val() !== 'running') return;
+
+        const postsSnap = await db.ref('posts').once('value');
+        const posts = postsSnap.val() || {};
+
+        const agg = {}; // nome do herói -> { wins, losses, vs: { nomeAdversario: {wins, losses} } }
+        function ensure(name) {
+            if (!agg[name]) agg[name] = { wins: 0, losses: 0, vs: {} };
+            return agg[name];
+        }
+        function bump(name, field) {
+            if (!name) return;
+            ensure(name)[field]++;
+        }
+        function bumpVs(winner, loser) {
+            if (!winner || !loser || winner === loser) return;
+            const w = ensure(winner);
+            if (!w.vs[loser]) w.vs[loser] = { wins: 0, losses: 0 };
+            w.vs[loser].wins++;
+
+            const l = ensure(loser);
+            if (!l.vs[winner]) l.vs[winner] = { wins: 0, losses: 0 };
+            l.vs[winner].losses++;
+        }
+
+        function combatResult(c, participants) {
+            if (!c || !c.p1Hero || !c.p2Hero) return null;
+            if (c.p1Hero.includes(',') || c.p2Hero.includes(',')) return null;
+            if (c.p1Hero.includes(' & ') || c.p2Hero.includes(' & ')) return null;
+            if (c.p1Hero === c.p2Hero) return null;
+
+            let side = null;
+            if (c.winnerName != null && participants[0] && participants[0].name === c.winnerName) side = 1;
+            else if (c.winnerName != null && participants[1] && participants[1].name === c.winnerName) side = 2;
+            else if (c.winner === 1 || c.winner === 2) side = c.winner;
+            else return null;
+
+            return side === 1
+                ? { winner: c.p1Hero, loser: c.p2Hero }
+                : { winner: c.p2Hero, loser: c.p1Hero };
+        }
+
+        Object.values(posts).forEach(post => {
+            const participants = post.participants || [];
+            const combats = post.combats || [];
+
+            if (post.mode === 'bestof3') {
+                combats.forEach(c => {
+                    const r = combatResult(c, participants);
+                    if (!r) return;
+                    bump(r.winner, 'wins');
+                    bump(r.loser, 'losses');
+                    bumpVs(r.winner, r.loser);
+                });
+            } else {
+                participants.forEach(p => {
+                    if (!p || !p.hero) return;
+                    bump(p.hero, p.won ? 'wins' : 'losses');
+                });
+                if (combats.length === 1) {
+                    const r = combatResult(combats[0], participants);
+                    if (r) bumpVs(r.winner, r.loser);
+                }
+            }
+        });
+
+        const updates = {};
+        Object.entries(agg).forEach(([heroName, stats]) => {
+            const k = heroKey(heroName);
+            updates['heroStats/' + k + '/name'] = heroName;
+            updates['heroStats/' + k + '/wins'] = stats.wins;
+            updates['heroStats/' + k + '/losses'] = stats.losses;
+            Object.entries(stats.vs).forEach(([oppName, rec]) => {
+                const ok = heroKey(oppName);
+                updates['heroStats/' + k + '/vs/' + ok + '/wins'] = rec.wins;
+                updates['heroStats/' + k + '/vs/' + ok + '/losses'] = rec.losses;
+                updates['heroStats/' + k + '/vs/' + ok + '/name'] = oppName;
+            });
+        });
+
+        if (Object.keys(updates).length > 0) {
+            await db.ref().update(updates);
+        }
+
+        await flagRef.set(true);
+        heroStatsCache = null;
+    } catch (e) {
+        console.warn('Migração V4 de heroStats não concluída:', e);
     }
 }
 
@@ -3814,7 +3946,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const urlTournament = params.get('tournament');
 
     attachFeedListener();
-    runHeroStatsMigrationIfNeeded().then(() => runHeroStatsMigrationV3IfNeeded());
+    runHeroStatsMigrationIfNeeded().then(() => runHeroStatsMigrationV3IfNeeded()).then(() => runHeroStatsMigrationV4IfNeeded());
 
     if (urlRoom) {
         roomId = urlRoom.toUpperCase();
