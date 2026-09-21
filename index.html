@@ -19,7 +19,7 @@
     <meta name="twitter:title" content="Unmatched Draft — Sorteio e Draft Online para Unmatched">
     <meta name="twitter:description" content="Sorteie heróis, monte salas e organize partidas de Unmatched online, de graça, com amigos.">
 
-    <link rel="stylesheet" href="style.css?v=20260907b">
+    <link rel="stylesheet" href="style.css?v=20260910a">
 </head>
 <body>
 
@@ -198,7 +198,9 @@
             <div id="quick-combat-timer" class="combat-timer">⏱️ 00:00</div>
             <button id="btn-quick-pause" class="btn-secondary btn-pause">⏸️ Pausar</button>
             <p id="quick-match-progress" class="waiting-text"></p>
+            <p id="quick-starting-player" class="waiting-text" style="display: none;"></p>
             <h3>🔥 CONFRONTO! 🔥</h3>
+            <button id="btn-quick-reroll" class="quick-reroll-btn" title="Sortear novos personagens para esse confronto">🎲</button>
 
             <div class="matchup-versus" id="quick-matchup-ffa">
                 <div class="fighter-card" id="quick-fighter-p1">-</div>
@@ -549,6 +551,8 @@
                     </div>
                 </div>
 
+                <p id="room-starting-player" class="waiting-text" style="display: none;"></p>
+
                 <div class="map-draw-section" id="map-draw-section">
                     <button id="btn-draw-map" class="btn-secondary btn-draw-map">🗺️ Quer sortear um mapa?</button>
                     <div id="map-draw-result" class="map-draw-result" style="display: none;">
@@ -585,6 +589,6 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
     <script src="firebase-config.js"></script>
-    <script src="app.js?v=20260907b"></script>
+    <script src="app.js?v=20260910b"></script>
 </body>
 </html>

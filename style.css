@@ -1165,6 +1165,31 @@ button:disabled {
     padding: 6px 16px !important;
 }
 
+.quick-reroll-btn {
+    width: 34px !important;
+    height: 34px !important;
+    padding: 0 !important;
+    margin: 4px auto 14px auto !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50% !important;
+    font-size: 16px;
+    background: #2f3542 !important;
+    border: 2px solid #ff4757 !important;
+    box-shadow: 0 0 8px rgba(255, 71, 87, 0.5) !important;
+    cursor: pointer;
+    transition: transform 0.15s;
+}
+
+.quick-reroll-btn:hover {
+    transform: rotate(25deg) scale(1.1);
+}
+
+.quick-reroll-btn:active {
+    transform: rotate(180deg) scale(0.95);
+}
+
 .feed-combats {
     display: flex;
     flex-direction: column;

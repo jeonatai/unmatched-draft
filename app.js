@@ -513,6 +513,11 @@ function stopCombatTimerDisplay() {
 
 document.getElementById('btn-pause-combat')?.addEventListener('click', () => {
     if (!gameState || !roomRef) return;
+    const firstStart = firstRoomTimerStartUpdates();
+    if (firstStart) {
+        roomRef.update(firstStart);
+        return;
+    }
     const timer = gameState.combatTimer;
     const updated = (timer && !timer.paused) ? pauseTimer(timer) : resumeTimer(timer);
     roomRef.update({ combatTimer: updated });
@@ -1540,6 +1545,40 @@ function renderMapDrawSection(ids, onlyLarge, onDraw) {
     }
 }
 
+function renderRoomStartingPlayer() {
+    const el = document.getElementById('room-starting-player');
+    if (!el) return;
+    if (!gameState.startingPlayer) {
+        el.style.display = 'none';
+        return;
+    }
+    let label;
+    if (gameState.phase === 'team-combat') {
+        label = gameState.startingPlayer === 1
+            ? 'Equipe ' + [1, 3].map(s => getPlayerDisplayName(s)).join(' + ')
+            : 'Equipe ' + [2, 4].map(s => getPlayerDisplayName(s)).join(' + ');
+    } else {
+        label = getPlayerDisplayName(gameState.startingPlayer);
+    }
+    el.style.display = 'block';
+    el.innerText = '🎲 Jogador inicial sorteado: ' + label;
+}
+
+// Sorteia quem começa jogando e retorna as atualizações do timer, mas só
+// se o timer da sala ainda não tiver sido iniciado de verdade (existe mas
+// pausado com 0 tempo acumulado, ou nem existe ainda). Se já foi iniciado
+// alguma vez (mesmo que esteja pausado agora), não redesenha o timer nem o
+// jogador inicial de novo.
+function firstRoomTimerStartUpdates() {
+    const timer = gameState.combatTimer;
+    const neverStarted = !timer || (timer.paused && (timer.accumulatedMs || 0) === 0);
+    if (!neverStarted) return null;
+    return {
+        combatTimer: resumeTimer(timer || newTimer()),
+        startingPlayer: Math.random() < 0.5 ? 1 : 2
+    };
+}
+
 function renderRoomMapDraw(onlyLarge) {
     renderMapDrawSection({
         btn: 'btn-draw-map',
@@ -1550,7 +1589,10 @@ function renderRoomMapDraw(onlyLarge) {
         getMap: () => gameState.currentMap
     }, onlyLarge, (map) => {
         if (!roomRef) return;
-        roomRef.update({ currentMap: map });
+        const updates = { currentMap: map };
+        const timerUpdates = firstRoomTimerStartUpdates();
+        if (timerUpdates) Object.assign(updates, timerUpdates);
+        roomRef.update(updates);
     });
 }
 
@@ -1559,6 +1601,7 @@ function buildCombatInterface() {
         roomRef.update({ combatTimer: newTimer() });
     }
     if (!combatTimerInterval) startCombatTimerDisplay();
+    renderRoomStartingPlayer();
 
     const isTeam = gameState.phase === 'team-combat';
     const isSingle = gameState.phase === 'single-combat';
@@ -2965,7 +3008,7 @@ function renderFeed(posts) {
 
 document.getElementById('btn-rematch')?.addEventListener('click', async () => {
     if (!roomRef) return;
-    let updates = { phase: null, winner: null, winnerTeam: null, isDraw: null, matchPosted: false, finalWinnerHero: null, finalLoserHero: null, finalP1Hero: null, finalP2Hero: null, combatTimer: null, combatLogs: [], matchDurationMs: null };
+    let updates = { phase: null, winner: null, winnerTeam: null, isDraw: null, matchPosted: false, finalWinnerHero: null, finalLoserHero: null, finalP1Hero: null, finalP2Hero: null, combatTimer: null, startingPlayer: null, combatLogs: [], matchDurationMs: null };
 
     const otherRoomHeroes = await getActiveRoomHeroNames();
 
@@ -3150,6 +3193,44 @@ async function startQuickDraft() {
     startQuickTimer();
 }
 
+// Resorteia os heróis só do confronto atual do Sorteio Rápido (sem afetar
+// os outros jogadores/partidas), evitando repetir herói de quem não está
+// nesse confronto.
+function rerollCurrentQuickMatchHeroes() {
+    if (!quickState) return;
+    const match = quickState.matches[quickState.matchIndex];
+    if (!match) return;
+
+    let involvedIndexes = [];
+    if (match.type === 'ffa') {
+        involvedIndexes = match.players.slice();
+    } else {
+        const teamA = quickState.teams[match.teamA];
+        const teamB = quickState.teams[match.teamB];
+        involvedIndexes = [...teamA.members, ...teamB.members];
+    }
+    if (!involvedIndexes.length) return;
+
+    const otherHeroNames = new Set();
+    quickState.players.forEach((p, idx) => {
+        if (!involvedIndexes.includes(idx) && p.hero) otherHeroNames.add(p.hero.nome);
+    });
+
+    const pool = shuffleArray(PERSONAGENS.filter(h => !otherHeroNames.has(h.nome)));
+    if (pool.length < involvedIndexes.length) {
+        alert('Não há heróis suficientes disponíveis pra sortear de novo sem repetir.');
+        return;
+    }
+
+    involvedIndexes.forEach((idx, i) => {
+        quickState.players[idx].hero = pool[i];
+    });
+
+    renderQuickCombat();
+}
+
+document.getElementById('btn-quick-reroll')?.addEventListener('click', rerollCurrentQuickMatchHeroes);
+
 function renderQuickCombat() {
     if (!quickState) return;
     const match = quickState.matches[quickState.matchIndex];
@@ -3157,6 +3238,7 @@ function renderQuickCombat() {
 
     document.getElementById('quick-match-progress').innerText =
         'Partida ' + (quickState.matchIndex + 1) + ' de ' + quickState.matches.length;
+    renderQuickStartingPlayer(match);
 
     const ffaBox = document.getElementById('quick-matchup-ffa');
     const teamsBox = document.getElementById('quick-matchup-teams');
@@ -3308,8 +3390,49 @@ function renderQuickMapDraw(match) {
         getMap: () => match.map || null
     }, onlyLarge, (map) => {
         match.map = map;
+        firstQuickTimerStart(match);
         renderQuickMapDraw(match);
+        renderQuickStartingPlayer(match);
     });
+}
+
+// Sorteia quem começa jogando (só na 1ª vez que o cronômetro do Sorteio
+// Rápido é ligado de verdade — não redesenha se já tiver sido iniciado
+// antes, mesmo que esteja pausado agora).
+function firstQuickTimerStart(match) {
+    if (!quickState) return;
+    const timer = quickState.timer;
+    const neverStarted = !timer || (timer.paused && (timer.accumulatedMs || 0) === 0);
+    if (!neverStarted) return;
+    quickState.timer = resumeTimer(timer || newTimer());
+    if (match && (match.type === 'ffa' && match.players.length === 2 || match.type === 'team')) {
+        quickState.startingPlayer = Math.random() < 0.5 ? 1 : 2;
+    }
+    updateQuickTimerDisplay();
+}
+
+function renderQuickStartingPlayer(match) {
+    const el = document.getElementById('quick-starting-player');
+    if (!el) return;
+    if (!quickState.startingPlayer || !match) {
+        el.style.display = 'none';
+        return;
+    }
+    let label = null;
+    if (match.type === 'ffa' && match.players.length === 2) {
+        const idx = quickState.startingPlayer === 1 ? match.players[0] : match.players[1];
+        label = quickState.players[idx].name;
+    } else if (match.type === 'team') {
+        const teamKey = quickState.startingPlayer === 1 ? match.teamA : match.teamB;
+        const team = quickState.teams[teamKey];
+        label = 'Equipe ' + team.members.map(i => quickState.players[i].name).join(' + ');
+    }
+    if (!label) {
+        el.style.display = 'none';
+        return;
+    }
+    el.style.display = 'block';
+    el.innerText = '🎲 Jogador inicial sorteado: ' + label;
 }
 
 function renderQuickRoster() {
@@ -3413,6 +3536,7 @@ window.registerFfaWinner = function(winnerIdx) {
     });
 
     quickState.matchIndex++;
+    quickState.startingPlayer = null;
 
     if (quickState.matchIndex < quickState.matches.length) {
         renderQuickCombat();
@@ -3464,6 +3588,7 @@ window.registerTeamMatchWinner = function(winnerNum) {
     });
 
     quickState.matchIndex++;
+    quickState.startingPlayer = null;
 
     if (quickState.matchIndex < quickState.matches.length) {
         renderQuickCombat();
@@ -3610,6 +3735,14 @@ window.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-quick-home').onclick = () => { stopQuickTimer(); showScreen('screen-home'); };
     document.getElementById('btn-quick-pause').onclick = () => {
         if (!quickState) return;
+        const timer = quickState.timer;
+        const neverStarted = !timer || (timer.paused && (timer.accumulatedMs || 0) === 0);
+        if (neverStarted) {
+            const match = quickState.matches[quickState.matchIndex];
+            firstQuickTimerStart(match);
+            renderQuickStartingPlayer(match);
+            return;
+        }
         quickState.timer = quickState.timer.paused ? resumeTimer(quickState.timer) : pauseTimer(quickState.timer);
         updateQuickPauseBtn();
     };
