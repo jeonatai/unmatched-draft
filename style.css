@@ -1014,6 +1014,40 @@ button:disabled {
     text-align: center;
 }
 
+.btn-reroll-map {
+    width: auto;
+    padding: 8px 16px;
+    font-size: 12.5px;
+    background: linear-gradient(135deg, #3a3a44, #4a4a56);
+    box-shadow: none;
+}
+
+.btn-reroll-map-tiny {
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border-radius: 50%;
+    font-size: 13px;
+    line-height: 1;
+    background: #2a2a33;
+    border: 1px solid #444;
+    color: #cfd3da;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.btn-reroll-map-tiny:hover {
+    background: #3a3a44;
+    transform: rotate(45deg);
+}
+
+.btn-reroll-map-tiny:active {
+    transform: rotate(90deg) scale(0.9);
+}
+
 /* ==========================================================================
    SORTEIO RÁPIDO — LISTA DE HERÓIS SORTEADOS
    ========================================================================== */

@@ -97,11 +97,61 @@ const MAPAS_PEQUENOS = [
 
 const MAPAS_TODOS = [...MAPAS_GRANDES, ...MAPAS_PEQUENOS];
 
-// Sorteia um mapa. Combates com mais de 2 participantes (equipes) sorteiam
-// apenas entre os mapas grandes; combates 1x1 sorteiam entre todos os mapas.
-function drawRandomMap(onlyLarge) {
-    const pool = onlyLarge ? MAPAS_GRANDES : MAPAS_TODOS;
-    return pool[secureRandomInt(pool.length)];
+// ============================================================
+// MEMÓRIA DO SORTEIO DE MAPAS (evita repetir sempre o mesmo)
+// ============================================================
+// Mesmo princípio da memória de heróis: guarda neste navegador os
+// últimos mapas sorteados e, na maioria das vezes, evita repeti-los.
+// Como o pool de mapas é bem menor que o de heróis (principalmente o de
+// mapas pequenos), a janela de memória é mais curta.
+const RECENT_MAPS_KEY = 'unmatched_recent_maps';
+const RECENT_MAPS_REPEAT_CHANCE = 0.10;
+const RECENT_MAPS_MAX = 5;
+
+function getRecentMapNames() {
+    try {
+        const raw = localStorage.getItem(RECENT_MAPS_KEY);
+        const list = raw ? JSON.parse(raw) : [];
+        return Array.isArray(list) ? list : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function addRecentMapNames(names) {
+    try {
+        const current = getRecentMapNames();
+        const merged = [...names, ...current.filter(n => !names.includes(n))].slice(0, RECENT_MAPS_MAX);
+        localStorage.setItem(RECENT_MAPS_KEY, JSON.stringify(merged));
+    } catch (e) {
+        // localStorage indisponível — segue sem memória, sem quebrar o sorteio
+    }
+}
+
+// Sorteia um mapa. `excludeNames` (opcional) é usado pelo botão de
+// "re-rolar" pra garantir que o re-sorteio não caia no mesmo mapa que
+// já estava mostrado. Na maioria das vezes (90%) também evita os
+// últimos mapas sorteados neste navegador, dando mais variedade.
+function drawRandomMap(onlyLarge, excludeNames) {
+    const fullPool = onlyLarge ? MAPAS_GRANDES : MAPAS_TODOS;
+
+    let basePool = fullPool;
+    if (excludeNames && excludeNames.length > 0) {
+        const filtered = fullPool.filter(m => !excludeNames.includes(m.nome));
+        if (filtered.length > 0) basePool = filtered;
+    }
+
+    const recentNames = new Set(getRecentMapNames());
+    const allowRepeat = recentNames.size === 0 || secureRandomFloat() < RECENT_MAPS_REPEAT_CHANCE;
+    let pool = basePool;
+    if (!allowRepeat) {
+        const filtered = basePool.filter(m => !recentNames.has(m.nome));
+        if (filtered.length > 0) pool = filtered;
+    }
+
+    const picked = pool[secureRandomInt(pool.length)];
+    addRecentMapNames([picked.nome]);
+    return picked;
 }
 
 const PLAYER_COLORS = {
@@ -170,9 +220,19 @@ function pauseBtnLabel(timer) {
 }
 
 function secureRandomInt(maxExclusive) {
+    if (maxExclusive <= 0) return 0;
+    // Amostragem por rejeição: descarta os poucos valores que sobrariam de
+    // uma divisão não-exata por maxExclusive, eliminando qualquer viés do
+    // módulo (por menor que fosse) e deixando o sorteio genuinamente uniforme.
+    const maxUint32 = 4294967296; // 2^32
+    const limit = maxUint32 - (maxUint32 % maxExclusive);
     const arr = new Uint32Array(1);
-    crypto.getRandomValues(arr);
-    return arr[0] % maxExclusive;
+    let x;
+    do {
+        crypto.getRandomValues(arr);
+        x = arr[0];
+    } while (x >= limit);
+    return x % maxExclusive;
 }
 
 function shuffleArray(arr) {
@@ -188,12 +248,14 @@ function shuffleArray(arr) {
 // SORTEIO DE HERÓIS COM MEMÓRIA (evita repetir sempre os mesmos)
 // ============================================================
 // Guarda, neste navegador (localStorage — não afeta outros dispositivos),
-// os heróis sorteados no ÚLTIMO Sorteio Rápido feito aqui. A cada novo
-// sorteio, existe 90% de chance de esses heróis ficarem de fora (dando
-// espaço pros que ainda não saíram) e 10% de chance de o sorteio ser
-// totalmente livre, podendo repetir algum deles normalmente.
+// uma janela contínua dos últimos heróis sorteados aqui (não só do último
+// sorteio, mas dos últimos ~30 heróis vistos, mesmo em sorteios diferentes).
+// A cada novo sorteio, existe 90% de chance de esses heróis ficarem de
+// fora (dando espaço pros que ainda não saíram) e 10% de chance de o
+// sorteio ser totalmente livre, podendo repetir algum deles normalmente.
 const RECENT_HEROES_KEY = 'unmatched_recent_heroes';
 const RECENT_HEROES_REPEAT_CHANCE = 0.10; // 10% de chance de não filtrar nada
+const RECENT_HEROES_MAX = 30; // tamanho da "memória" rolante neste navegador
 
 function getRecentHeroNames() {
     try {
@@ -205,9 +267,14 @@ function getRecentHeroNames() {
     }
 }
 
-function setRecentHeroNames(names) {
+// Acumula (em vez de sobrescrever) os heróis mais recentes, mantendo uma
+// janela rolante — assim o sorteio "lembra" de mais do que só a última
+// rodada, espalhando melhor a variedade entre vários sorteios seguidos.
+function addRecentHeroNames(names) {
     try {
-        localStorage.setItem(RECENT_HEROES_KEY, JSON.stringify(names));
+        const current = getRecentHeroNames();
+        const merged = [...names, ...current.filter(n => !names.includes(n))].slice(0, RECENT_HEROES_MAX);
+        localStorage.setItem(RECENT_HEROES_KEY, JSON.stringify(merged));
     } catch (e) {
         // localStorage indisponível (modo privado etc.) — segue sem memória, sem quebrar o sorteio
     }
@@ -221,25 +288,87 @@ function secureRandomFloat() {
     return arr[0] / 4294967296;
 }
 
-// Sorteia `count` heróis únicos entre si. Na maioria das vezes (90%),
-// os heróis do último sorteio feito neste navegador ficam de fora,
-// abrindo espaço pros que ainda não saíram. Em 10% dos sorteios, o
-// filtro não é aplicado e qualquer herói pode sair normalmente —
-// então mesmo o herói mais recente ainda pode voltar de vez em quando.
-// Em outro dispositivo, sem essa memória local, o sorteio é sempre livre.
-function drawUniqueHeroes(count) {
-    const n = Math.min(count, PERSONAGENS.length);
+// ============================================================
+// HERÓIS EM USO EM OUTRAS SALAS ABERTAS
+// ============================================================
+// Antes de sortear heróis para uma sala nova, olha as outras salas ainda
+// em andamento (não finalizadas, criadas nas últimas horas) e evita
+// sortear heróis que já estão sendo usados nelas — assim, se tiver mais
+// de uma sala rolando ao mesmo tempo (ex: um evento com várias mesas),
+// dificilmente vai repetir o mesmo personagem em mesas diferentes.
+const ACTIVE_ROOM_WINDOW_MS = 6 * 60 * 60 * 1000; // salas de até 6h atrás contam como "em andamento"
+
+async function getActiveRoomHeroNames() {
+    try {
+        const cutoff = Date.now() - ACTIVE_ROOM_WINDOW_MS;
+        const snap = await db.ref('rooms').once('value');
+        const rooms = snap.val() || {};
+        const names = new Set();
+
+        const addHero = (h) => {
+            if (!h) return;
+            if (typeof h === 'string') names.add(h);
+            else if (h.nome) names.add(h.nome);
+        };
+        const addArr = (arr) => { (arr || []).forEach(addHero); };
+
+        Object.values(rooms).forEach(room => {
+            if (!room) return;
+            if (room.phase === 'post-game') return; // partida já terminou, libera os heróis
+            if (typeof room.createdAt === 'number' && room.createdAt < cutoff) return; // sala velha/abandonada
+
+            addArr(room.p1Cards);
+            addArr(room.p2Cards);
+            addHero(room.p1Pick);
+            addHero(room.p2Pick);
+            addHero(room.p1Final);
+            addHero(room.p2Final);
+            addHero(room.p1CombatChoice);
+            addHero(room.p2CombatChoice);
+            addArr(room.p1Used);
+            addArr(room.p2Used);
+            addArr(room.teamPool);
+            if (room.teamPicks) Object.values(room.teamPicks).forEach(addHero);
+            if (room.cafePicks) {
+                Object.values(room.cafePicks).forEach(v => {
+                    if (Array.isArray(v)) v.forEach(addHero); else addHero(v);
+                });
+            }
+        });
+
+        return Array.from(names);
+    } catch (e) {
+        return []; // se a consulta falhar, segue sem excluir nada — não trava o sorteio
+    }
+}
+
+// Sorteia `count` heróis únicos entre si. `excludeNames` (opcional) é uma
+// lista extra de heróis a evitar (ex: heróis já em uso em outras salas) —
+// só é aplicada se sobrarem heróis suficientes depois de excluí-los.
+// Na maioria das vezes (90%), os heróis da "memória" deste navegador
+// também ficam de fora, dando espaço pros que ainda não saíram; em 10%
+// dos sorteios o filtro de memória não é aplicado (mas a exclusão de
+// outras salas continua valendo). Em outro dispositivo, sem essa memória
+// local, o sorteio é sempre livre (exceto pelas outras salas abertas).
+function drawUniqueHeroes(count, excludeNames) {
+    let basePool = PERSONAGENS;
+    if (excludeNames && excludeNames.length > 0) {
+        const filtered = PERSONAGENS.filter(p => !excludeNames.includes(p.nome));
+        if (filtered.length >= count) basePool = filtered;
+    }
+
+    const n = Math.min(count, basePool.length);
     const recentNames = new Set(getRecentHeroNames());
     const allowRepeat = recentNames.size === 0 || secureRandomFloat() < RECENT_HEROES_REPEAT_CHANCE;
 
-    let pool = PERSONAGENS;
+    let pool = basePool;
     if (!allowRepeat) {
-        const filtered = PERSONAGENS.filter(p => !recentNames.has(p.nome));
+        const filtered = basePool.filter(p => !recentNames.has(p.nome));
         if (filtered.length >= n) pool = filtered;
     }
 
     const picked = shuffleArray(pool).slice(0, n);
-    setRecentHeroNames(picked.map(p => p.nome));
+    addRecentHeroNames(picked.map(p => p.nome));
     return picked;
 }
 
@@ -486,7 +615,7 @@ function showCreatorRolePick() {
     showScreen('screen-creator-role-pick');
 }
 
-function createRoomFromConfig(creatorRole) {
+async function createRoomFromConfig(creatorRole) {
     const mode = pendingConfig.mode;
     const playerNames = pendingConfig.playerNames;
     roomId = generateRoomId();
@@ -525,7 +654,8 @@ function createRoomFromConfig(creatorRole) {
     } else if (mode === 'bestof3') {
         Object.assign(initialState, buildBestOf3State());
     } else if (mode === 'team') {
-        Object.assign(initialState, buildTeamDraftState());
+        const otherRoomHeroes = await getActiveRoomHeroNames();
+        Object.assign(initialState, buildTeamDraftState(otherRoomHeroes));
     }
 
     roomRef = db.ref('rooms/' + roomId);
@@ -552,9 +682,9 @@ function buildBestOf3State() {
     };
 }
 
-function buildTeamDraftState() {
+function buildTeamDraftState(excludeNames) {
     return {
-        teamPool: drawUniqueHeroes(12),
+        teamPool: drawUniqueHeroes(12, excludeNames),
         teamPicks: { 1: null, 2: null, 3: null, 4: null },
         teamBans: []
     };
@@ -580,7 +710,7 @@ function tryJoinRoom() {
     }
 
     const ref = db.ref('rooms/' + roomId);
-    ref.get().then(snapshot => {
+    ref.get().then(async snapshot => {
         if (!snapshot.exists()) {
             showJoinError('Essa sala não existe. Verifique o código.');
             return;
@@ -610,7 +740,8 @@ function tryJoinRoom() {
                     updates.phase = 'cafe-pick-single';
                     updates.cafePicks = {};
                 } else {
-                    const shuffled = drawUniqueHeroes(4);
+                    const otherRoomHeroes = await getActiveRoomHeroNames();
+                    const shuffled = drawUniqueHeroes(4, otherRoomHeroes);
                     updates.phase = 'single-pick';
                     updates.p1Cards = shuffled.slice(0, 2);
                     updates.p2Cards = shuffled.slice(2, 4);
@@ -622,7 +753,8 @@ function tryJoinRoom() {
                     updates.phase = 'cafe-pick-b3';
                     updates.cafePicks = {};
                 } else {
-                    const shuffled = drawUniqueHeroes(8);
+                    const otherRoomHeroes = await getActiveRoomHeroNames();
+                    const shuffled = drawUniqueHeroes(8, otherRoomHeroes);
                     updates.p1Cards = shuffled.slice(0, 4);
                     updates.p2Cards = shuffled.slice(4, 8);
                     updates.phase = 'phase1-j1-save';
@@ -833,7 +965,7 @@ function renderWaitingRoom() {
     }
 }
 
-function claimName(nameIndex) {
+async function claimName(nameIndex) {
     const deviceId = getDeviceId();
     const claims = gameState.nameClaims || {};
 
@@ -867,8 +999,9 @@ function claimName(nameIndex) {
             3: shuffledIndices[2],
             4: shuffledIndices[3]
         };
+        const otherRoomHeroes = await getActiveRoomHeroNames();
         updates.phase = 'team-assignment';
-        updates.teamPool = drawUniqueHeroes(12);
+        updates.teamPool = drawUniqueHeroes(12, otherRoomHeroes);
         updates.teamPicks = { 1: null, 2: null, 3: null, 4: null };
         updates.teamBans = [];
     }
@@ -1120,11 +1253,14 @@ document.getElementById('btn-confirm-cafe-pick')?.addEventListener('click', () =
 });
 
 // Sorteia os heróis dos jogadores NÃO marcados como café com leite
-// (excluindo os heróis já escolhidos manualmente) e segue o fluxo normal
+// (excluindo os heróis já escolhidos manualmente, e preferindo evitar os
+// que já estão em uso em outras salas abertas) e segue o fluxo normal
 // do modo. Protegido por transaction pra rodar uma única vez, mesmo com
 // os dois dispositivos percebendo a condição ao mesmo tempo.
-function finalizeCafePickIfNeeded() {
+async function finalizeCafePickIfNeeded() {
     if (!roomRef) return;
+    const otherRoomHeroes = await getActiveRoomHeroNames();
+
     roomRef.child('cafeResolving').transaction(current => {
         if (current) return; // já está sendo (ou já foi) resolvido
         return true;
@@ -1137,12 +1273,19 @@ function finalizeCafePickIfNeeded() {
         const cafeRoles = [1, 2].filter(r => cafeFlags[r - 1]);
         const normalRoles = [1, 2].filter(r => !cafeFlags[r - 1]);
         const perPlayer = isB3 ? 4 : 2;
+        const needed = normalRoles.length * perPlayer;
 
         const chosenNames = new Set();
         cafeRoles.forEach(r => (cafePicks[r] || []).forEach(h => chosenNames.add(h.nome)));
 
-        const pool = PERSONAGENS.filter(p => !chosenNames.has(p.nome));
-        const drawn = shuffleArray(pool).slice(0, normalRoles.length * perPlayer);
+        // Excluir os já escolhidos pelos café com leite é obrigatório (nunca
+        // pode repetir); evitar heróis de outras salas é só uma preferência,
+        // então só aplicamos se sobrar gente suficiente depois de tudo.
+        const mandatoryPool = PERSONAGENS.filter(p => !chosenNames.has(p.nome));
+        const preferredPool = mandatoryPool.filter(p => !otherRoomHeroes.includes(p.nome));
+        const finalPool = preferredPool.length >= needed ? preferredPool : mandatoryPool;
+        const drawn = shuffleArray(finalPool).slice(0, needed);
+        addRecentHeroNames(drawn.map(p => p.nome));
 
         const updates = {};
         let idx = 0;
@@ -1375,6 +1518,7 @@ function renderMapDrawSection(ids, onlyLarge, onDraw) {
     const resultBox = document.getElementById(ids.result);
     const img = document.getElementById(ids.img);
     const nameEl = document.getElementById(ids.name);
+    const rerollBtn = ids.reroll ? document.getElementById(ids.reroll) : null;
     if (!btn) return;
 
     const map = ids.getMap();
@@ -1384,9 +1528,14 @@ function renderMapDrawSection(ids, onlyLarge, onDraw) {
         img.src = map.img;
         img.alt = map.nome;
         nameEl.innerText = '🗺️ Mapa sorteado: ' + map.nome;
+        if (rerollBtn) {
+            rerollBtn.style.display = 'inline-flex';
+            rerollBtn.onclick = () => onDraw(drawRandomMap(onlyLarge, [map.nome]));
+        }
     } else {
         btn.style.display = 'inline-block';
         resultBox.style.display = 'none';
+        if (rerollBtn) rerollBtn.style.display = 'none';
         btn.onclick = () => onDraw(drawRandomMap(onlyLarge));
     }
 }
@@ -1397,6 +1546,7 @@ function renderRoomMapDraw(onlyLarge) {
         result: 'map-draw-result',
         img: 'map-draw-image',
         name: 'map-draw-name',
+        reroll: 'btn-reroll-map',
         getMap: () => gameState.currentMap
     }, onlyLarge, (map) => {
         if (!roomRef) return;
@@ -2813,12 +2963,14 @@ function renderFeed(posts) {
     if (paginationEl) renderFeedPagination(paginationEl, entries.length);
 }
 
-document.getElementById('btn-rematch')?.addEventListener('click', () => {
+document.getElementById('btn-rematch')?.addEventListener('click', async () => {
     if (!roomRef) return;
     let updates = { phase: null, winner: null, winnerTeam: null, isDraw: null, matchPosted: false, finalWinnerHero: null, finalLoserHero: null, finalP1Hero: null, finalP2Hero: null, combatTimer: null, combatLogs: [], matchDurationMs: null };
 
+    const otherRoomHeroes = await getActiveRoomHeroNames();
+
     if (gameState.mode === 'single') {
-        const shuffled = drawUniqueHeroes(4);
+        const shuffled = drawUniqueHeroes(4, otherRoomHeroes);
         updates.phase = 'single-pick';
         updates.p1Cards = shuffled.slice(0, 2);
         updates.p2Cards = shuffled.slice(2, 4);
@@ -2835,7 +2987,7 @@ document.getElementById('btn-rematch')?.addEventListener('click', () => {
             3: shuffledIndices[2],
             4: shuffledIndices[3]
         };
-        updates.teamPool = drawUniqueHeroes(12);
+        updates.teamPool = drawUniqueHeroes(12, otherRoomHeroes);
         updates.teamPicks = { 1: null, 2: null, 3: null, 4: null };
         updates.teamBans = [];
         updates.phase = 'team-assignment';
@@ -2944,7 +3096,7 @@ function buildRoundRobinPairs(indexes) {
     return pairs;
 }
 
-function startQuickDraft() {
+async function startQuickDraft() {
     const names = getQuickNameInputs();
     const format = getQuickFormat();
 
@@ -2960,7 +3112,8 @@ function startQuickDraft() {
         }
     }
 
-    const drawnHeroes = drawUniqueHeroes(names.length);
+    const otherRoomHeroes = await getActiveRoomHeroNames();
+    const drawnHeroes = drawUniqueHeroes(names.length, otherRoomHeroes);
 
     const players = names.map((name, idx) => ({
         name,
@@ -3151,6 +3304,7 @@ function renderQuickMapDraw(match) {
         result: 'quick-map-draw-result',
         img: 'quick-map-draw-image',
         name: 'quick-map-draw-name',
+        reroll: 'btn-quick-reroll-map',
         getMap: () => match.map || null
     }, onlyLarge, (map) => {
         match.map = map;
@@ -3615,7 +3769,7 @@ function generateTournamentBracket(playerCount) {
     return bracket;
 }
 
-function createTournament() {
+async function createTournament() {
     const playerCount = parseInt(document.getElementById('tournament-player-count').value);
     const validCounts = [2, 4, 8, 16];
     
@@ -3635,7 +3789,8 @@ function createTournament() {
     // Sortear 2 heróis únicos para cada jogador
     const heroOptions = {};
     const totalHeroesNeeded = playerCount * 2;
-    const shuffledHeroes = shuffleArray(PERSONAGENS).slice(0, totalHeroesNeeded);
+    const otherRoomHeroes = await getActiveRoomHeroNames();
+    const shuffledHeroes = drawUniqueHeroes(totalHeroesNeeded, otherRoomHeroes);
     
     for (let i = 0; i < playerCount; i++) {
         heroOptions[i] = shuffledHeroes.slice(i * 2, (i + 1) * 2);
@@ -4047,7 +4202,13 @@ function renderTournamentCombat() {
     
     const opponentIndex = myMatch.player1 === myTournamentIndex ? myMatch.player2 : myMatch.player1;
     const opponentHero = tournamentState.heroSelections[opponentIndex];
-    
+
+    // Reseta o sorteio de mapa a cada nova partida do torneio
+    tournamentDrawnMap = null;
+    document.getElementById('tournament-map-draw-result').style.display = 'none';
+    document.getElementById('btn-tournament-draw-map').style.display = 'inline-block';
+    document.getElementById('btn-tournament-reroll-map').style.display = 'none';
+
     document.getElementById('tournament-fighter-you').innerHTML = `
         <img src="${myTournamentHero.img}" alt="${myTournamentHero.nome}">
         <span>${myTournamentHero.nome}</span>
@@ -4098,12 +4259,25 @@ document.getElementById('btn-pause-tournament-combat').onclick = () => {
     tournamentRef.update({ combatTimer: updated });
 };
 
-document.getElementById('btn-tournament-draw-map').onclick = () => {
-    const map = drawRandomMap(false);
+let tournamentDrawnMap = null;
+
+function applyTournamentMapDraw(map) {
+    tournamentDrawnMap = map;
     document.getElementById('tournament-map-draw-image').src = map.img;
     document.getElementById('tournament-map-draw-name').innerText = map.nome;
     document.getElementById('tournament-map-draw-result').style.display = 'block';
     document.getElementById('btn-tournament-draw-map').style.display = 'none';
+    const rerollBtn = document.getElementById('btn-tournament-reroll-map');
+    if (rerollBtn) rerollBtn.style.display = 'inline-block';
+}
+
+document.getElementById('btn-tournament-draw-map').onclick = () => {
+    applyTournamentMapDraw(drawRandomMap(false));
+};
+
+document.getElementById('btn-tournament-reroll-map').onclick = () => {
+    const exclude = tournamentDrawnMap ? [tournamentDrawnMap.nome] : [];
+    applyTournamentMapDraw(drawRandomMap(false, exclude));
 };
 
 document.getElementById('btn-tournament-winner-you').onclick = () => endTournamentMatch(true);
