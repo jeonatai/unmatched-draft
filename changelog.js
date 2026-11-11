@@ -9,11 +9,13 @@ const CHANGELOG = {
     title: 'Novidades da atualização',
     items: [
         { icon: '🎲', text: 'Melhor de 3: novo botão para re-sortear os personagens. O outro jogador precisa permitir.' },
+        { icon: '⚔️', text: 'Nova ferramenta Confrontos: escolha dois heróis e veja a porcentagem de vitória de cada um, com link para compartilhar.' },
         { icon: '🏅', text: 'Novo Ranking de heróis, do mais forte ao mais fraco, com busca e posição numérica.' },
         { icon: '📊', text: 'Porcentagem de vitória mais clara: mostra o número de jogos e, sem confrontos diretos, o desempenho geral.' },
         { icon: '🎨', text: 'Porcentagens de vitória com as mesmas cores do Ranking: verde, amarelo, vermelho e cinza (sem dados).' },
         { icon: '⏱️', text: 'Cronômetro: se alguém pausar e esquecer, agora dá para ajustar o tempo manualmente no botão ✏️.' },
         { icon: '🧹', text: 'Removida a lista "Heróis sorteados" do Sorteio Rápido, para a tela ficar mais limpa.' },
+        { icon: '🧼', text: 'Tela de combate mais limpa: "Jogador inicial" vira uma etiqueta no card do herói e saíram textos desnecessários.' },
         { icon: '🔀', text: 'Sorteio melhorado em todos os modos, com menos repetição de heróis.' },
         { icon: '🛠️', text: 'Correção: a revanche no Melhor de 3 agora sorteia heróis novos.' },
         { icon: '📱', text: 'Layout mais rápido e prático no celular.' },

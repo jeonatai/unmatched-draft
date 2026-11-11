@@ -435,7 +435,7 @@ function getDeviceId() {
 const BACK_TRACKED_SCREENS = new Set([
     'screen-home', 'screen-configure', 'screen-enter-code', 'screen-creator-role-pick',
     'screen-quick-setup', 'screen-quick-result', 'screen-tools', 'screen-add-match',
-    'screen-hero-stats', 'screen-hero-rank', 'screen-join-error'
+    'screen-hero-stats', 'screen-hero-rank', 'screen-matchup', 'screen-join-error'
 ]);
 let suppressHistoryPush = false;
 
@@ -1751,23 +1751,32 @@ function renderMapDrawSection(ids, onlyLarge, onDraw) {
     }
 }
 
+// Etiqueta pequena "Jogador inicial" em cima do card do herói (ou do lado da
+// equipe) de quem começa. Substitui o texto grande que ficava na tela.
+function setStarterTag(target) {
+    const tag = document.createElement('div');
+    tag.className = 'starter-tag';
+    tag.innerText = 'Jogador inicial';
+    target.insertBefore(tag, target.firstChild);
+}
+
+function clearStarterTags(root) {
+    root.querySelectorAll('.starter-tag').forEach(t => t.remove());
+}
+
 function renderRoomStartingPlayer() {
     const el = document.getElementById('room-starting-player');
-    if (!el) return;
-    if (!gameState.startingPlayer) {
-        el.style.display = 'none';
-        return;
-    }
-    let label;
-    if (gameState.phase === 'team-combat') {
-        label = gameState.startingPlayer === 1
-            ? 'Equipe ' + [1, 3].map(s => getPlayerDisplayName(s)).join(' + ')
-            : 'Equipe ' + [2, 4].map(s => getPlayerDisplayName(s)).join(' + ');
-    } else {
-        label = getPlayerDisplayName(gameState.startingPlayer);
-    }
-    el.style.display = 'block';
-    el.innerText = '🎲 Jogador inicial sorteado: ' + label;
+    if (el) el.style.display = 'none';
+    const screen = document.getElementById('screen-combat');
+    if (!screen) return;
+    clearStarterTags(screen);
+
+    const sp = gameState && gameState.startingPlayer;
+    if (!sp) return;
+    const target = gameState.phase === 'team-combat'
+        ? screen.querySelector(sp === 1 ? '.team-side.team-a' : '.team-side.team-b')
+        : document.getElementById(sp === 1 ? 'fighter-p1' : 'fighter-p2');
+    if (target) setStarterTag(target);
 }
 
 // Sorteia quem começa jogando e retorna as atualizações do timer, mas só
@@ -1803,11 +1812,15 @@ function renderRoomMapDraw(onlyLarge) {
 }
 
 function buildCombatInterface() {
+    buildCombatInterfaceInner();
+    renderRoomStartingPlayer();
+}
+
+function buildCombatInterfaceInner() {
     if (!gameState.combatTimer && roomRef) {
         roomRef.update({ combatTimer: newTimer() });
     }
     if (!combatTimerInterval) startCombatTimerDisplay();
-    renderRoomStartingPlayer();
 
     const isTeam = gameState.phase === 'team-combat';
     const isSingle = gameState.phase === 'single-combat';
@@ -2521,7 +2534,7 @@ async function getHeroHeadToHead(heroA, heroB) {
 
     if (total > 0) {
         const pctA = Math.round((winsA / total) * 100);
-        return { source: 'h2h', pctA, pctB: 100 - pctA, total };
+        return { source: 'h2h', pctA, pctB: 100 - pctA, total, winsA, winsB };
     }
 
     // Nunca se enfrentaram: cai pro aproveitamento geral de cada herói.
@@ -2572,6 +2585,21 @@ function renderMatchupOddsBadge(cardEl, main, sub, pct) {
     }
 }
 
+// Nota discreta abaixo do confronto quando os dois heróis nunca se enfrentaram.
+function setOddsNote(cardEl, show) {
+    const row = cardEl && cardEl.parentElement;
+    if (!row) return;
+    let note = row.nextElementSibling;
+    if (!note || !note.classList.contains('odds-note')) {
+        if (!show) return;
+        note = document.createElement('p');
+        note.className = 'odds-note';
+        row.insertAdjacentElement('afterend', note);
+    }
+    note.innerText = 'Sem embates desses personagens';
+    note.style.display = show ? '' : 'none';
+}
+
 function plural(n, one, many) { return n + ' ' + (n === 1 ? one : many); }
 
 // Calcula e exibe a porcentagem de vitória de cada lado dentro dos cards
@@ -2582,6 +2610,7 @@ function plural(n, one, many) { return n + ' ' + (n === 1 ? one : many); }
 //  - Sem nenhum dado: "—" + "sem dados"
 async function renderMatchupOdds(cardP1El, heroP1, cardP2El, heroP2) {
     if (!heroP1 || !heroP2) return;
+    setOddsNote(cardP1El, false);
     renderMatchupOddsBadge(cardP1El, '...');
     renderMatchupOddsBadge(cardP2El, '...');
     const odds = await getHeroHeadToHead(heroP1.nome, heroP2.nome);
@@ -2591,6 +2620,7 @@ async function renderMatchupOdds(cardP1El, heroP1, cardP2El, heroP2) {
         renderMatchupOddsBadge(cardP1El, odds.pctA + '%', sub, odds.pctA);
         renderMatchupOddsBadge(cardP2El, odds.pctB + '%', sub, odds.pctB);
     } else if (odds.source === 'general') {
+        setOddsNote(cardP1El, true);
         const show = (el, g) => g
             ? renderMatchupOddsBadge(el, g.pct + '%', 'geral · ' + plural(g.games, 'jogo', 'jogos'), g.pct)
             : renderMatchupOddsBadge(el, '—', 'sem dados');
@@ -2940,6 +2970,231 @@ document.addEventListener('click', (e) => {
         navigator.vibrate(8);
     }
 }, { passive: true });
+
+// ============================================================
+// CONFRONTOS: escolha 2 heróis e veja a porcentagem de cada um
+// ============================================================
+// Usa os mesmos dados do site (heroStats). Com confrontos diretos mostra a
+// porcentagem entre os dois; sem confrontos, mostra o desempenho geral de
+// cada um. Aceita link direto: ?h1=alice&h2=robin-hood
+let muPicks = [null, null];   // nomes dos heróis escolhidos
+let muPickingSlot = 0;
+let muRenderToken = 0;
+
+function heroSlug(name) {
+    return String(name).normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+
+function findHeroBySlugParam(value) {
+    if (!value) return null;
+    const s = heroSlug(value);
+    if (!s) return null;
+    return PERSONAGENS.find(p => heroSlug(p.nome) === s)
+        || PERSONAGENS.find(p => heroSlug(p.nome).startsWith(s))
+        || PERSONAGENS.find(p => heroSlug(p.nome).includes(s))
+        || null;
+}
+
+function goToMatchup(name1, name2) {
+    showScreen('screen-matchup');
+    if (name1 !== undefined || name2 !== undefined) muPicks = [name1 || null, name2 || null];
+    renderMatchupSlots();
+    renderMatchupResult();
+}
+
+function renderMatchupSlots() {
+    [0, 1].forEach(i => {
+        const slot = document.getElementById('mu-slot-' + (i + 1));
+        if (!slot) return;
+        slot.innerHTML = '';
+        const hero = muPicks[i] ? PERSONAGENS.find(p => p.nome === muPicks[i]) : null;
+        slot.classList.toggle('filled', !!hero);
+        if (hero) {
+            if (hero.img) {
+                const img = document.createElement('img');
+                img.src = hero.img;
+                img.alt = hero.nome;
+                img.loading = 'lazy';
+                img.decoding = 'async';
+                slot.appendChild(img);
+            }
+            const name = document.createElement('span');
+            name.innerText = hero.nome;
+            slot.appendChild(name);
+        } else {
+            const plus = document.createElement('span');
+            plus.className = 'mu-plus';
+            plus.innerText = '+';
+            const txt = document.createElement('span');
+            txt.innerText = 'Escolher herói ' + (i + 1);
+            slot.appendChild(plus);
+            slot.appendChild(txt);
+        }
+    });
+}
+
+function openMatchupPicker(slotNumber) {
+    muPickingSlot = slotNumber;
+    const filter = document.getElementById('mu-picker-filter');
+    filter.value = '';
+    renderMatchupPickerList();
+    document.getElementById('mu-picker').style.display = 'flex';
+}
+
+function closeMatchupPicker() {
+    document.getElementById('mu-picker').style.display = 'none';
+}
+
+function renderMatchupPickerList() {
+    const list = document.getElementById('mu-picker-list');
+    const q = document.getElementById('mu-picker-filter').value.trim().toLowerCase();
+    const frag = document.createDocumentFragment();
+    PERSONAGENS.slice().sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')).forEach(p => {
+        if (q && !p.nome.toLowerCase().includes(q)) return;
+        const row = document.createElement('div');
+        row.className = 'rank-row';
+        row.onclick = () => {
+            muPicks[muPickingSlot - 1] = p.nome;
+            closeMatchupPicker();
+            renderMatchupSlots();
+            renderMatchupResult();
+        };
+        if (p.img) {
+            const img = document.createElement('img');
+            img.className = 'rank-img';
+            img.loading = 'lazy';
+            img.decoding = 'async';
+            img.alt = '';
+            img.src = p.img;
+            row.appendChild(img);
+        }
+        const info = document.createElement('div');
+        info.className = 'rank-info';
+        const name = document.createElement('div');
+        name.className = 'rank-name';
+        name.innerText = p.nome;
+        info.appendChild(name);
+        row.appendChild(info);
+        frag.appendChild(row);
+    });
+    list.innerHTML = '';
+    if (!frag.childNodes.length) list.innerHTML = '<p class="waiting-text">Nenhum herói encontrado.</p>';
+    else list.appendChild(frag);
+}
+
+// Monta o resultado: duas caixas coloridas (esquerda = herói 1, direita = herói 2)
+function buildMatchupResult(left, right, note, split) {
+    const wrap = document.createElement('div');
+
+    const grid = document.createElement('div');
+    grid.className = 'mu-pcts';
+    [left, right].forEach(side => {
+        const box = document.createElement('div');
+        box.className = 'mu-pct mu-' + pctTone(side.pct);
+        const big = document.createElement('b');
+        big.innerText = side.pct === null ? '—' : side.pct + '%';
+        const small = document.createElement('small');
+        small.innerText = side.sub || '';
+        box.appendChild(big);
+        box.appendChild(small);
+        grid.appendChild(box);
+    });
+    wrap.appendChild(grid);
+
+    if (split) {
+        const bar = document.createElement('div');
+        bar.className = 'mu-bar';
+        [left, right].forEach(side => {
+            const seg = document.createElement('i');
+            seg.style.width = side.pct + '%';
+            seg.className = 'mu-seg-' + pctTone(side.pct);
+            bar.appendChild(seg);
+        });
+        wrap.appendChild(bar);
+    }
+
+    if (note) {
+        const p = document.createElement('p');
+        p.className = 'odds-note';
+        p.innerText = note;
+        wrap.appendChild(p);
+    }
+    return wrap;
+}
+
+async function renderMatchupResult() {
+    const box = document.getElementById('mu-result');
+    if (!box) return;
+    const [a, b] = muPicks;
+    const token = ++muRenderToken;
+    box.innerHTML = '';
+
+    if (!a || !b) {
+        box.innerHTML = '<p class="waiting-text">Escolha os dois heróis para ver a porcentagem.</p>';
+        return;
+    }
+    if (a === b) {
+        box.appendChild(buildMatchupResult({ pct: 50 }, { pct: 50 }, 'Mesmo herói: confronto espelho', true));
+        return;
+    }
+
+    box.innerHTML = '<p class="waiting-text">Calculando...</p>';
+    let odds;
+    try {
+        odds = await getHeroHeadToHead(a, b);
+    } catch (e) {
+        if (token === muRenderToken) box.innerHTML = '<p class="waiting-text">Não foi possível carregar. Verifique sua internet.</p>';
+        return;
+    }
+    if (token !== muRenderToken) return; // o usuário já trocou de herói
+
+    box.innerHTML = '';
+    const games = n => n + (n === 1 ? ' jogo' : ' jogos');
+    if (odds.source === 'h2h') {
+        box.appendChild(buildMatchupResult(
+            { pct: odds.pctA, sub: odds.winsA + (odds.winsA === 1 ? ' vitória' : ' vitórias') },
+            { pct: odds.pctB, sub: odds.winsB + (odds.winsB === 1 ? ' vitória' : ' vitórias') },
+            games(odds.total) + ' entre eles', true));
+    } else if (odds.source === 'general') {
+        const side = g => g ? { pct: g.pct, sub: 'geral · ' + games(g.games) } : { pct: null, sub: 'sem dados' };
+        box.appendChild(buildMatchupResult(side(odds.genA), side(odds.genB), 'Sem embates desses personagens', false));
+    } else {
+        box.appendChild(buildMatchupResult({ pct: null, sub: 'sem dados' }, { pct: null, sub: 'sem dados' }, 'Sem embates desses personagens', false));
+    }
+}
+
+['mu-slot-1', 'mu-slot-2'].forEach((id, i) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('click', () => openMatchupPicker(i + 1));
+    el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openMatchupPicker(i + 1); } });
+});
+document.getElementById('mu-picker-filter')?.addEventListener('input', renderMatchupPickerList);
+document.getElementById('btn-mu-picker-close')?.addEventListener('click', closeMatchupPicker);
+document.getElementById('mu-picker')?.addEventListener('click', (e) => { if (e.target.id === 'mu-picker') closeMatchupPicker(); });
+document.getElementById('btn-go-matchup')?.addEventListener('click', () => goToMatchup());
+document.getElementById('btn-mu-back')?.addEventListener('click', () => {
+    window.history.replaceState(window.history.state, '', window.location.pathname);
+    showScreen('screen-tools');
+});
+document.getElementById('btn-mu-swap')?.addEventListener('click', () => {
+    muPicks = [muPicks[1], muPicks[0]];
+    renderMatchupSlots();
+    renderMatchupResult();
+});
+document.getElementById('btn-mu-copy')?.addEventListener('click', () => {
+    const params = new URLSearchParams();
+    if (muPicks[0]) params.set('h1', heroSlug(muPicks[0]));
+    if (muPicks[1]) params.set('h2', heroSlug(muPicks[1]));
+    const link = window.location.origin + window.location.pathname + '?' + params.toString();
+    const btn = document.getElementById('btn-mu-copy');
+    const original = btn.innerText;
+    navigator.clipboard.writeText(link).then(() => {
+        btn.innerText = 'Copiado! ✅';
+        setTimeout(() => { btn.innerText = original; }, 1500);
+    }).catch(() => { window.prompt('Copie o link:', link); });
+});
 
 // ============================================================
 // MIGRAÇÃO ÚNICA: preenche o contador separado com as partidas que já
@@ -3770,9 +4025,10 @@ function renderQuickCombat() {
     const match = quickState.matches[quickState.matchIndex];
     if (!match) return;
 
-    document.getElementById('quick-match-progress').innerText =
-        'Partida ' + (quickState.matchIndex + 1) + ' de ' + quickState.matches.length;
-    renderQuickStartingPlayer(match);
+    // "Partida X de Y" só aparece quando há mais de uma partida
+    const progressEl = document.getElementById('quick-match-progress');
+    progressEl.innerText = 'Partida ' + (quickState.matchIndex + 1) + ' de ' + quickState.matches.length;
+    progressEl.style.display = quickState.matches.length > 1 ? 'block' : 'none';
 
     const ffaBox = document.getElementById('quick-matchup-ffa');
     const teamsBox = document.getElementById('quick-matchup-teams');
@@ -3809,8 +4065,7 @@ function renderQuickCombat() {
         fP2.appendChild(p2NameTag);
         renderMatchupOdds(fP1, p1.hero, fP2, p2.hero);
 
-        judgeText.style.display = 'block';
-        judgeText.innerText = p1.name + ' vs ' + p2.name + ' — Quem venceu?';
+        judgeText.style.display = 'none';
 
         btnP1.style.display = 'inline-block';
         btnP2.style.display = 'inline-block';
@@ -3899,8 +4154,7 @@ function renderQuickCombat() {
             fightersB.appendChild(div);
         });
 
-        judgeText.style.display = 'block';
-        judgeText.innerText = 'Equipe A vs Equipe B — Quem venceu?';
+        judgeText.style.display = 'none';
 
         btnP1.innerText = 'Venceu Equipe A';
         btnP2.innerText = 'Venceu Equipe B';
@@ -3908,6 +4162,7 @@ function renderQuickCombat() {
         btnP2.onclick = () => registerTeamMatchWinner(2);
     }
 
+    renderQuickStartingPlayer(match);
     updateQuickTimerDisplay();
     renderQuickMapDraw(match);
 }
@@ -3946,26 +4201,19 @@ function firstQuickTimerStart(match) {
 
 function renderQuickStartingPlayer(match) {
     const el = document.getElementById('quick-starting-player');
-    if (!el) return;
-    if (!quickState.startingPlayer || !match) {
-        el.style.display = 'none';
-        return;
-    }
-    let label = null;
+    if (el) el.style.display = 'none';
+    const screen = document.getElementById('screen-quick-combat');
+    if (!screen) return;
+    clearStarterTags(screen);
+    if (!quickState || !quickState.startingPlayer || !match) return;
+
+    let target = null;
     if (match.type === 'ffa' && match.players.length === 2) {
-        const idx = quickState.startingPlayer === 1 ? match.players[0] : match.players[1];
-        label = quickState.players[idx].name;
+        target = document.getElementById(quickState.startingPlayer === 1 ? 'quick-fighter-p1' : 'quick-fighter-p2');
     } else if (match.type === 'team') {
-        const teamKey = quickState.startingPlayer === 1 ? match.teamA : match.teamB;
-        const team = quickState.teams[teamKey];
-        label = 'Equipe ' + team.members.map(i => quickState.players[i].name).join(' + ');
+        target = screen.querySelector(quickState.startingPlayer === 1 ? '.team-side.team-a' : '.team-side.team-b');
     }
-    if (!label) {
-        el.style.display = 'none';
-        return;
-    }
-    el.style.display = 'block';
-    el.innerText = '🎲 Jogador inicial sorteado: ' + label;
+    if (target) setStarterTag(target);
 }
 
 function updateQuickTimerDisplay() {
@@ -4278,6 +4526,10 @@ window.addEventListener('DOMContentLoaded', () => {
         roomId = urlRoom.toUpperCase();
         updateRoomHeader();
         tryJoinRoom();
+    } else if (params.get('h1') || params.get('h2')) {
+        const h1 = findHeroBySlugParam(params.get('h1'));
+        const h2 = findHeroBySlugParam(params.get('h2'));
+        goToMatchup(h1 ? h1.nome : null, h2 ? h2.nome : null);
     } else {
         showScreen('screen-home');
     }

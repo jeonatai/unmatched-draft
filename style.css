@@ -1476,3 +1476,100 @@ button[style*="background-color"] { background-image: none; }
     margin-left: 6px !important;
     padding: 6px 12px !important;
 }
+
+/* Nota "sem embates" abaixo do confronto */
+.odds-note {
+    font-size: 11px;
+    color: #747d8c;
+    text-align: center;
+    margin: 8px 0 0 !important;
+}
+.matchup-versus[style*="display: none"] + .odds-note { display: none; }
+
+
+/* Etiqueta "Jogador inicial" em cima do card + HUD de combate mais limpa */
+.fighter-card, .team-side { position: relative; }
+
+.starter-tag {
+    position: absolute;
+    top: -9px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1e1e24;
+    border: 1px solid rgba(241, 196, 15, 0.6);
+    color: #f1c40f;
+    font-size: 10px;
+    font-weight: 800;
+    line-height: 1.5;
+    padding: 1px 10px;
+    border-radius: 999px;
+    white-space: nowrap;
+    z-index: 2;
+}
+
+#combat-judge-text { display: none; }
+
+
+/* ==========================================================================
+   CONFRONTOS (HERÓI x HERÓI)
+   ========================================================================== */
+.mu-slots {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin: 18px 0 14px;
+}
+
+.mu-slot {
+    width: 44%;
+    min-height: 150px;
+    background: linear-gradient(135deg, #1e1e24, #2a2a35);
+    border: 2px dashed #3b3b46;
+    border-radius: 14px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    color: #a4b0be;
+    font-size: 13px;
+    font-weight: 700;
+    touch-action: manipulation;
+}
+.mu-slot.filled { border-style: solid; border-color: #2f3542; color: #fff; }
+.mu-slot:active { transform: scale(0.98); }
+.mu-slot img { width: 100%; height: 95px; object-fit: cover; border-radius: 8px; background: #16161a; }
+.mu-plus { font-size: 30px; line-height: 1; color: #ff6b81; }
+
+.mu-pcts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px; }
+.mu-pct {
+    border-radius: 14px;
+    padding: 12px 6px;
+    border: 1px solid;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+.mu-pct b { font-size: 28px; font-weight: 800; line-height: 1.1; }
+.mu-pct small { font-size: 11px; opacity: 0.85; }
+.mu-good { color: #2ecc71; border-color: rgba(46, 204, 113, 0.55); background: rgba(46, 204, 113, 0.14); }
+.mu-mid  { color: #f1c40f; border-color: rgba(241, 196, 15, 0.55); background: rgba(241, 196, 15, 0.14); }
+.mu-bad  { color: #ff4757; border-color: rgba(255, 71, 87, 0.55); background: rgba(255, 71, 87, 0.14); }
+.mu-none { color: #a4b0be; border-color: rgba(164, 176, 190, 0.4); background: rgba(164, 176, 190, 0.12); }
+
+.mu-bar { display: flex; height: 8px; border-radius: 6px; overflow: hidden; margin: 12px 0 4px; background: #2f3542; }
+.mu-bar i { display: block; height: 100%; }
+.mu-seg-good { background: #2ecc71; }
+.mu-seg-mid  { background: #f1c40f; }
+.mu-seg-bad  { background: #ff4757; }
+.mu-seg-none { background: #747d8c; }
+
+.mu-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+.mu-actions button { margin-top: 0 !important; padding-left: 8px; padding-right: 8px; }
+
+.mu-picker-box { max-height: 85vh; max-height: 85dvh; display: flex; flex-direction: column; padding: 16px; }
+.mu-picker-list { overflow-y: auto; flex: 1; margin: 0 0 10px; }

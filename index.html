@@ -23,7 +23,7 @@
     <meta name="twitter:title" content="Unmatched Draft — Sorteio e Draft Online para Unmatched">
     <meta name="twitter:description" content="Sorteie heróis, monte salas e organize partidas de Unmatched online, de graça, com amigos.">
 
-    <link rel="stylesheet" href="style.css?v=20261111c">
+    <link rel="stylesheet" href="style.css?v=20261111f">
 </head>
 <body>
 
@@ -59,7 +59,8 @@
         <!-- TELA: Ferramentas -->
         <div id="screen-tools" class="screen" style="display: none;">
             <h1>🛠️ Ferramentas</h1>
-            <button id="btn-go-heroes" class="btn-secondary">🦸 Heróis</button>
+            <button id="btn-go-matchup" class="btn-secondary">⚔️ Confrontos</button>
+            <button id="btn-go-heroes" class="btn-secondary" style="margin-top: 12px;">🦸 Heróis</button>
             <button class="btn-secondary js-go-rank" style="margin-top: 12px;">🏅 Ranking</button>
             <button id="btn-go-add-match" class="btn-secondary" style="margin-top: 12px;">➕ Adicionar Partida</button>
             <button id="btn-tools-back" class="btn-secondary" style="margin-top: 20px;">Voltar</button>
@@ -272,6 +273,23 @@
             <p id="hero-stats-loading" class="waiting-text" style="display: none;">Carregando estatísticas...</p>
 
             <button id="btn-hero-stats-back" class="btn-secondary" style="margin-top: 18px;">Voltar ao Início</button>
+        </div>
+
+        <!-- TELA: Confrontos (herói contra herói) -->
+        <div id="screen-matchup" class="screen" style="display: none;">
+            <h1>⚔️ Confrontos</h1>
+            <p>Escolha dois heróis para ver a porcentagem de vitória de cada um.</p>
+            <div class="mu-slots">
+                <div id="mu-slot-1" class="mu-slot" role="button" tabindex="0"></div>
+                <div class="vs">VS</div>
+                <div id="mu-slot-2" class="mu-slot" role="button" tabindex="0"></div>
+            </div>
+            <div id="mu-result"></div>
+            <div class="mu-actions">
+                <button id="btn-mu-swap" class="btn-secondary">🔁 Inverter</button>
+                <button id="btn-mu-copy" class="btn-secondary">🔗 Copiar link</button>
+            </div>
+            <button id="btn-mu-back" class="btn-secondary">Voltar</button>
         </div>
 
         <!-- TELA: Ranking de heróis -->
@@ -508,6 +526,15 @@
 
     </div>
 
+    <!-- Seletor de herói (Confrontos) -->
+    <div id="mu-picker" class="modal-overlay" style="display: none;">
+        <div class="modal-box mu-picker-box">
+            <input type="text" id="mu-picker-filter" class="text-input rank-filter" placeholder="Buscar herói..." autocomplete="off">
+            <div id="mu-picker-list" class="rank-list mu-picker-list"></div>
+            <button id="btn-mu-picker-close" class="btn-secondary">Fechar</button>
+        </div>
+    </div>
+
     <!-- Janela de permissão do re-sorteio (Melhor de 3) -->
     <div id="reroll-modal" class="modal-overlay" style="display: none;">
         <div class="modal-box">
@@ -523,7 +550,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
     <script src="firebase-config.js"></script>
-    <script src="app.js?v=20261111c"></script>
+    <script src="app.js?v=20261111f"></script>
     <script src="changelog.js?v=096b"></script>
 </body>
 </html>
