@@ -36,7 +36,7 @@ const PERSONAGENS = [
     { nome: "Motoqueiro Fantasma", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/LRuz2YID8471dnTGfM1_b.webp" },
     { nome: "Cavaleiro Banana", img: "https://i.imgur.com/SQtDNjJ.png" },
     { nome: "Hamlet", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/bg3s8IEdB07YlbFJQSGS5.webp" },
-    { nome: "Nikolas Tesla", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/byq-c3l_HktvangjGc33q.webp" },
+    { nome: "Nicolas Tesla", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/byq-c3l_HktvangjGc33q.webp" },
     { nome: "Oda Nobunaga | Guarda de Honra", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/_hVP2Ah-uMSD_kH5-LUol.webp" },
     { nome: "T-Rex", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/mURpEFDw_zxQRn19mYXgG.webp" },
     { nome: "Homem-Mariposa | Sapo de Loveland", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/npcs/villains/card-covers/XMvDZU9R1vCn5dT4Do6iZ.webp" },
@@ -435,7 +435,7 @@ function getDeviceId() {
 const BACK_TRACKED_SCREENS = new Set([
     'screen-home', 'screen-configure', 'screen-enter-code', 'screen-creator-role-pick',
     'screen-quick-setup', 'screen-quick-result', 'screen-tools', 'screen-add-match',
-    'screen-hero-stats', 'screen-hero-rank', 'screen-matchup', 'screen-stats-audit', 'screen-join-error'
+    'screen-hero-stats', 'screen-hero-rank', 'screen-matchup', 'screen-stats-audit', 'screen-import', 'screen-join-error'
 ]);
 let suppressHistoryPush = false;
 
@@ -3474,6 +3474,30 @@ async function undoStatsFix() {
     }
 }
 
+// Zera só o contador de estatísticas (heroStats). O feed (posts) não é tocado.
+async function resetHeroStats() {
+    const pass = window.prompt('Digite a senha para zerar as estatísticas:');
+    if (pass === null) return;
+    if (pass !== 'bolas') { alert('Senha incorreta. Nada foi alterado.'); return; }
+    if (!window.confirm(
+        'Isso APAGA todos os contadores de vitórias e derrotas dos heróis (Ranking, porcentagens e confrontos).\n\n' +
+        'As partidas do feed NÃO são mexidas. Um backup é guardado e você pode desfazer.\n\n' +
+        'Para recalcular depois, use "Verificar agora" e "Corrigir com o histórico". Continuar?')) return;
+    try {
+        const current = (await db.ref('heroStats').once('value')).val();
+        if (current) await db.ref('heroStatsBackup/latest').set({ savedAt: Date.now(), data: current });
+        await db.ref('heroStats').remove();
+        heroStatsCache = null;
+        heroRankRows = null;
+        alert('Estatísticas zeradas. O feed continua igual.');
+        runStatsAudit();
+    } catch (e) {
+        alert('Não foi possível zerar. Nada foi alterado.');
+    }
+}
+
+document.getElementById('btn-audit-reset')?.addEventListener('click', resetHeroStats);
+
 document.getElementById('btn-go-audit')?.addEventListener('click', () => {
     showScreen('screen-stats-audit');
     document.getElementById('audit-result').innerHTML = '';
@@ -3483,6 +3507,371 @@ document.getElementById('btn-audit-run')?.addEventListener('click', runStatsAudi
 document.getElementById('btn-audit-fix')?.addEventListener('click', applyStatsFix);
 document.getElementById('btn-audit-undo')?.addEventListener('click', undoStatsFix);
 document.getElementById('btn-audit-back')?.addEventListener('click', () => showScreen('screen-tools'));
+
+// ============================================================
+// IDENTIFICAÇÃO DE HERÓIS POR SEMELHANÇA
+// ============================================================
+function normHeroText(s) {
+    return String(s || '').replace(/[\u00AD\u200B-\u200D\uFEFF]/g, '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase().replace(/&/g, ' e ').replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+function levenshtein(a, b) {
+    if (a === b) return 0;
+    if (!a.length) return b.length;
+    if (!b.length) return a.length;
+    let prev = new Array(b.length + 1);
+    for (let j = 0; j <= b.length; j++) prev[j] = j;
+    for (let i = 1; i <= a.length; i++) {
+        const cur = [i];
+        for (let j = 1; j <= b.length; j++) {
+            cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+        }
+        prev = cur;
+    }
+    return prev[b.length];
+}
+
+function textSimilarity(a, b) {
+    if (!a || !b) return 0;
+    if (a === b) return 1;
+    const charSim = 1 - levenshtein(a, b) / Math.max(a.length, b.length);
+    const wa = a.split(' '), wb = b.split(' ');
+    const wordScore = (xs, ys) => xs.reduce((sum, x) =>
+        sum + Math.max(...ys.map(y => 1 - levenshtein(x, y) / Math.max(x.length, y.length))), 0) / xs.length;
+    const wordSim = (wordScore(wa, wb) + wordScore(wb, wa)) / 2;
+    return Math.max(charSim, wordSim * 0.95);
+}
+
+let heroMatchIndex = null;
+
+// Candidatos de texto de um grupo: o grupo inteiro, só o 1º nome (o herói, sem os
+// ajudantes que o site não tem) e o que estiver entre parênteses (apelido).
+function groupCandidates(text) {
+    const c = [{ t: normHeroText(text), w: 1 }];
+    const first = text.split('|')[0];
+    c.push({ t: normHeroText(first.replace(/\(.*?\)/g, '')), w: 0.95 });
+    const paren = text.match(/\(([^)]+)\)/);
+    if (paren) c.push({ t: normHeroText(paren[1]), w: 0.95 });
+    return c.filter(x => x.t);
+}
+
+function matchHeroText(text) {
+    if (!heroMatchIndex) {
+        heroMatchIndex = PERSONAGENS.map(p => {
+            const parts = p.nome.split(/ \| | & /);
+            return {
+                hero: p,
+                full: normHeroText(p.nome),
+                main: normHeroText(parts[0]),
+                side: parts.length > 1 ? normHeroText(parts[parts.length - 1]) : null
+            };
+        });
+    }
+    const cands = groupCandidates(text);
+    let best = { hero: null, score: 0 };
+    heroMatchIndex.forEach(e => {
+        let s = 0;
+        cands.forEach(c => {
+            s = Math.max(s, c.w * textSimilarity(c.t, e.full), c.w * 0.92 * textSimilarity(c.t, e.main));
+            if (e.side) s = Math.max(s, c.w * 0.88 * textSimilarity(c.t, e.side));
+        });
+        if (s > best.score) best = { hero: e.hero, score: s };
+    });
+    return best;
+}
+
+// "A | B | C | D" -> os dois lados. Heróis do site podem ter ajudante ("Herói | Ajudante")
+// ou não ("Homem Aranha"), então testa todas as formas de dividir a lista em 2 grupos
+// e fica com a que casa melhor com os heróis do site.
+function splitAndMatchHeroes(tokens) {
+    let best = null;
+    for (let k = 1; k < tokens.length; k++) {
+        const textA = tokens.slice(0, k).join(' | ');
+        const textB = tokens.slice(k).join(' | ');
+        const a = matchHeroText(textA), b = matchHeroText(textB);
+        const total = a.score + b.score;
+        if (!best || total > best.total) best = { total, a: { text: textA, ...a }, b: { text: textB, ...b } };
+    }
+    return best;
+}
+
+// Conserta acentos quebrados (UTF-8 lido como Latin-1): "PÃ© Grande" -> "Pé Grande".
+// Só troca sequências que viram UTF-8 válido, então texto normal fica intacto.
+function fixMojibake(line) {
+    return line.replace(/[\u00C2-\u00F4][\u0080-\u00BF]{1,3}/g, seq => {
+        try {
+            const bytes = Uint8Array.from(seq, ch => ch.charCodeAt(0));
+            return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+        } catch (e) {
+            return seq;
+        }
+    });
+}
+
+function parseBgStatsText(text) {
+    const entries = [];
+    String(text).replace(/^\uFEFF/, '').split(/\r?\n/).map(fixMojibake).join('\n').split(/^\s*---\s*$/m).forEach(block => {
+        const f = {};
+        block.split(/\r?\n/).forEach(line => {
+            const m = line.match(/^\s*([A-ZÇÃÕ]+)\s*:\s*(.*)$/);
+            if (m) f[m[1]] = m[2].trim();
+        });
+        if (!f.DATA || !f.JOGADORES || !f.PERSONAGENS) return;
+        const dm = f.DATA.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?/);
+        if (!dm) return;
+        const players = f.JOGADORES.split(',').map(s => s.trim()).filter(Boolean);
+        const tokens = f.PERSONAGENS.split('|').map(s => s.trim()).filter(Boolean);
+        if (players.length !== 2 || tokens.length < 2) return;
+        entries.push({
+            dateStr: f.DATA,
+            ts: new Date(+dm[1], +dm[2] - 1, +dm[3], +dm[4], +dm[5], +(dm[6] || 0)).getTime(),
+            players, tokens,
+            winner: f.VENCEDOR || ''
+        });
+    });
+    return entries;
+}
+
+// ============================================================
+// IMPORTAR PARTIDAS (arquivo de texto do BG Stats)
+// ============================================================
+// Formato de cada partida (separadas por ---):
+//   DATA: 2026-08-21 22:02:15
+//   JOGADORES: Fernando, Lucas Augusto
+//   PERSONAGENS: Liche Ancião | Lobos | Eredin | Cavaleiros Vermelhos
+//   VENCEDOR: Lucas Augusto
+// Cada partida vira um post no feed (igual "Adicionar Partida"), com a data
+// original e duração padrão de 30 minutos. Os heróis são identificados por
+// semelhança de nome. As estatísticas NÃO são mexidas aqui: depois de importar,
+// use "Verificar estatísticas" > "Corrigir com o histórico" para refazê-las.
+const IMPORT_DURATION_MS = 30 * 60 * 1000;
+const IMPORT_MIN_SCORE = 0.7;   // abaixo disso, o usuário escolhe o herói na mão
+let importEntries = [];
+let importOverrides = {};       // texto do herói no arquivo -> nome do herói do site
+let importExisting = { keys: new Set(), sigs: new Set() };
+
+function importSignature(participants) {
+    return participants.map(p => (p.name || '') + '|' + (p.hero || '') + '|' + (p.won ? 1 : 0)).sort().join('||');
+}
+
+function importHeroFor(group) {
+    if (group.score >= IMPORT_MIN_SCORE && group.hero) return group.hero;
+    const name = importOverrides[group.text];
+    return name ? (PERSONAGENS.find(p => p.nome === name) || null) : null;
+}
+
+// Transforma uma partida lida do arquivo em post pronto (ou diz por que não dá)
+function buildImportPost(e, skipDups) {
+    const heroA = importHeroFor(e.a);
+    const heroB = importHeroFor(e.b);
+    if (!heroA || !heroB) return { status: 'review' };
+
+    const importKey = 'bgstats:' + e.dateStr + '|' + e.players.join('+');
+    if (importExisting.keys.has(importKey)) return { status: 'already' };
+
+    const winnerIdx = e.players.indexOf(e.winner);
+    const isDraw = winnerIdx === -1;
+    const p1 = { name: e.players[0], hero: heroA.nome, colorClass: PLAYER_COLORS[1].class, won: winnerIdx === 0 };
+    const p2 = { name: e.players[1], hero: heroB.nome, colorClass: PLAYER_COLORS[2].class, won: winnerIdx === 1 };
+    if (isDraw) p1.note = 'Empate';
+    const participants = [p1, p2];
+
+    if (skipDups && importExisting.sigs.has(importSignature(participants))) return { status: 'duplicate' };
+
+    return {
+        status: 'ready',
+        mirror: heroA.nome === heroB.nome,
+        post: {
+            participants,
+            mode: 'manual-1v1',
+            combats: [{
+                round: 1,
+                p1Hero: heroA.nome,
+                p2Hero: heroB.nome,
+                winnerName: isDraw ? null : e.winner,
+                durationMs: IMPORT_DURATION_MS
+            }],
+            durationMs: IMPORT_DURATION_MS,
+            timestamp: e.ts,
+            importKey,
+            imported: 'bgstats'
+        }
+    };
+}
+
+function renderImportPreview() {
+    const out = document.getElementById('import-preview');
+    const confirmBtn = document.getElementById('btn-import-confirm');
+    const skipDups = document.getElementById('import-skip-dups').checked;
+    out.innerHTML = '';
+    confirmBtn.style.display = 'none';
+    if (!importEntries.length) return;
+
+    const counts = { ready: 0, review: 0, already: 0, duplicate: 0, mirror: 0 };
+    importEntries.forEach(e => {
+        const r = buildImportPost(e, skipDups);
+        counts[r.status]++;
+        if (r.status === 'ready' && r.mirror) counts.mirror++;
+    });
+
+    const addP = (cls, text) => {
+        const p = document.createElement('p');
+        p.className = cls;
+        p.innerText = text;
+        out.appendChild(p);
+    };
+
+    const dates = importEntries.map(e => e.ts);
+    addP('audit-summary',
+        importEntries.length + ' partidas lidas · de ' + formatAuditDate(Math.min(...dates)) + ' a ' + formatAuditDate(Math.max(...dates)));
+
+    // Heróis do arquivo que NÃO tinham o mesmo nome do site (identificados por semelhança)
+    const fuzzy = {};
+    const needReview = {};
+    importEntries.forEach(e => [e.a, e.b].forEach(g => {
+        if (g.score >= IMPORT_MIN_SCORE && g.hero && normHeroText(g.text) !== normHeroText(g.hero.nome)) {
+            fuzzy[g.text] = g.hero.nome;
+        } else if (g.score < IMPORT_MIN_SCORE) {
+            needReview[g.text] = true;
+        }
+    }));
+
+    // Heróis que o programa não conseguiu identificar: o usuário escolhe
+    Object.keys(needReview).forEach(text => {
+        const row = document.createElement('div');
+        row.className = 'audit-row';
+        const label = document.createElement('b');
+        label.innerText = '❓ Não identifiquei: ' + text;
+        const select = document.createElement('select');
+        select.className = 'text-input import-select';
+        const none = document.createElement('option');
+        none.value = '';
+        none.innerText = 'Escolha o herói do site...';
+        select.appendChild(none);
+        PERSONAGENS.slice().sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')).forEach(p => {
+            const o = document.createElement('option');
+            o.value = p.nome;
+            o.innerText = p.nome;
+            if (importOverrides[text] === p.nome) o.selected = true;
+            select.appendChild(o);
+        });
+        select.onchange = () => {
+            if (select.value) importOverrides[text] = select.value; else delete importOverrides[text];
+            renderImportPreview();
+        };
+        row.appendChild(label);
+        row.appendChild(select);
+        out.appendChild(row);
+    });
+
+    const fuzzyList = Object.entries(fuzzy);
+    if (fuzzyList.length) {
+        const det = document.createElement('details');
+        det.className = 'audit-row';
+        const sum = document.createElement('summary');
+        sum.innerText = '🧠 ' + fuzzyList.length + ' nomes identificados por semelhança (toque para conferir)';
+        det.appendChild(sum);
+        const box = document.createElement('div');
+        box.className = 'audit-detail';
+        box.style.display = 'block';
+        fuzzyList.forEach(([from, to]) => {
+            const line = document.createElement('div');
+            line.innerText = from + '  →  ' + to;
+            box.appendChild(line);
+        });
+        det.appendChild(box);
+        out.appendChild(det);
+    }
+
+    const parts = ['✅ ' + counts.ready + ' prontas para importar'];
+    if (counts.already) parts.push(counts.already + ' já importadas antes (ignoradas)');
+    if (counts.duplicate) parts.push(counts.duplicate + ' parecem já estar no feed (ignoradas)');
+    if (counts.review) parts.push('⚠️ ' + counts.review + ' aguardando você escolher o herói');
+    if (counts.mirror) parts.push(counts.mirror + ' com o mesmo herói nos dois lados (espelho)');
+    addP('audit-summary', parts.join(' · '));
+
+    if (counts.ready > 0) {
+        confirmBtn.innerText = 'Importar ' + counts.ready + (counts.ready === 1 ? ' partida' : ' partidas');
+        confirmBtn.style.display = 'block';
+    }
+}
+
+async function loadImportFile(file) {
+    const out = document.getElementById('import-preview');
+    document.getElementById('btn-import-confirm').style.display = 'none';
+    if (!file) { out.innerHTML = ''; importEntries = []; return; }
+    out.innerHTML = '<p class="waiting-text">Lendo o arquivo...</p>';
+    try {
+        const text = await file.text();
+        importEntries = parseBgStatsText(text).map(e => {
+            const m = splitAndMatchHeroes(e.tokens);
+            return { ...e, a: m.a, b: m.b };
+        });
+        importOverrides = {};
+        if (!importEntries.length) {
+            out.innerHTML = '<p class="waiting-text">Não encontrei partidas nesse arquivo. Confira o formato (DATA, JOGADORES, PERSONAGENS, VENCEDOR).</p>';
+            return;
+        }
+
+        // Partidas que já existem no feed (para não duplicar)
+        const snap = await db.ref('posts').once('value');
+        importExisting = { keys: new Set(), sigs: new Set() };
+        Object.values(snap.val() || {}).forEach(post => {
+            if (post.importKey) importExisting.keys.add(post.importKey);
+            const parts = post.participants || [];
+            if (parts.length === 2 && (post.combats || []).length === 1 && post.mode !== 'bestof3') {
+                importExisting.sigs.add(importSignature(parts));
+            }
+        });
+        renderImportPreview();
+    } catch (err) {
+        out.innerHTML = '<p class="waiting-text">Não foi possível ler o arquivo.</p>';
+    }
+}
+
+async function runImport() {
+    const pass = window.prompt('Digite a senha para importar as partidas:');
+    if (pass === null) return;
+    if (pass !== 'bolas') { alert('Senha incorreta. Nada foi importado.'); return; }
+
+    const skipDups = document.getElementById('import-skip-dups').checked;
+    const posts = importEntries.map(e => buildImportPost(e, skipDups)).filter(r => r.status === 'ready').map(r => r.post);
+    if (!posts.length) return;
+    if (!window.confirm('Importar ' + posts.length + ' partidas para o feed?')) return;
+
+    const btn = document.getElementById('btn-import-confirm');
+    btn.disabled = true;
+    try {
+        const postsRef = db.ref('posts');
+        for (let i = 0; i < posts.length; i += 50) {
+            btn.innerText = 'Importando... ' + Math.min(i + 50, posts.length) + '/' + posts.length;
+            const batch = {};
+            posts.slice(i, i + 50).forEach(post => { batch[postsRef.push().key] = post; });
+            await postsRef.update(batch);
+        }
+        alert(posts.length + ' partidas importadas!\n\nAgora abra Ferramentas > Verificar estatísticas, toque em "Verificar agora" e depois em "Corrigir com o histórico" para refazer as estatísticas com tudo.');
+        document.getElementById('import-file').value = '';
+        importEntries = [];
+        document.getElementById('import-preview').innerHTML = '<p class="waiting-text">✅ Importação concluída.</p>';
+        btn.style.display = 'none';
+    } catch (err) {
+        alert('Não foi possível importar. Parte das partidas pode ter sido gravada; rode de novo (as já importadas são ignoradas).');
+    }
+    btn.disabled = false;
+}
+
+document.getElementById('btn-go-import')?.addEventListener('click', () => {
+    showScreen('screen-import');
+    document.getElementById('import-file').value = '';
+    document.getElementById('import-preview').innerHTML = '';
+    document.getElementById('btn-import-confirm').style.display = 'none';
+    importEntries = [];
+});
+document.getElementById('import-file')?.addEventListener('change', (e) => loadImportFile(e.target.files[0]));
+document.getElementById('import-skip-dups')?.addEventListener('change', renderImportPreview);
+document.getElementById('btn-import-confirm')?.addEventListener('click', runImport);
+document.getElementById('btn-import-back')?.addEventListener('click', () => showScreen('screen-tools'));
 
 // ============================================================
 // MIGRAÇÃO ÚNICA: preenche o contador separado com as partidas que já

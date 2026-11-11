@@ -1568,3 +1568,10 @@ button[style*="background-color"] { background-image: none; }
 .audit-detail { display: none; margin-top: 6px; padding-top: 6px; border-top: 1px solid #2a2a33; font-size: 11px; color: #ced6e0; }
 .audit-detail div { padding: 1px 0; }
 .audit-fix-note { margin-bottom: 8px; }
+
+
+/* Importar partidas */
+.import-file { width: 100%; margin: 6px 0 10px; padding: 10px; background: #1e1e24; border: 1px dashed #3b3b46; border-radius: 12px; color: #ced6e0; font-size: 13px; }
+.import-opt { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #a4b0be; text-align: left; margin-bottom: 6px; }
+.import-select { margin-top: 6px !important; text-transform: none !important; letter-spacing: 0 !important; font-size: 14px !important; }
+details.audit-row summary { cursor: pointer; font-size: 13px; color: #ced6e0; }

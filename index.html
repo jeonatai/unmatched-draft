@@ -23,7 +23,7 @@
     <meta name="twitter:title" content="Unmatched Draft — Sorteio e Draft Online para Unmatched">
     <meta name="twitter:description" content="Sorteie heróis, monte salas e organize partidas de Unmatched online, de graça, com amigos.">
 
-    <link rel="stylesheet" href="style.css?v=20261111i">
+    <link rel="stylesheet" href="style.css?v=20261111k">
 </head>
 <body>
 
@@ -60,6 +60,7 @@
         <div id="screen-tools" class="screen" style="display: none;">
             <h1>🛠️ Ferramentas</h1>
             <button id="btn-go-matchup" class="btn-secondary">⚔️ Confrontos</button>
+            <button id="btn-go-import" class="btn-secondary" style="margin-top: 12px;">📥 Importar partidas</button>
             <button id="btn-go-audit" class="btn-secondary" style="margin-top: 12px;">🔍 Verificar estatísticas</button>
             <button class="btn-secondary js-go-rank" style="margin-top: 12px;">🏅 Ranking</button>
             <button id="btn-go-add-match" class="btn-secondary" style="margin-top: 12px;">➕ Adicionar Partida</button>
@@ -284,6 +285,17 @@
             <button id="btn-mu-back" class="btn-secondary">Voltar</button>
         </div>
 
+        <!-- TELA: Importar partidas (BG Stats) -->
+        <div id="screen-import" class="screen" style="display: none;">
+            <h1>📥 Importar partidas</h1>
+            <p>Escolha o arquivo de texto com as partidas 1x1 do BG Stats. Cada partida vai para o feed com a data original e 30 minutos de duração. Os heróis são identificados por semelhança de nome.</p>
+            <input type="file" id="import-file" class="import-file" accept=".txt,text/plain">
+            <label class="import-opt"><input type="checkbox" id="import-skip-dups" checked> Ignorar partidas que já parecem estar no feed</label>
+            <div id="import-preview" class="audit-result"></div>
+            <button id="btn-import-confirm" style="display: none; background-color: #2ecc71;"></button>
+            <button id="btn-import-back" class="btn-secondary">Voltar</button>
+        </div>
+
         <!-- TELA: Verificar estatísticas -->
         <div id="screen-stats-audit" class="screen" style="display: none;">
             <h1>🔍 Verificar estatísticas</h1>
@@ -293,6 +305,7 @@
             <p id="audit-fix-note" class="odds-note" style="display: none;">Corrigir substitui o contador pelo histórico. Jogos que estão só no contador (sem partida no feed) serão perdidos; um backup é guardado.</p>
             <button id="btn-audit-fix" style="display: none; background-color: #2ecc71;">Corrigir com o histórico</button>
             <button id="btn-audit-undo" class="btn-secondary" style="display: none;"></button>
+            <button id="btn-audit-reset" style="background-color: #e74c3c; margin-top: 10px;">🗑️ Zerar estatísticas (não mexe no feed)</button>
             <button id="btn-audit-back" class="btn-secondary">Voltar</button>
         </div>
 
@@ -554,7 +567,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
     <script src="firebase-config.js"></script>
-    <script src="app.js?v=20261111i"></script>
+    <script src="app.js?v=20261111k"></script>
     <script src="changelog.js?v=096b"></script>
 </body>
 </html>
