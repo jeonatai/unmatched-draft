@@ -435,7 +435,7 @@ function getDeviceId() {
 const BACK_TRACKED_SCREENS = new Set([
     'screen-home', 'screen-configure', 'screen-enter-code', 'screen-creator-role-pick',
     'screen-quick-setup', 'screen-quick-result', 'screen-tools', 'screen-add-match',
-    'screen-hero-stats', 'screen-hero-rank', 'screen-matchup', 'screen-join-error'
+    'screen-hero-stats', 'screen-hero-rank', 'screen-matchup', 'screen-stats-audit', 'screen-join-error'
 ]);
 let suppressHistoryPush = false;
 
@@ -3197,6 +3197,173 @@ document.getElementById('btn-mu-copy')?.addEventListener('click', () => {
 });
 
 // ============================================================
+// VERIFICAR ESTATÍSTICAS: compara o contador (heroStats) com o histórico
+// ============================================================
+// O histórico do feed (posts) é a fonte que dá pra conferir a olho. Aqui
+// cada combate de uma Melhor de 3 conta como 1 jogo pros dois heróis (o
+// vencedor e o perdedor daquele combate); nos demais modos vale o resultado
+// de cada participante. Se algum herói estiver com números diferentes, a
+// tela mostra a diferença e permite corrigir.
+let auditAgg = null;
+
+function aggregateHeroStatsFromPosts(posts) {
+    const agg = {};
+    const ensure = n => agg[n] || (agg[n] = { wins: 0, losses: 0, vs: {} });
+    const bump = (n, f) => { if (n) ensure(n)[f]++; };
+    const bumpVs = (w, l) => {
+        if (!w || !l || w === l) return;
+        const a = ensure(w), b = ensure(l);
+        if (!a.vs[l]) a.vs[l] = { wins: 0, losses: 0 };
+        if (!b.vs[w]) b.vs[w] = { wins: 0, losses: 0 };
+        a.vs[l].wins++;
+        b.vs[w].losses++;
+    };
+    const combatResult = (c, participants) => {
+        if (!c || !c.p1Hero || !c.p2Hero) return null;
+        if (c.p1Hero.includes(',') || c.p2Hero.includes(',') || c.p1Hero.includes(' & ') || c.p2Hero.includes(' & ')) return null;
+        if (c.p1Hero === c.p2Hero) return null;
+        let side = null;
+        if (c.winnerName != null && participants[0] && participants[0].name === c.winnerName) side = 1;
+        else if (c.winnerName != null && participants[1] && participants[1].name === c.winnerName) side = 2;
+        else if (c.winner === 1 || c.winner === 2) side = c.winner;
+        else return null;
+        return side === 1 ? { winner: c.p1Hero, loser: c.p2Hero } : { winner: c.p2Hero, loser: c.p1Hero };
+    };
+
+    Object.values(posts || {}).forEach(post => {
+        const participants = post.participants || [];
+        const combats = post.combats || [];
+        if (post.mode === 'bestof3') {
+            combats.forEach(c => {
+                const r = combatResult(c, participants);
+                if (!r) return;
+                bump(r.winner, 'wins');
+                bump(r.loser, 'losses');
+                bumpVs(r.winner, r.loser);
+            });
+        } else {
+            participants.forEach(p => { if (p && p.hero) bump(p.hero, p.won ? 'wins' : 'losses'); });
+            if (combats.length === 1) {
+                const r = combatResult(combats[0], participants);
+                if (r) bumpVs(r.winner, r.loser);
+            }
+        }
+    });
+    return agg;
+}
+
+async function runStatsAudit() {
+    const out = document.getElementById('audit-result');
+    const fixBtn = document.getElementById('btn-audit-fix');
+    fixBtn.style.display = 'none';
+    out.innerHTML = '<p class="waiting-text">Verificando o histórico...</p>';
+    try {
+        const [postsSnap, statsSnap] = await Promise.all([
+            db.ref('posts').once('value'),
+            db.ref('heroStats').once('value')
+        ]);
+        const posts = postsSnap.val() || {};
+        const stats = statsSnap.val() || {};
+        auditAgg = aggregateHeroStatsFromPosts(posts);
+
+        const counter = {};
+        Object.values(stats).forEach(n => {
+            if (n && n.name) counter[n.name] = { wins: n.wins || 0, losses: n.losses || 0 };
+        });
+
+        const names = new Set([...Object.keys(counter), ...Object.keys(auditAgg)]);
+        const diffs = [];
+        names.forEach(name => {
+            const c = counter[name] || { wins: 0, losses: 0 };
+            const a = auditAgg[name] || { wins: 0, losses: 0 };
+            if (c.wins !== a.wins || c.losses !== a.losses) {
+                diffs.push({ name, c, a, delta: (c.wins + c.losses) - (a.wins + a.losses) });
+            }
+        });
+        diffs.sort((x, y) => Math.abs(y.delta) - Math.abs(x.delta) || x.name.localeCompare(y.name, 'pt-BR'));
+
+        out.innerHTML = '';
+        const summary = document.createElement('p');
+        summary.className = 'audit-summary';
+        summary.innerText = Object.keys(posts).length + ' partidas no histórico · ' + names.size + ' heróis conferidos';
+        out.appendChild(summary);
+
+        if (!diffs.length) {
+            const ok = document.createElement('p');
+            ok.className = 'waiting-text';
+            ok.innerText = '✅ O contador está igual ao histórico do feed.';
+            out.appendChild(ok);
+            return;
+        }
+
+        const warn = document.createElement('p');
+        warn.className = 'audit-summary';
+        warn.innerText = '⚠️ ' + diffs.length + (diffs.length === 1 ? ' herói está' : ' heróis estão') + ' com números diferentes:';
+        out.appendChild(warn);
+
+        const fmt = s => s.wins + 'V · ' + s.losses + 'D (' + (s.wins + s.losses) + ' jogos)';
+        diffs.slice(0, 60).forEach(d => {
+            const row = document.createElement('div');
+            row.className = 'audit-row';
+            const nm = document.createElement('b');
+            nm.innerText = d.name;
+            const l1 = document.createElement('div');
+            l1.innerText = 'Contador: ' + fmt(d.c);
+            const l2 = document.createElement('div');
+            l2.innerText = 'Histórico: ' + fmt(d.a);
+            row.appendChild(nm);
+            row.appendChild(l1);
+            row.appendChild(l2);
+            out.appendChild(row);
+        });
+        if (diffs.length > 60) {
+            const more = document.createElement('p');
+            more.className = 'odds-note';
+            more.innerText = '... e mais ' + (diffs.length - 60) + ' heróis.';
+            out.appendChild(more);
+        }
+        fixBtn.style.display = 'block';
+    } catch (e) {
+        out.innerHTML = '<p class="waiting-text">Não foi possível verificar. Confira a internet e as permissões do Firebase.</p>';
+    }
+}
+
+async function applyStatsFix() {
+    if (!auditAgg) return;
+    const pass = window.prompt('Digite a senha para corrigir as estatísticas:');
+    if (pass === null) return;
+    if (pass !== 'bolas') { alert('Senha incorreta. Nada foi alterado.'); return; }
+    if (!window.confirm('Os contadores serão substituídos pelos números do histórico do feed.\n\nCombates de partidas que nunca viraram post (ou posts apagados) deixam de contar. Continuar?')) return;
+
+    const tree = {};
+    Object.entries(auditAgg).forEach(([name, s]) => {
+        const node = { name, wins: s.wins, losses: s.losses };
+        const vs = {};
+        Object.entries(s.vs).forEach(([opp, r]) => { vs[heroKey(opp)] = { name: opp, wins: r.wins, losses: r.losses }; });
+        if (Object.keys(vs).length) node.vs = vs;
+        tree[heroKey(name)] = node;
+    });
+    try {
+        await db.ref('heroStats').set(tree);
+        heroStatsCache = null;
+        heroRankRows = null;
+        alert('Estatísticas corrigidas!');
+        runStatsAudit();
+    } catch (e) {
+        alert('Não foi possível gravar a correção.');
+    }
+}
+
+document.getElementById('btn-go-audit')?.addEventListener('click', () => {
+    showScreen('screen-stats-audit');
+    document.getElementById('audit-result').innerHTML = '';
+    document.getElementById('btn-audit-fix').style.display = 'none';
+});
+document.getElementById('btn-audit-run')?.addEventListener('click', runStatsAudit);
+document.getElementById('btn-audit-fix')?.addEventListener('click', applyStatsFix);
+document.getElementById('btn-audit-back')?.addEventListener('click', () => showScreen('screen-tools'));
+
+// ============================================================
 // MIGRAÇÃO ÚNICA: preenche o contador separado com as partidas que já
 // aconteceram e estão salvas no feed (posts). Roda sozinha, uma única
 // vez, na primeira vez que qualquer pessoa abrir o site depois desta
@@ -3277,6 +3444,7 @@ async function runHeroStatsMigrationIfNeeded() {
     } catch (e) {
         // Se algo falhar (ex: sem permissão), não trava o site — só não migra agora.
         console.warn('Migração de heroStats não concluída:', e);
+        db.ref('migrations/heroStatsV1Done').transaction(v => v === 'running' ? null : v).catch(() => {});
     }
 }
 
@@ -3389,6 +3557,7 @@ async function runHeroStatsMigrationV3IfNeeded() {
         heroStatsCache = null; // força recarregar o cache com os números corrigidos
     } catch (e) {
         console.warn('Migração V2 de heroStats não concluída:', e);
+        db.ref('migrations/heroStatsV3Done').transaction(v => v === 'running' ? null : v).catch(() => {});
     }
 }
 
@@ -3500,6 +3669,7 @@ async function runHeroStatsMigrationV4IfNeeded() {
         heroStatsCache = null;
     } catch (e) {
         console.warn('Migração V4 de heroStats não concluída:', e);
+        db.ref('migrations/heroStatsV4Done').transaction(v => v === 'running' ? null : v).catch(() => {});
     }
 }
 

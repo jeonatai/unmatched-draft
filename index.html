@@ -23,7 +23,7 @@
     <meta name="twitter:title" content="Unmatched Draft — Sorteio e Draft Online para Unmatched">
     <meta name="twitter:description" content="Sorteie heróis, monte salas e organize partidas de Unmatched online, de graça, com amigos.">
 
-    <link rel="stylesheet" href="style.css?v=20261111f">
+    <link rel="stylesheet" href="style.css?v=20261111g">
 </head>
 <body>
 
@@ -61,6 +61,7 @@
             <h1>🛠️ Ferramentas</h1>
             <button id="btn-go-matchup" class="btn-secondary">⚔️ Confrontos</button>
             <button id="btn-go-heroes" class="btn-secondary" style="margin-top: 12px;">🦸 Heróis</button>
+            <button id="btn-go-audit" class="btn-secondary" style="margin-top: 12px;">🔍 Verificar estatísticas</button>
             <button class="btn-secondary js-go-rank" style="margin-top: 12px;">🏅 Ranking</button>
             <button id="btn-go-add-match" class="btn-secondary" style="margin-top: 12px;">➕ Adicionar Partida</button>
             <button id="btn-tools-back" class="btn-secondary" style="margin-top: 20px;">Voltar</button>
@@ -290,6 +291,16 @@
                 <button id="btn-mu-copy" class="btn-secondary">🔗 Copiar link</button>
             </div>
             <button id="btn-mu-back" class="btn-secondary">Voltar</button>
+        </div>
+
+        <!-- TELA: Verificar estatísticas -->
+        <div id="screen-stats-audit" class="screen" style="display: none;">
+            <h1>🔍 Verificar estatísticas</h1>
+            <p>Compara o contador de vitórias e derrotas dos heróis com o histórico de partidas do feed. Cada combate de uma Melhor de 3 conta como 1 jogo para os dois heróis.</p>
+            <button id="btn-audit-run">Verificar agora</button>
+            <div id="audit-result" class="audit-result"></div>
+            <button id="btn-audit-fix" style="display: none; background-color: #2ecc71;">Corrigir com o histórico</button>
+            <button id="btn-audit-back" class="btn-secondary">Voltar</button>
         </div>
 
         <!-- TELA: Ranking de heróis -->
@@ -550,7 +561,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
     <script src="firebase-config.js"></script>
-    <script src="app.js?v=20261111f"></script>
+    <script src="app.js?v=20261111g"></script>
     <script src="changelog.js?v=096b"></script>
 </body>
 </html>

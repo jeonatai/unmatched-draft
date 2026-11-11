@@ -1573,3 +1573,10 @@ button[style*="background-color"] { background-image: none; }
 
 .mu-picker-box { max-height: 85vh; max-height: 85dvh; display: flex; flex-direction: column; padding: 16px; }
 .mu-picker-list { overflow-y: auto; flex: 1; margin: 0 0 10px; }
+
+
+/* Verificar estatísticas */
+.audit-result { margin: 14px 0; text-align: left; }
+.audit-summary { font-size: 13px; color: #a4b0be; margin-bottom: 10px; }
+.audit-row { background: #1e1e24; border: 1px solid #2a2a33; border-radius: 12px; padding: 8px 12px; margin-bottom: 6px; font-size: 12px; color: #a4b0be; }
+.audit-row b { display: block; color: #fff; font-size: 13px; margin-bottom: 2px; }
