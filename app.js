@@ -36,7 +36,7 @@ const PERSONAGENS = [
     { nome: "Motoqueiro Fantasma", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/LRuz2YID8471dnTGfM1_b.webp" },
     { nome: "Cavaleiro Banana", img: "https://i.imgur.com/SQtDNjJ.png" },
     { nome: "Hamlet", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/bg3s8IEdB07YlbFJQSGS5.webp" },
-    { nome: "Nicolas Tesla", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/byq-c3l_HktvangjGc33q.webp" },
+    { nome: "Nikolas Tesla", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/byq-c3l_HktvangjGc33q.webp" },
     { nome: "Oda Nobunaga | Guarda de Honra", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/_hVP2Ah-uMSD_kH5-LUol.webp" },
     { nome: "T-Rex", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/mURpEFDw_zxQRn19mYXgG.webp" },
     { nome: "Homem-Mariposa | Sapo de Loveland", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/npcs/villains/card-covers/XMvDZU9R1vCn5dT4Do6iZ.webp" },
