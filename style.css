@@ -784,23 +784,6 @@ button:disabled {
 /* ==========================================================================
    TELA DE HERÓIS — ESTATÍSTICAS DE CONFRONTO
    ========================================================================== */
-.hero-search-bar {
-    display: flex;
-    gap: 8px;
-    margin-top: 8px;
-}
-
-.hero-search-bar .text-input {
-    flex: 1;
-    margin: 0 !important;
-}
-
-.hero-search-bar button {
-    width: auto !important;
-    flex-shrink: 0;
-    padding: 12px 18px !important;
-}
-
 .hero-stats-summary-card {
     display: flex;
     align-items: center;
@@ -1580,3 +1563,8 @@ button[style*="background-color"] { background-image: none; }
 .audit-summary { font-size: 13px; color: #a4b0be; margin-bottom: 10px; }
 .audit-row { background: #1e1e24; border: 1px solid #2a2a33; border-radius: 12px; padding: 8px 12px; margin-bottom: 6px; font-size: 12px; color: #a4b0be; }
 .audit-row b { display: block; color: #fff; font-size: 13px; margin-bottom: 2px; }
+
+.audit-row { cursor: pointer; }
+.audit-detail { display: none; margin-top: 6px; padding-top: 6px; border-top: 1px solid #2a2a33; font-size: 11px; color: #ced6e0; }
+.audit-detail div { padding: 1px 0; }
+.audit-fix-note { margin-bottom: 8px; }

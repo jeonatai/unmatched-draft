@@ -9,8 +9,9 @@ const CHANGELOG = {
     title: 'Novidades da atualização',
     items: [
         { icon: '🎲', text: 'Melhor de 3: novo botão para re-sortear os personagens. O outro jogador precisa permitir.' },
+        { icon: '🔍', text: 'Nova ferramenta Verificar estatísticas: compara o contador dos heróis com o histórico de partidas e corrige diferenças.' },
         { icon: '⚔️', text: 'Nova ferramenta Confrontos: escolha dois heróis e veja a porcentagem de vitória de cada um, com link para compartilhar.' },
-        { icon: '🏅', text: 'Novo Ranking de heróis, do mais forte ao mais fraco, com busca e posição numérica.' },
+        { icon: '🏅', text: 'Novo Ranking de heróis, do mais forte ao mais fraco, com busca. Tocando num herói você vê contra quem ele ganha e perde (a tela Heróis agora faz parte do Ranking).' },
         { icon: '📊', text: 'Porcentagem de vitória mais clara: mostra o número de jogos e, sem confrontos diretos, o desempenho geral.' },
         { icon: '🎨', text: 'Porcentagens de vitória com as mesmas cores do Ranking: verde, amarelo, vermelho e cinza (sem dados).' },
         { icon: '⏱️', text: 'Cronômetro: se alguém pausar e esquecer, agora dá para ajustar o tempo manualmente no botão ✏️.' },

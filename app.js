@@ -36,7 +36,7 @@ const PERSONAGENS = [
     { nome: "Motoqueiro Fantasma", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/LRuz2YID8471dnTGfM1_b.webp" },
     { nome: "Cavaleiro Banana", img: "https://i.imgur.com/SQtDNjJ.png" },
     { nome: "Hamlet", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/bg3s8IEdB07YlbFJQSGS5.webp" },
-    { nome: "Nicola Tesla", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/byq-c3l_HktvangjGc33q.webp" },
+    { nome: "Nicolas Tesla", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/byq-c3l_HktvangjGc33q.webp" },
     { nome: "Oda Nobunaga | Guarda de Honra", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/_hVP2Ah-uMSD_kH5-LUol.webp" },
     { nome: "T-Rex", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/mURpEFDw_zxQRn19mYXgG.webp" },
     { nome: "Homem-Mariposa | Sapo de Loveland", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/npcs/villains/card-covers/XMvDZU9R1vCn5dT4Do6iZ.webp" },
@@ -2655,19 +2655,6 @@ async function ensureHeroStatsCache(forceRefresh) {
     return heroStatsCachePromise;
 }
 
-function populateHeroDatalist() {
-    const list = document.getElementById('hero-names-list');
-    if (!list || list.children.length > 0) return; // já preenchido
-    const frag = document.createDocumentFragment();
-    PERSONAGENS.forEach(p => {
-        const opt = document.createElement('option');
-        opt.value = p.nome;
-        frag.appendChild(opt);
-    });
-    list.appendChild(frag);
-}
-
-// Classifica uma porcentagem de vitória numa categoria (igual referência).
 function classifyMatchup(pct, total) {
     if (total === 0) return { key: 'unknown', label: 'Desconhecido' };
     if (pct >= 65) return { key: 'favoured', label: 'Ganha contra' };
@@ -2714,19 +2701,15 @@ function computeHeroMatchups(heroName) {
 
 async function renderHeroStatsResults(heroName) {
     const hero = PERSONAGENS.find(p => p.nome.toLowerCase() === heroName.trim().toLowerCase());
-    const errorEl = document.getElementById('hero-search-error');
     const summaryEl = document.getElementById('hero-stats-summary');
     const resultsEl = document.getElementById('hero-stats-results');
     const loadingEl = document.getElementById('hero-stats-loading');
 
     if (!hero) {
-        errorEl.style.display = 'block';
-        errorEl.innerText = '⚠️ Herói não encontrado. Escolha um nome da lista.';
         summaryEl.style.display = 'none';
         resultsEl.innerHTML = '';
         return;
     }
-    errorEl.style.display = 'none';
 
     resultsEl.innerHTML = '';
     summaryEl.style.display = 'none';
@@ -2762,6 +2745,13 @@ async function renderHeroStatsResults(heroName) {
         ? 'Ainda sem partidas registradas'
         : overallWins + ' vitórias, ' + overallLosses + ' derrotas no total (' + overallPct + '% de vitória geral)';
     textWrap.appendChild(recordEl);
+    const rankRow = heroRankRows && heroRankRows.find(r => r.hero.nome === hero.nome);
+    if (rankRow && rankRow.games > 0) {
+        const rk = document.createElement('div');
+        rk.className = 'hero-stats-summary-record';
+        rk.innerText = '🏅 #' + rankRow.rank + ' no ranking';
+        textWrap.appendChild(rk);
+    }
     summaryEl.appendChild(textWrap);
 
     const matchups = computeHeroMatchups(hero.nome);
@@ -2826,9 +2816,6 @@ async function renderHeroStatsResults(heroName) {
 
 function goToHeroStatsScreen() {
     showScreen('screen-hero-stats');
-    populateHeroDatalist();
-    document.getElementById('hero-search-input').value = '';
-    document.getElementById('hero-search-error').style.display = 'none';
     document.getElementById('hero-stats-summary').style.display = 'none';
     document.getElementById('hero-stats-results').innerHTML = '';
     ensureHeroStatsCache(false); // já começa a baixar em segundo plano
@@ -2843,6 +2830,7 @@ function goToHeroStatsScreen() {
 // 20 vitórias em 25. Heróis sem nenhum jogo ficam no final.
 const RANK_PRIOR_GAMES = 4;
 let heroRankRows = null;
+let rankScrollY = 0;
 
 function computeHeroRanking(stats) {
     const rows = PERSONAGENS.map(p => {
@@ -2932,13 +2920,18 @@ function renderHeroRank() {
     list.appendChild(frag);
 }
 
-async function goToHeroRank() {
+// restore=true: volta da tela de um herói mantendo a busca e a posição da lista.
+async function goToHeroRank(restore) {
     showScreen('screen-hero-rank');
-    document.getElementById('rank-filter').value = '';
+    if (!restore) {
+        document.getElementById('rank-filter').value = '';
+        rankScrollY = 0;
+    }
     const loading = document.getElementById('rank-loading');
+    const restoreScroll = () => requestAnimationFrame(() => window.scrollTo(0, restore ? rankScrollY : 0));
 
     // Se já tem uma versão em memória, mostra na hora e atualiza em seguida.
-    if (heroRankRows) renderHeroRank(); else loading.style.display = 'block';
+    if (heroRankRows) { renderHeroRank(); restoreScroll(); } else loading.style.display = 'block';
     try {
         const stats = await ensureHeroStatsCache(true);
         heroRankRows = computeHeroRanking(stats);
@@ -2951,15 +2944,17 @@ async function goToHeroRank() {
     }
     loading.style.display = 'none';
     renderHeroRank();
+    restoreScroll();
 }
 
 function openHeroFromRank(heroName) {
+    rankScrollY = window.scrollY;
     goToHeroStatsScreen();
-    document.getElementById('hero-search-input').value = heroName;
+    window.scrollTo(0, 0);
     renderHeroStatsResults(heroName);
 }
 
-document.querySelectorAll('.js-go-rank').forEach(btn => btn.addEventListener('click', goToHeroRank));
+document.querySelectorAll('.js-go-rank').forEach(btn => btn.addEventListener('click', () => goToHeroRank()));
 document.getElementById('btn-rank-back')?.addEventListener('click', () => showScreen('screen-home'));
 document.getElementById('rank-filter')?.addEventListener('input', renderHeroRank);
 
@@ -3199,17 +3194,24 @@ document.getElementById('btn-mu-copy')?.addEventListener('click', () => {
 // ============================================================
 // VERIFICAR ESTATÍSTICAS: compara o contador (heroStats) com o histórico
 // ============================================================
-// O histórico do feed (posts) é a fonte que dá pra conferir a olho. Aqui
-// cada combate de uma Melhor de 3 conta como 1 jogo pros dois heróis (o
-// vencedor e o perdedor daquele combate); nos demais modos vale o resultado
-// de cada participante. Se algum herói estiver com números diferentes, a
-// tela mostra a diferença e permite corrigir.
+// Lê TODOS os posts do feed de uma vez (o feed em páginas é só visual: no
+// banco é um nó único) e recalcula, para cada herói, vitórias/derrotas e
+// cada confronto direto. Cada combate de uma Melhor de 3 conta como 1 jogo
+// pros dois heróis; nos demais modos vale o resultado de cada participante.
+// Empates (ninguém venceu) não contam, igual ao contador ao vivo.
 let auditAgg = null;
+let auditLogs = {};
 
 function aggregateHeroStatsFromPosts(posts) {
     const agg = {};
+    const logs = {};
+    let draws = 0;
     const ensure = n => agg[n] || (agg[n] = { wins: 0, losses: 0, vs: {} });
     const bump = (n, f) => { if (n) ensure(n)[f]++; };
+    const addLog = (name, post, won, opp) => {
+        if (!name) return;
+        (logs[name] = logs[name] || []).push({ ts: post.timestamp || 0, won, opp, mode: post.mode });
+    };
     const bumpVs = (w, l) => {
         if (!w || !l || w === l) return;
         const a = ensure(w), b = ensure(l);
@@ -3240,89 +3242,184 @@ function aggregateHeroStatsFromPosts(posts) {
                 bump(r.winner, 'wins');
                 bump(r.loser, 'losses');
                 bumpVs(r.winner, r.loser);
+                addLog(r.winner, post, true, r.loser);
+                addLog(r.loser, post, false, r.winner);
             });
         } else {
-            participants.forEach(p => { if (p && p.hero) bump(p.hero, p.won ? 'wins' : 'losses'); });
+            if (!participants.some(p => p && p.won)) { draws++; return; } // empate: não conta
+            participants.forEach(p => {
+                if (!p || !p.hero) return;
+                bump(p.hero, p.won ? 'wins' : 'losses');
+                const opp = participants.filter(q => q && q.hero && !!q.won !== !!p.won).map(q => q.hero).join(' & ') || '—';
+                addLog(p.hero, post, !!p.won, opp);
+            });
             if (combats.length === 1) {
                 const r = combatResult(combats[0], participants);
                 if (r) bumpVs(r.winner, r.loser);
             }
         }
     });
-    return agg;
+    return { agg, logs, draws };
+}
+
+// Confrontos diretos como pares {a, b, wa, wb} (a < b em ordem alfabética)
+function collectPairs(entries) {
+    const pairs = {};
+    entries.forEach(([name, vsMap]) => {
+        Object.entries(vsMap).forEach(([opp, v]) => {
+            const [a, b] = name < opp ? [name, opp] : [opp, name];
+            const key = a + '||' + b;
+            const p = pairs[key] || (pairs[key] = { a, b, wa: 0, wb: 0 });
+            // grava dos dois lados: vitórias de quem é "name" e derrotas contra "opp"
+            if (name === a) { p.wa = Math.max(p.wa, v.wins || 0); p.wb = Math.max(p.wb, v.losses || 0); }
+            else { p.wb = Math.max(p.wb, v.wins || 0); p.wa = Math.max(p.wa, v.losses || 0); }
+        });
+    });
+    return pairs;
+}
+
+function formatAuditDate(ts) {
+    if (!ts) return 'sem data';
+    try { return new Date(ts).toLocaleDateString('pt-BR'); } catch (e) { return 'sem data'; }
 }
 
 async function runStatsAudit() {
     const out = document.getElementById('audit-result');
-    const fixBtn = document.getElementById('btn-audit-fix');
-    fixBtn.style.display = 'none';
-    out.innerHTML = '<p class="waiting-text">Verificando o histórico...</p>';
+    ['btn-audit-fix', 'audit-fix-note', 'btn-audit-undo'].forEach(id => { document.getElementById(id).style.display = 'none'; });
+    out.innerHTML = '<p class="waiting-text">Lendo todo o histórico do feed...</p>';
     try {
-        const [postsSnap, statsSnap] = await Promise.all([
+        const [postsSnap, statsSnap, backupSnap] = await Promise.all([
             db.ref('posts').once('value'),
-            db.ref('heroStats').once('value')
+            db.ref('heroStats').once('value'),
+            db.ref('heroStatsBackup/latest').once('value')
         ]);
         const posts = postsSnap.val() || {};
         const stats = statsSnap.val() || {};
-        auditAgg = aggregateHeroStatsFromPosts(posts);
+        const result = aggregateHeroStatsFromPosts(posts);
+        auditAgg = result.agg;
+        auditLogs = result.logs;
 
+        // Contador por herói e por confronto
         const counter = {};
+        const counterVs = [];
         Object.values(stats).forEach(n => {
-            if (n && n.name) counter[n.name] = { wins: n.wins || 0, losses: n.losses || 0 };
+            if (!n || !n.name) return;
+            counter[n.name] = { wins: n.wins || 0, losses: n.losses || 0 };
+            const vsMap = {};
+            Object.values(n.vs || {}).forEach(v => { if (v && v.name) vsMap[v.name] = v; });
+            counterVs.push([n.name, vsMap]);
         });
 
+        // Diferenças por herói
         const names = new Set([...Object.keys(counter), ...Object.keys(auditAgg)]);
         const diffs = [];
+        let more = 0, fewer = 0;
         names.forEach(name => {
             const c = counter[name] || { wins: 0, losses: 0 };
             const a = auditAgg[name] || { wins: 0, losses: 0 };
             if (c.wins !== a.wins || c.losses !== a.losses) {
-                diffs.push({ name, c, a, delta: (c.wins + c.losses) - (a.wins + a.losses) });
+                const delta = (c.wins + c.losses) - (a.wins + a.losses);
+                if (delta > 0) more++; else if (delta < 0) fewer++;
+                diffs.push({ name, c, a, delta });
             }
         });
         diffs.sort((x, y) => Math.abs(y.delta) - Math.abs(x.delta) || x.name.localeCompare(y.name, 'pt-BR'));
 
-        out.innerHTML = '';
-        const summary = document.createElement('p');
-        summary.className = 'audit-summary';
-        summary.innerText = Object.keys(posts).length + ' partidas no histórico · ' + names.size + ' heróis conferidos';
-        out.appendChild(summary);
+        // Diferenças por confronto direto
+        const cPairs = collectPairs(counterVs);
+        const hPairs = collectPairs(Object.entries(auditAgg).map(([name, s]) => [name, s.vs]));
+        const pairDiffs = [];
+        new Set([...Object.keys(cPairs), ...Object.keys(hPairs)]).forEach(key => {
+            const c = cPairs[key] || { wa: 0, wb: 0 };
+            const h = hPairs[key] || { wa: 0, wb: 0 };
+            const base = hPairs[key] || cPairs[key];
+            if (c.wa !== h.wa || c.wb !== h.wb) pairDiffs.push({ a: base.a, b: base.b, c, h });
+        });
+        pairDiffs.sort((x, y) => (Math.abs(y.c.wa + y.c.wb - y.h.wa - y.h.wb)) - (Math.abs(x.c.wa + x.c.wb - x.h.wa - x.h.wb)));
 
-        if (!diffs.length) {
-            const ok = document.createElement('p');
-            ok.className = 'waiting-text';
-            ok.innerText = '✅ O contador está igual ao histórico do feed.';
-            out.appendChild(ok);
+        out.innerHTML = '';
+        const addP = (cls, text) => {
+            const p = document.createElement('p');
+            p.className = cls;
+            p.innerText = text;
+            out.appendChild(p);
+        };
+
+        addP('audit-summary', Object.keys(posts).length + ' partidas lidas no histórico · ' + names.size + ' heróis · ' + Object.keys(hPairs).length + ' confrontos'
+            + (result.draws ? ' · ' + result.draws + (result.draws === 1 ? ' empate ignorado' : ' empates ignorados') : ''));
+
+        // Botão de desfazer (se já houve uma correção)
+        const undoBtn = document.getElementById('btn-audit-undo');
+        const backup = backupSnap.val();
+        if (backup && backup.data) {
+            undoBtn.innerText = '↩️ Desfazer última correção (' + formatAuditDate(backup.savedAt) + ')';
+            undoBtn.style.display = 'block';
+        }
+
+        if (!diffs.length && !pairDiffs.length) {
+            addP('waiting-text', '✅ O contador está igual ao histórico do feed (heróis e confrontos).');
             return;
         }
 
-        const warn = document.createElement('p');
-        warn.className = 'audit-summary';
-        warn.innerText = '⚠️ ' + diffs.length + (diffs.length === 1 ? ' herói está' : ' heróis estão') + ' com números diferentes:';
-        out.appendChild(warn);
-
-        const fmt = s => s.wins + 'V · ' + s.losses + 'D (' + (s.wins + s.losses) + ' jogos)';
-        diffs.slice(0, 60).forEach(d => {
-            const row = document.createElement('div');
-            row.className = 'audit-row';
-            const nm = document.createElement('b');
-            nm.innerText = d.name;
-            const l1 = document.createElement('div');
-            l1.innerText = 'Contador: ' + fmt(d.c);
-            const l2 = document.createElement('div');
-            l2.innerText = 'Histórico: ' + fmt(d.a);
-            row.appendChild(nm);
-            row.appendChild(l1);
-            row.appendChild(l2);
-            out.appendChild(row);
-        });
-        if (diffs.length > 60) {
-            const more = document.createElement('p');
-            more.className = 'odds-note';
-            more.innerText = '... e mais ' + (diffs.length - 60) + ' heróis.';
-            out.appendChild(more);
+        if (diffs.length) {
+            addP('audit-summary', '⚠️ ' + diffs.length + (diffs.length === 1 ? ' herói' : ' heróis') + ' com números diferentes. '
+                + 'Contador com MAIS jogos que o histórico: ' + more + ' · com MENOS: ' + fewer + '. Toque num herói para ver os jogos do histórico.');
+            const fmt = s => s.wins + 'V · ' + s.losses + 'D (' + (s.wins + s.losses) + ' jogos)';
+            diffs.slice(0, 60).forEach(d => {
+                const row = document.createElement('div');
+                row.className = 'audit-row';
+                const nm = document.createElement('b');
+                nm.innerText = d.name;
+                const l1 = document.createElement('div');
+                l1.innerText = 'Contador: ' + fmt(d.c);
+                const l2 = document.createElement('div');
+                l2.innerText = 'Histórico: ' + fmt(d.a);
+                const detail = document.createElement('div');
+                detail.className = 'audit-detail';
+                row.appendChild(nm);
+                row.appendChild(l1);
+                row.appendChild(l2);
+                row.appendChild(detail);
+                row.onclick = () => {
+                    if (!detail.dataset.built) {
+                        detail.dataset.built = '1';
+                        const list = (auditLogs[d.name] || []).slice().sort((x, y) => y.ts - x.ts);
+                        if (!list.length) detail.innerText = 'Nenhum jogo deste herói no histórico.';
+                        list.forEach(g => {
+                            const line = document.createElement('div');
+                            const modeLabel = g.mode === 'bestof3' ? ' · melhor de 3' : (String(g.mode).startsWith('manual') ? ' · manual' : '');
+                            line.innerText = formatAuditDate(g.ts) + ' · ' + (g.won ? 'V' : 'D') + ' contra ' + g.opp + modeLabel;
+                            detail.appendChild(line);
+                        });
+                    }
+                    detail.style.display = detail.style.display === 'block' ? 'none' : 'block';
+                };
+                out.appendChild(row);
+            });
+            if (diffs.length > 60) addP('odds-note', '... e mais ' + (diffs.length - 60) + ' heróis.');
         }
-        fixBtn.style.display = 'block';
+
+        if (pairDiffs.length) {
+            addP('audit-summary', '⚔️ ' + pairDiffs.length + (pairDiffs.length === 1 ? ' confronto' : ' confrontos') + ' com números diferentes:');
+            pairDiffs.slice(0, 40).forEach(p => {
+                const row = document.createElement('div');
+                row.className = 'audit-row';
+                const nm = document.createElement('b');
+                nm.innerText = p.a + ' x ' + p.b;
+                const l1 = document.createElement('div');
+                l1.innerText = 'Contador: ' + p.c.wa + ' x ' + p.c.wb;
+                const l2 = document.createElement('div');
+                l2.innerText = 'Histórico: ' + p.h.wa + ' x ' + p.h.wb;
+                row.appendChild(nm);
+                row.appendChild(l1);
+                row.appendChild(l2);
+                out.appendChild(row);
+            });
+            if (pairDiffs.length > 40) addP('odds-note', '... e mais ' + (pairDiffs.length - 40) + ' confrontos.');
+        }
+
+        document.getElementById('audit-fix-note').style.display = 'block';
+        document.getElementById('btn-audit-fix').style.display = 'block';
     } catch (e) {
         out.innerHTML = '<p class="waiting-text">Não foi possível verificar. Confira a internet e as permissões do Firebase.</p>';
     }
@@ -3333,7 +3430,10 @@ async function applyStatsFix() {
     const pass = window.prompt('Digite a senha para corrigir as estatísticas:');
     if (pass === null) return;
     if (pass !== 'bolas') { alert('Senha incorreta. Nada foi alterado.'); return; }
-    if (!window.confirm('Os contadores serão substituídos pelos números do histórico do feed.\n\nCombates de partidas que nunca viraram post (ou posts apagados) deixam de contar. Continuar?')) return;
+    if (!window.confirm(
+        'O contador atual será SUBSTITUÍDO pelos números do histórico do feed.\n\n' +
+        'Jogos que estão no contador mas não existem como partida no feed serão perdidos (por exemplo, partidas apagadas ou lançadas direto no contador).\n\n' +
+        'Antes de substituir, o site guarda um backup e você poderá desfazer. Continuar?')) return;
 
     const tree = {};
     Object.entries(auditAgg).forEach(([name, s]) => {
@@ -3344,23 +3444,44 @@ async function applyStatsFix() {
         tree[heroKey(name)] = node;
     });
     try {
+        const current = (await db.ref('heroStats').once('value')).val();
+        if (current) await db.ref('heroStatsBackup/latest').set({ savedAt: Date.now(), data: current });
         await db.ref('heroStats').set(tree);
         heroStatsCache = null;
         heroRankRows = null;
-        alert('Estatísticas corrigidas!');
+        alert('Estatísticas corrigidas! O backup do contador anterior foi guardado.');
         runStatsAudit();
     } catch (e) {
-        alert('Não foi possível gravar a correção.');
+        alert('Não foi possível gravar a correção. Nada foi alterado.');
+    }
+}
+
+async function undoStatsFix() {
+    const pass = window.prompt('Digite a senha para desfazer a correção:');
+    if (pass === null) return;
+    if (pass !== 'bolas') { alert('Senha incorreta. Nada foi alterado.'); return; }
+    try {
+        const backup = (await db.ref('heroStatsBackup/latest').once('value')).val();
+        if (!backup || !backup.data) { alert('Não há backup para restaurar.'); return; }
+        if (!window.confirm('Restaurar o contador de ' + formatAuditDate(backup.savedAt) + ' (antes da última correção)?')) return;
+        await db.ref('heroStats').set(backup.data);
+        heroStatsCache = null;
+        heroRankRows = null;
+        alert('Contador restaurado.');
+        runStatsAudit();
+    } catch (e) {
+        alert('Não foi possível restaurar.');
     }
 }
 
 document.getElementById('btn-go-audit')?.addEventListener('click', () => {
     showScreen('screen-stats-audit');
     document.getElementById('audit-result').innerHTML = '';
-    document.getElementById('btn-audit-fix').style.display = 'none';
+    ['btn-audit-fix', 'audit-fix-note', 'btn-audit-undo'].forEach(id => { document.getElementById(id).style.display = 'none'; });
 });
 document.getElementById('btn-audit-run')?.addEventListener('click', runStatsAudit);
 document.getElementById('btn-audit-fix')?.addEventListener('click', applyStatsFix);
+document.getElementById('btn-audit-undo')?.addEventListener('click', undoStatsFix);
 document.getElementById('btn-audit-back')?.addEventListener('click', () => showScreen('screen-tools'));
 
 // ============================================================
@@ -4605,17 +4726,7 @@ window.addEventListener('DOMContentLoaded', () => {
         radio.addEventListener('change', updateAddMatchModeUI);
     });
     document.getElementById('btn-submit-add-match').onclick = submitAddMatch;
-    document.getElementById('btn-go-heroes').onclick = goToHeroStatsScreen;
-    document.getElementById('btn-hero-stats-back').onclick = () => showScreen('screen-tools');
-    document.getElementById('btn-hero-search-confirm').onclick = () => {
-        const val = document.getElementById('hero-search-input').value;
-        renderHeroStatsResults(val);
-    };
-    document.getElementById('hero-search-input').addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            renderHeroStatsResults(e.target.value);
-        }
-    });
+    document.getElementById('btn-hero-stats-back').onclick = () => goToHeroRank(true);
     document.getElementById('btn-quick-back').onclick = () => showScreen('screen-home');
     document.getElementById('btn-quick-start').onclick = startQuickDraft;
     document.getElementById('btn-quick-again').onclick = () => startQuickSetup();
