@@ -569,6 +569,55 @@ document.getElementById('btn-pause-combat')?.addEventListener('click', () => {
     roomRef.update({ combatTimer: updated });
 });
 
+// ------------------------------------------------------------
+// Ajuste manual do cronômetro (caso alguém pause e esqueça de retomar)
+// ------------------------------------------------------------
+// Aceita "mm:ss", "h:mm:ss" ou só minutos (ex: "12"). Mantém o estado do
+// timer: se estava correndo continua correndo a partir do novo valor; se
+// estava pausado continua pausado.
+function parseTimeInput(text) {
+    if (text === null || text === undefined) return null;
+    const parts = String(text).trim().split(':').map(p => p.trim());
+    if (parts.length < 1 || parts.length > 3 || parts.some(p => !/^\d+$/.test(p))) return null;
+    const n = parts.map(Number);
+    let seconds;
+    if (n.length === 1) seconds = n[0] * 60;
+    else if (n.length === 2) seconds = n[0] * 60 + n[1];
+    else seconds = n[0] * 3600 + n[1] * 60 + n[2];
+    return seconds * 1000;
+}
+
+function timerWithValue(timer, ms) {
+    const running = !!(timer && !timer.paused && timer.runStartTime);
+    return { accumulatedMs: ms, paused: !running, runStartTime: running ? Date.now() : null };
+}
+
+function promptNewTimerMs(timer) {
+    const answer = window.prompt('Ajustar o tempo (mm:ss):', formatDuration(getElapsedMs(timer)));
+    if (answer === null) return null; // cancelou
+    const ms = parseTimeInput(answer);
+    if (ms === null) {
+        alert('Tempo inválido. Use o formato mm:ss (ex: 12:30).');
+        return null;
+    }
+    return ms;
+}
+
+document.getElementById('btn-edit-timer')?.addEventListener('click', () => {
+    if (!gameState || !roomRef) return;
+    const ms = promptNewTimerMs(gameState.combatTimer);
+    if (ms === null) return;
+    roomRef.update({ combatTimer: timerWithValue(gameState.combatTimer || newTimer(), ms) });
+});
+
+document.getElementById('btn-quick-edit-timer')?.addEventListener('click', () => {
+    if (!quickState) return;
+    const ms = promptNewTimerMs(quickState.timer);
+    if (ms === null) return;
+    quickState.timer = timerWithValue(quickState.timer || newTimer(), ms);
+    updateQuickTimerDisplay();
+});
+
 document.getElementById('btn-finish-bestof3')?.addEventListener('click', () => {
     window.finishBestOf3Early();
 });
@@ -2493,16 +2542,24 @@ async function getHeroHeadToHead(heroA, heroB) {
     return { source: 'general', genA, genB, pctA: 50, pctB: 50, total: 0 };
 }
 
+// Mesma regra de cores do Ranking: verde (60%+), amarelo (45–59%),
+// vermelho (abaixo de 45%) e cinza (sem dados).
+function pctTone(pct) {
+    if (pct === null || pct === undefined) return 'none';
+    return pct >= 60 ? 'good' : (pct >= 45 ? 'mid' : 'bad');
+}
+
 // Cria (ou atualiza) o selo de porcentagem dentro do card do lutador.
-// `main` é o número/símbolo grande; `sub` (opcional) é a legenda pequena.
-function renderMatchupOddsBadge(cardEl, main, sub) {
+// `main` é o número/símbolo grande; `sub` (opcional) é a legenda pequena;
+// `pct` (opcional) define a cor do selo.
+function renderMatchupOddsBadge(cardEl, main, sub, pct) {
     if (!cardEl) return;
     let badge = cardEl.querySelector('.matchup-odds-badge');
     if (!badge) {
         badge = document.createElement('div');
-        badge.className = 'matchup-odds-badge';
         cardEl.appendChild(badge);
     }
+    badge.className = 'matchup-odds-badge odds-' + pctTone(pct);
     badge.innerText = '';
     const mainEl = document.createElement('span');
     mainEl.innerText = main;
@@ -2531,11 +2588,11 @@ async function renderMatchupOdds(cardP1El, heroP1, cardP2El, heroP2) {
 
     if (odds.source === 'h2h') {
         const sub = plural(odds.total, 'jogo', 'jogos');
-        renderMatchupOddsBadge(cardP1El, odds.pctA + '%', sub);
-        renderMatchupOddsBadge(cardP2El, odds.pctB + '%', sub);
+        renderMatchupOddsBadge(cardP1El, odds.pctA + '%', sub, odds.pctA);
+        renderMatchupOddsBadge(cardP2El, odds.pctB + '%', sub, odds.pctB);
     } else if (odds.source === 'general') {
         const show = (el, g) => g
-            ? renderMatchupOddsBadge(el, g.pct + '%', 'geral · ' + plural(g.games, 'jogo', 'jogos'))
+            ? renderMatchupOddsBadge(el, g.pct + '%', 'geral · ' + plural(g.games, 'jogo', 'jogos'), g.pct)
             : renderMatchupOddsBadge(el, '—', 'sem dados');
         show(cardP1El, odds.genA);
         show(cardP2El, odds.genB);
@@ -3852,7 +3909,6 @@ function renderQuickCombat() {
     }
 
     updateQuickTimerDisplay();
-    renderQuickRoster();
     renderQuickMapDraw(match);
 }
 
@@ -3910,41 +3966,6 @@ function renderQuickStartingPlayer(match) {
     }
     el.style.display = 'block';
     el.innerText = '🎲 Jogador inicial sorteado: ' + label;
-}
-
-function renderQuickRoster() {
-    if (!quickState) return;
-    const list = document.getElementById('quick-roster-list');
-    if (!list) return;
-    list.innerHTML = '';
-
-    quickState.players.forEach(p => {
-        const item = document.createElement('div');
-        item.className = 'quick-roster-item';
-
-        if (p.hero.img) {
-            const img = document.createElement('img');
-            img.src = p.hero.img;
-            img.alt = p.hero.nome;
-            item.appendChild(img);
-        }
-
-        const textWrap = document.createElement('div');
-        textWrap.className = 'quick-roster-item-text';
-
-        const nameEl = document.createElement('span');
-        nameEl.className = 'quick-roster-item-name';
-        nameEl.innerText = p.name;
-        textWrap.appendChild(nameEl);
-
-        const heroEl = document.createElement('span');
-        heroEl.className = 'quick-roster-item-hero';
-        heroEl.innerText = p.hero.nome;
-        textWrap.appendChild(heroEl);
-
-        item.appendChild(textWrap);
-        list.appendChild(item);
-    });
 }
 
 function updateQuickTimerDisplay() {

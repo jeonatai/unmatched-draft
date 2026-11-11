@@ -23,7 +23,7 @@
     <meta name="twitter:title" content="Unmatched Draft — Sorteio e Draft Online para Unmatched">
     <meta name="twitter:description" content="Sorteie heróis, monte salas e organize partidas de Unmatched online, de graça, com amigos.">
 
-    <link rel="stylesheet" href="style.css?v=20261111b">
+    <link rel="stylesheet" href="style.css?v=20261111c">
 </head>
 <body>
 
@@ -202,6 +202,7 @@
         <div id="screen-quick-combat" class="screen" style="display: none;">
             <div id="quick-combat-timer" class="combat-timer">⏱️ 00:00</div>
             <button id="btn-quick-pause" class="btn-secondary btn-pause">⏸️ Pausar</button>
+            <button id="btn-quick-edit-timer" class="btn-secondary btn-pause btn-edit-timer" title="Ajustar o tempo manualmente">✏️</button>
             <p id="quick-match-progress" class="waiting-text"></p>
             <p id="quick-starting-player" class="waiting-text" style="display: none;"></p>
             <h3>🔥 CONFRONTO! 🔥</h3>
@@ -242,10 +243,6 @@
                 <button id="btn-quick-winner-p2">Venceu Jogador 2</button>
             </div>
 
-            <div id="quick-roster-section" class="quick-roster-section">
-                <h4>🎲 Heróis Sorteados</h4>
-                <div id="quick-roster-list" class="quick-roster-list"></div>
-            </div>
         </div>
 
         <!-- TELA: Sorteio Rápido - resultado -->
@@ -439,6 +436,7 @@
         <div id="screen-combat" class="screen" style="display: none;">
             <div id="combat-timer" class="combat-timer">⏱️ 00:00</div>
             <button id="btn-pause-combat" class="btn-secondary btn-pause">⏸️ Pausar</button>
+            <button id="btn-edit-timer" class="btn-secondary btn-pause btn-edit-timer" title="Ajustar o tempo manualmente">✏️</button>
             <button id="btn-finish-bestof3" class="btn-secondary" style="display: none;">🏁 Finalizar Combate</button>
             <div class="scoreboard" id="combat-scoreboard">
                 <div class="score-box">🔹 <span id="score-p1-name">J1</span> <span id="score-p1">0</span></div>
@@ -525,7 +523,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
     <script src="firebase-config.js"></script>
-    <script src="app.js?v=20261111b"></script>
-    <script src="changelog.js?v=096"></script>
+    <script src="app.js?v=20261111c"></script>
+    <script src="changelog.js?v=096b"></script>
 </body>
 </html>

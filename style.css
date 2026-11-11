@@ -588,9 +588,9 @@ button:disabled {
     margin-top: 2px;
     padding: 2px 10px;
     border-radius: 999px;
-    background: rgba(255, 71, 87, 0.16);
-    border: 1px solid rgba(255, 71, 87, 0.5);
-    color: #ff6b81;
+    background: rgba(164, 176, 190, 0.12);
+    border: 1px solid rgba(164, 176, 190, 0.4);
+    color: #a4b0be;
     font-size: 12px;
     font-weight: 800;
     letter-spacing: 0.3px;
@@ -997,75 +997,6 @@ button:disabled {
 
 .btn-reroll-map-tiny:active {
     transform: rotate(90deg) scale(0.9);
-}
-
-/* ==========================================================================
-   SORTEIO RÁPIDO — LISTA DE HERÓIS SORTEADOS
-   ========================================================================== */
-.quick-roster-section {
-    margin-top: 26px;
-    padding-top: 18px;
-    border-top: 1px solid #26262f;
-}
-
-.quick-roster-section h4 {
-    font-size: 13px;
-    color: #a4b0be;
-    margin-bottom: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.quick-roster-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    justify-content: center;
-}
-
-.quick-roster-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: #1e1e24;
-    border-radius: 10px;
-    padding: 6px 10px 6px 6px;
-    font-size: 12px;
-    max-width: 100%;
-}
-
-.quick-roster-item img {
-    width: 28px;
-    height: 28px;
-    border-radius: 6px;
-    object-fit: cover;
-    flex-shrink: 0;
-}
-
-.quick-roster-item-text {
-    display: flex;
-    flex-direction: column;
-    text-align: left;
-    line-height: 1.25;
-    overflow: hidden;
-}
-
-.quick-roster-item-name {
-    font-weight: 700;
-    color: #ffffff;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 130px;
-}
-
-.quick-roster-item-hero {
-    color: #a4b0be;
-    font-size: 10.5px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 130px;
 }
 
 .judge-buttons {
@@ -1532,3 +1463,16 @@ button[style*="background-color"] { background-image: none; }
 .rank-pct { flex: 0 0 54px; text-align: right; font-weight: 800; font-size: 14px; }
 .rank-bar { height: 4px; background: #2f3542; border-radius: 4px; margin-top: 3px; overflow: hidden; }
 .rank-bar i { display: block; height: 100%; }
+
+
+/* Cores do selo de porcentagem (iguais às do Ranking) */
+.matchup-odds-badge.odds-good { color: #2ecc71; border-color: rgba(46, 204, 113, 0.55); background: rgba(46, 204, 113, 0.14); }
+.matchup-odds-badge.odds-mid  { color: #f1c40f; border-color: rgba(241, 196, 15, 0.55); background: rgba(241, 196, 15, 0.14); }
+.matchup-odds-badge.odds-bad  { color: #ff4757; border-color: rgba(255, 71, 87, 0.55); background: rgba(255, 71, 87, 0.14); }
+.matchup-odds-badge.odds-none { color: #a4b0be; border-color: rgba(164, 176, 190, 0.4); background: rgba(164, 176, 190, 0.12); }
+
+/* Botão de ajuste manual do cronômetro */
+.btn-pause.btn-edit-timer {
+    margin-left: 6px !important;
+    padding: 6px 12px !important;
+}
