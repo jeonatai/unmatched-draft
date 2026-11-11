@@ -2,7 +2,11 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#0f0f12">
+    <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://unmatched-draft-default-rtdb.firebaseio.com" crossorigin>
+    <link rel="preconnect" href="https://yptpnirqgfmxphjvsdjz.supabase.co" crossorigin>
     <title>Unmatched Draft — Sorteio e Draft Online para Unmatched</title>
     <meta name="description" content="Unmatched Draft: ferramenta online gratuita para sortear heróis, fazer draft e organizar partidas do jogo de tabuleiro Unmatched, sozinho ou com amigos, em salas, 1v1, melhor de 3 ou modo equipe.">
     <meta name="keywords" content="unmatched draft, unmatched, sorteio de heróis, draft unmatched, jogo de tabuleiro unmatched, unmatched online, sorteio de personagens">
@@ -19,13 +23,9 @@
     <meta name="twitter:title" content="Unmatched Draft — Sorteio e Draft Online para Unmatched">
     <meta name="twitter:description" content="Sorteie heróis, monte salas e organize partidas de Unmatched online, de graça, com amigos.">
 
-    <link rel="stylesheet" href="style.css?v=20260910a">
+    <link rel="stylesheet" href="style.css?v=20261111b">
 </head>
 <body>
-
-    <!-- Bolinha discreta pra ativar o Modo Dev (pede senha) -->
-    <div id="dev-mode-dot" title=""></div>
-    <div id="dev-tournament-panel" style="display: none;"></div>
 
     <!-- Código da sala (visível quando dentro de uma sala) -->
     <div id="room-code-header" class="room-code-header" style="display: none;">
@@ -39,10 +39,15 @@
         <div id="screen-home" class="screen">
             <h1>⚔️ Unmatched Draft ⚔️</h1>
             <p>Crie uma nova sala ou entre em uma existente com o código.</p>
-            <button id="btn-go-create" style="background-color: #2ecc71;">Criar Sala</button>
-            <button id="btn-go-join" style="background-color: #3498db; margin-top: 12px;">Entrar em Sala</button>
-            <button id="btn-go-quick" style="margin-top: 12px;">🎲 Sorteio Rápido</button>
-            <button id="btn-go-tools" class="btn-secondary" style="margin-top: 12px;">🛠️ Ferramentas</button>
+            <div class="btn-row">
+                <button id="btn-go-create" style="background-color: #2ecc71;">Criar Sala</button>
+                <button id="btn-go-join" style="background-color: #3498db;">Entrar em Sala</button>
+            </div>
+            <button id="btn-go-quick" style="margin-top: 10px;">🎲 Sorteio Rápido</button>
+            <div class="btn-row">
+                <button id="btn-go-rank" class="btn-secondary js-go-rank">🏅 Ranking</button>
+                <button id="btn-go-tools" class="btn-secondary">🛠️ Ferramentas</button>
+            </div>
 
             <div id="home-feed-section" class="home-feed-section">
                 <h3>📰 Últimas Partidas</h3>
@@ -54,8 +59,8 @@
         <!-- TELA: Ferramentas -->
         <div id="screen-tools" class="screen" style="display: none;">
             <h1>🛠️ Ferramentas</h1>
-            <button id="btn-go-tournament" class="btn-secondary">🏆 Torneio</button>
-            <button id="btn-go-heroes" class="btn-secondary" style="margin-top: 12px;">🦸 Heróis</button>
+            <button id="btn-go-heroes" class="btn-secondary">🦸 Heróis</button>
+            <button class="btn-secondary js-go-rank" style="margin-top: 12px;">🏅 Ranking</button>
             <button id="btn-go-add-match" class="btn-secondary" style="margin-top: 12px;">➕ Adicionar Partida</button>
             <button id="btn-tools-back" class="btn-secondary" style="margin-top: 20px;">Voltar</button>
         </div>
@@ -272,6 +277,17 @@
             <button id="btn-hero-stats-back" class="btn-secondary" style="margin-top: 18px;">Voltar ao Início</button>
         </div>
 
+        <!-- TELA: Ranking de heróis -->
+        <div id="screen-hero-rank" class="screen" style="display: none;">
+            <h1>🏅 Ranking</h1>
+            <p>Do herói mais forte ao mais fraco, pelas partidas registradas no site. Toque num herói para ver os confrontos dele.</p>
+            <input type="text" id="rank-filter" class="text-input rank-filter" placeholder="Buscar herói..." autocomplete="off">
+            <p class="rank-note">Heróis com poucos jogos ficam mais perto da média. Sem jogos, ficam no final.</p>
+            <p id="rank-loading" class="waiting-text" style="display: none;">Carregando ranking...</p>
+            <div id="rank-list" class="rank-list"></div>
+            <button id="btn-rank-back" class="btn-secondary">Voltar ao Início</button>
+        </div>
+
         <!-- TELA: Entrar com código -->
         <div id="screen-enter-code" class="screen" style="display: none;">
             <h1>Entrar na Sala</h1>
@@ -330,102 +346,6 @@
             <button id="btn-creator-role-back" class="btn-secondary">Voltar</button>
         </div>
 
-        <!-- TELA: Configurar Torneio -->
-        <div id="screen-tournament-setup" class="screen" style="display: none;">
-            <h1>🏆 Configurar Torneio</h1>
-            <p>Crie um torneio com chaveamento automático. Todos os jogadores receberão 2 heróis sorteados e escolherão 1 para competir.</p>
-
-            <div class="config-section">
-                <h3>Quantidade de Jogadores</h3>
-                <input type="number" id="tournament-player-count" class="text-input" min="2" max="16" value="4">
-                <small>Deve ser um número de potência de 2 (2, 4, 8, 16)</small>
-            </div>
-
-            <div class="config-section">
-                <h3>Nomes dos Jogadores</h3>
-                <div id="tournament-names-inputs"></div>
-            </div>
-
-            <button id="btn-tournament-create" style="background-color: #9b59b6;">Criar Torneio</button>
-            <button id="btn-tournament-back" class="btn-secondary">Voltar</button>
-        </div>
-
-        <!-- TELA: Escolher nome no torneio -->
-        <div id="screen-tournament-name-claim" class="screen" style="display: none;">
-            <h1>Escolha seu Nome</h1>
-            <p>Clique no seu nome para entrar no torneio.</p>
-            <div id="tournament-name-claim-list" class="name-claim-list"></div>
-        </div>
-
-        <!-- TELA: Sala de espera do torneio -->
-        <div id="screen-tournament-lobby" class="screen" style="display: none;">
-            <h1>🏆 Sala de Torneio</h1>
-            <p>Envie o link ou código para os outros jogadores entrarem.</p>
-            <div class="room-link-box">
-                <input type="text" id="tournament-link-input" readonly>
-                <button id="btn-copy-tournament-link">Copiar Link</button>
-            </div>
-            <p class="room-code-inline">Código: <strong id="tournament-room-code">-</strong></p>
-            <div id="tournament-players-list" class="waiting-players-list"></div>
-            <p id="tournament-waiting-status" class="waiting-text">⏳ Aguardando jogadores...</p>
-        </div>
-
-        <!-- TELA: Seleção de heróis do torneio -->
-        <div id="screen-tournament-hero-selection" class="screen" style="display: none;">
-            <h1>🎲 Escolha seu Herói</h1>
-            <p>Você recebeu 2 heróis sorteados. Escolha 1 para competir no torneio.</p>
-            <div id="tournament-hero-cards" class="cards-grid"></div>
-            <button id="btn-confirm-tournament-hero" disabled>Confirmar Escolha</button>
-            <div id="tournament-hero-waiting" style="display: none;">
-                <p class="waiting-text">⏳ Aguardando todos os jogadores escolherem...</p>
-            </div>
-        </div>
-
-        <!-- TELA: Bracket do torneio -->
-        <div id="screen-tournament-bracket" class="screen" style="display: none;">
-            <h1>🏆 Chaveamento do Torneio</h1>
-            <div id="tournament-bracket-container" class="tournament-bracket"></div>
-            <div id="tournament-current-match" class="tournament-current-match" style="display: none;">
-                <h3>⚔️ Sua Próxima Luta</h3>
-                <div id="tournament-matchup-display" class="matchup-versus"></div>
-                <button id="btn-tournament-ready" style="background-color: #2ecc71;">Pronto para Combate</button>
-                <p id="tournament-opponent-status" class="waiting-text"></p>
-            </div>
-        </div>
-
-        <!-- TELA: Combate do torneio -->
-        <div id="screen-tournament-combat" class="screen" style="display: none;">
-            <div id="tournament-combat-timer" class="combat-timer">⏱️ 00:00</div>
-            <button id="btn-pause-tournament-combat" class="btn-secondary btn-pause">⏸️ Pausar</button>
-            <h3>🔥 COMBATE DO TORNEIO 🔥</h3>
-            <div class="matchup-versus" id="tournament-matchup">
-                <div class="fighter-card" id="tournament-fighter-you">-</div>
-                <div class="vs">VS</div>
-                <div class="fighter-card" id="tournament-fighter-opponent">-</div>
-            </div>
-            <div class="map-draw-section" id="tournament-map-draw-section">
-                <button id="btn-tournament-draw-map" class="btn-secondary btn-draw-map">🗺️ Quer sortear um mapa?</button>
-                <div id="tournament-map-draw-result" class="map-draw-result" style="display: none;">
-                    <img id="tournament-map-draw-image" src="" alt="">
-                    <p id="tournament-map-draw-name" class="map-draw-name"></p>
-                    <button id="btn-tournament-reroll-map" class="btn-secondary btn-reroll-map" style="display: none;">🔁 Re-rolar mapa</button>
-                </div>
-            </div>
-            <p class="waiting-text">Quem venceu?</p>
-            <div class="judge-buttons">
-                <button id="btn-tournament-winner-you">Você Venceu</button>
-                <button id="btn-tournament-winner-opponent">Oponente Venceu</button>
-            </div>
-        </div>
-
-        <!-- TELA: Resultado do torneio -->
-        <div id="screen-tournament-result" class="screen" style="display: none;">
-            <h1 id="tournament-result-title">🏆 Torneio Encerrado!</h1>
-            <p id="tournament-result-message"></p>
-            <div id="tournament-final-bracket" class="tournament-bracket"></div>
-            <button id="btn-tournament-home" class="btn-secondary">Voltar ao Início</button>
-        </div>
-
         <!-- TELA: Esperando jogadores -->
         <div id="screen-waiting-room" class="screen" style="display: none;">
             <h1 id="waiting-title">⚔️ Sala Criada! ⚔️</h1>
@@ -473,6 +393,10 @@
         <div id="screen-draft" class="screen" style="display: none;">
             <div class="scoreboard scoreboard-small">
                 <div class="score-box">Você é <span id="my-role-label">-</span></div>
+            </div>
+            <div id="reroll-area" class="reroll-area" style="display: none;">
+                <button id="btn-request-reroll" class="btn-secondary btn-reroll-request">🎲 Re-sortear personagens</button>
+                <p id="reroll-status" class="waiting-text" style="display: none;"></p>
             </div>
             <div id="draft-active">
                 <h2 id="draft-phase-title">Fase de Seleção</h2>
@@ -586,9 +510,22 @@
 
     </div>
 
+    <!-- Janela de permissão do re-sorteio (Melhor de 3) -->
+    <div id="reroll-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-box">
+            <h3>🎲 Pedido de re-sorteio</h3>
+            <p id="reroll-modal-text"></p>
+            <div class="judge-buttons">
+                <button id="btn-reroll-accept" style="background-color: #2ecc71;">Permitir</button>
+                <button id="btn-reroll-deny" style="background-color: #e74c3c;">Recusar</button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
     <script src="firebase-config.js"></script>
-    <script src="app.js?v=20260911a"></script>
+    <script src="app.js?v=20261111b"></script>
+    <script src="changelog.js?v=096"></script>
 </body>
 </html>

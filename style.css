@@ -1,63 +1,3 @@
-/* Bolinha discreta do Modo Dev */
-#dev-mode-dot {
-    position: fixed;
-    top: 8px;
-    right: 10px;
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    background: #ff4757;
-    opacity: 0.35;
-    cursor: pointer;
-    z-index: 999;
-    transition: all 0.2s;
-}
-
-#dev-mode-dot:hover {
-    opacity: 0.7;
-}
-
-#dev-mode-dot.active {
-    opacity: 1;
-    box-shadow: 0 0 10px 3px rgba(255, 71, 87, 0.85);
-}
-
-#dev-tournament-panel {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: #16161a;
-    border-top: 2px solid #ff4757;
-    padding: 10px 12px;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px;
-    z-index: 998;
-    box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.5);
-}
-
-#dev-tournament-panel strong {
-    color: #ff4757;
-    font-size: 12px;
-    width: 100%;
-}
-
-.dev-panel-btn {
-    width: auto !important;
-    padding: 8px 12px !important;
-    font-size: 12px !important;
-    background: #2f3542 !important;
-    box-shadow: none !important;
-    border: 2px solid transparent !important;
-}
-
-.dev-panel-btn.active {
-    border-color: #ff4757 !important;
-    color: #ff4757 !important;
-}
-
 /* ==========================================================================
    RESET & CONFIGURAÇÕES GERAIS
    ========================================================================== */
@@ -237,7 +177,7 @@ button:disabled {
 }
 
 .screen {
-    animation: fadeIn 0.4s ease-in-out;
+    animation: fadeIn 0.18s ease-out;
 }
 
 /* ==========================================================================
@@ -654,6 +594,17 @@ button:disabled {
     font-size: 12px;
     font-weight: 800;
     letter-spacing: 0.3px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1.2;
+}
+
+.matchup-odds-badge .odds-sub {
+    font-size: 9px;
+    font-weight: 600;
+    opacity: 0.8;
+    letter-spacing: 0;
 }
 
 .fighter-card {
@@ -1420,160 +1371,164 @@ button:disabled {
 }
 
 /* ==========================================================================
-   TORNEIO - BRACKET E CHAVEAMENTO
+   RE-SORTEIO (MELHOR DE 3) - BOTÃO E JANELA DE PERMISSÃO
    ========================================================================== */
-.tournament-bracket {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    margin: 20px 0;
-    padding: 20px;
-    background: #1e1e24;
-    border-radius: 14px;
-    border: 1px solid #2f3542;
-}
-
-.bracket-round {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.bracket-round h4 {
-    color: #ffd166;
-    font-size: 14px;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: 8px;
+.reroll-area {
     text-align: center;
+    margin: 0 0 16px 0;
 }
 
-.bracket-match {
-    display: flex;
+.btn-reroll-request {
+    width: auto !important;
+    display: inline-block;
+    padding: 8px 16px !important;
+    font-size: 14px !important;
+}
+
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
     align-items: center;
     justify-content: center;
-    gap: 10px;
-    background: #16161a;
-    padding: 12px;
-    border-radius: 10px;
-    border: 1px solid #26262f;
+    z-index: 2000;
+    padding: 16px;
 }
 
-.match-player {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-    padding: 8px;
-    border-radius: 8px;
+.modal-box {
     background: #1e1e24;
-    border: 1px solid #2f3542;
-}
-
-.match-player.winner {
-    background: rgba(46, 204, 113, 0.15);
-    border-color: #2ecc71;
-}
-
-.match-player-name {
-    font-size: 12px;
-    font-weight: 700;
-    color: #f1f2f6;
-}
-
-.match-player-hero {
-    font-size: 11px;
-    color: #a4b0be;
-}
-
-.match-vs {
-    font-size: 14px;
-    font-weight: 800;
-    color: #ff4757;
-    padding: 0 8px;
-}
-
-.tournament-current-match {
-    margin-top: 24px;
-    padding: 20px;
-    background: rgba(46, 204, 113, 0.1);
-    border: 2px solid #2ecc71;
+    border: 2px solid #ff4757;
     border-radius: 14px;
-    animation: fadeIn 0.3s ease-in-out;
-}
-
-.tournament-current-match h3 {
-    color: #2ecc71;
-    margin-bottom: 16px;
-}
-
-.tournament-matchup-display {
-    margin: 16px 0;
-}
-
-.tournament-matchup-display .fighter-card {
-    min-height: 180px;
-}
-
-.tournament-matchup-display .fighter-card img {
+    padding: 22px;
+    max-width: 380px;
     width: 100%;
-    height: 140px;
-    object-fit: cover;
-    border-radius: 8px;
+    text-align: center;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
 }
 
-.tournament-matchup-display .fighter-card span {
-    font-size: 12px;
-    font-weight: 700;
-    margin-top: 8px;
-}
-
-/* ==========================================================================
-   TORNEIO - COMBATE
-   ========================================================================== */
-#tournament-combat-timer {
-    font-size: 24px;
-    font-weight: 800;
-    color: #ffd166;
+.modal-box h3 {
     margin-bottom: 12px;
 }
 
-#tournament-matchup {
-    margin: 20px 0;
+.modal-box p {
+    margin-bottom: 18px;
+    line-height: 1.4;
 }
 
-#tournament-matchup .fighter-card {
-    min-height: 200px;
+
+/* ==========================================================================
+   CELULAR: TOQUE RÁPIDO, ÁREAS DE TOQUE MAIORES E MENOS PESO VISUAL
+   ========================================================================== */
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding: 10px;
+    padding-top: calc(14px + env(safe-area-inset-top, 0px));
+    padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
 }
 
-#tournament-matchup .fighter-card img {
-    width: 100%;
-    height: 160px;
-    object-fit: cover;
-    border-radius: 10px;
+body.has-room-header { padding-top: calc(58px + env(safe-area-inset-top, 0px)); }
+
+.room-code-header { padding-top: calc(10px + env(safe-area-inset-top, 0px)); }
+
+h1 { text-shadow: none; }
+
+button, .btn-action {
+    min-height: 48px;
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    user-select: none;
+    box-shadow: 0 2px 8px rgba(255, 71, 87, 0.3);
+    transition: transform 0.12s ease, opacity 0.12s ease;
 }
 
-#tournament-matchup .fighter-card span {
-    font-size: 14px;
-    font-weight: 700;
+/* Botões com cor própria (verde, azul...) usam essa cor em vez do degradê vermelho */
+button[style*="background-color"] { background-image: none; }
+
+.btn-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
     margin-top: 10px;
+}
+.btn-row button { margin-top: 0 !important; padding-left: 8px; padding-right: 8px; }
+.btn-row:first-of-type { margin-top: 0; }
+
+.btn-secondary { margin-top: 10px; }
+
+.card, .name-claim-item, .mode-option, .rank-row { touch-action: manipulation; }
+.card { transition: transform 0.15s, border-color 0.15s, background-color 0.15s; min-height: 150px; }
+.cards-grid { gap: 10px; margin: 14px 0; }
+.judge-buttons button { min-height: 56px; font-size: 15px; }
+
+/* Botão de confirmar fica sempre ao alcance do polegar */
+#btn-confirm-choice, #btn-confirm-single-pick, #btn-confirm-combat, #btn-confirm-cafe-pick {
+    position: sticky;
+    bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+    z-index: 20;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.65);
+}
+
+/* Feed: só desenha o que está na tela */
+.feed-post { content-visibility: auto; contain-intrinsic-size: auto 120px; }
+
+@media (max-width: 520px) {
+    .container { padding: 18px 14px; border-radius: 16px; box-shadow: none; }
+    h1 { font-size: 22px; margin-bottom: 16px; letter-spacing: 0.5px; }
+    h2, h3 { font-size: 17px; margin-bottom: 12px; }
+    p { margin-bottom: 14px; }
+    .config-section { margin-bottom: 14px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
 }
 
 /* ==========================================================================
-   TORNEIO - RESULTADO
+   RANKING DE HERÓIS
    ========================================================================== */
-#tournament-result-title {
-    color: #ffd166;
-    font-size: 28px;
+.rank-filter {
+    text-transform: none !important;
+    letter-spacing: 0 !important;
+    text-align: left !important;
+    margin-bottom: 8px !important;
 }
 
-#tournament-result-message {
-    font-size: 16px;
-    color: #f1f2f6;
-    margin: 20px 0;
+.rank-note { font-size: 12px; margin-bottom: 10px; }
+
+.rank-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 6px 0 4px;
+    text-align: left;
 }
 
-#tournament-final-bracket {
-    margin: 20px 0;
+.rank-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #1e1e24;
+    border: 1px solid #2a2a33;
+    border-radius: 12px;
+    padding: 8px 10px;
+    cursor: pointer;
+    content-visibility: auto;
+    contain-intrinsic-size: auto 58px;
 }
+.rank-row:active { transform: scale(0.985); }
+.rank-row.r1 { border-color: #f1c40f; background: rgba(241, 196, 15, 0.08); }
+.rank-row.r2 { border-color: #bdc3c7; background: rgba(189, 195, 199, 0.07); }
+.rank-row.r3 { border-color: #cd7f32; background: rgba(205, 127, 50, 0.08); }
+.rank-row.nogames { opacity: 0.55; }
+
+.rank-pos { flex: 0 0 36px; text-align: center; font-weight: 800; font-size: 15px; color: #a4b0be; }
+.rank-img { flex: 0 0 40px; width: 40px; height: 40px; object-fit: cover; object-position: center 20%; border-radius: 8px; background: #16161a; }
+.rank-info { flex: 1; min-width: 0; }
+.rank-name { font-size: 13px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rank-record { font-size: 11px; color: #a4b0be; }
+.rank-pct { flex: 0 0 54px; text-align: right; font-weight: 800; font-size: 14px; }
+.rank-bar { height: 4px; background: #2f3542; border-radius: 4px; margin-top: 3px; overflow: hidden; }
+.rank-bar i { display: block; height: 100%; }

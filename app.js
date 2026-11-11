@@ -176,14 +176,6 @@ let combatTimerInterval = null;
 let quickState = null;
 let quickTimerInterval = null;
 
-// Estado do Torneio
-let tournamentId = null;
-let tournamentRef = null;
-let devMode = (localStorage.getItem('unmatched_dev_mode') === '1');
-let tournamentState = null;
-let myTournamentIndex = null;
-let myTournamentHero = null;
-let tournamentTimerInterval = null;
 
 // ============================================================
 // TIMER COM PAUSE/PLAY
@@ -343,18 +335,25 @@ async function getActiveRoomHeroNames() {
     }
 }
 
-// Sorteia `count` heróis únicos entre si. `excludeNames` (opcional) é uma
-// lista extra de heróis a evitar (ex: heróis já em uso em outras salas) —
-// só é aplicada se sobrarem heróis suficientes depois de excluí-los.
-// Na maioria das vezes (90%), os heróis da "memória" deste navegador
-// também ficam de fora, dando espaço pros que ainda não saíram; em 10%
-// dos sorteios o filtro de memória não é aplicado (mas a exclusão de
-// outras salas continua valendo). Em outro dispositivo, sem essa memória
-// local, o sorteio é sempre livre (exceto pelas outras salas abertas).
-function drawUniqueHeroes(count, excludeNames) {
-    let basePool = PERSONAGENS;
+// Motor de sorteio ÚNICO, usado por todos os modos (combate único, melhor
+// de 3, equipe, sorteio rápido, revanche, café com leite e re-sorteio).
+//   count          -> quantos heróis sortear (sempre únicos entre si)
+//   excludeNames   -> preferência: evita esses heróis (ex: já em uso em outras
+//                     salas ou que acabaram de sair), mas só se sobrar gente
+//                     suficiente depois de tirá-los
+//   mandatoryNames -> obrigatório: esses heróis NUNCA podem sair (ex: já
+//                     escolhidos manualmente por um jogador café com leite)
+// Além disso, em 90% dos sorteios os heróis vistos recentemente neste
+// navegador ficam de fora (10% é totalmente livre), e todo o aleatório usa
+// o gerador criptograficamente seguro.
+function drawUniqueHeroes(count, excludeNames, mandatoryNames) {
+    const mandatory = new Set(mandatoryNames || []);
+    const available = PERSONAGENS.filter(p => !mandatory.has(p.nome));
+
+    let basePool = available;
     if (excludeNames && excludeNames.length > 0) {
-        const filtered = PERSONAGENS.filter(p => !excludeNames.includes(p.nome));
+        const soft = new Set(excludeNames);
+        const filtered = available.filter(p => !soft.has(p.nome));
         if (filtered.length >= count) basePool = filtered;
     }
 
@@ -371,6 +370,49 @@ function drawUniqueHeroes(count, excludeNames) {
     const picked = shuffleArray(pool).slice(0, n);
     addRecentHeroNames(picked.map(p => p.nome));
     return picked;
+}
+
+// Versão que já consulta as outras salas abertas antes de sortear.
+async function drawHeroes(count, extraExclude, mandatoryNames) {
+    const otherRoomHeroes = await getActiveRoomHeroNames();
+    return drawUniqueHeroes(count, [...otherRoomHeroes, ...(extraExclude || [])], mandatoryNames);
+}
+
+// Monta as atualizações de "distribuição de heróis" de uma sala 1v1
+// (combate único ou melhor de 3). Usada na entrada do 2º jogador e na
+// revanche — assim as duas situações sempre seguem exatamente o mesmo fluxo
+// (inclusive o Café com Leite).
+async function buildDealUpdates(data) {
+    const updates = {};
+    const cafeFlags = data.cafeComLeite || {};
+    const hasCafe = Object.values(cafeFlags).some(Boolean);
+
+    if (data.mode === 'single') {
+        Object.assign(updates, { p1Cards: null, p2Cards: null, p1Pick: null, p2Pick: null });
+        if (hasCafe) {
+            updates.phase = 'cafe-pick-single';
+            updates.cafePicks = null;
+            updates.cafeResolving = null;
+        } else {
+            const drawn = await drawHeroes(4);
+            updates.phase = 'single-pick';
+            updates.p1Cards = drawn.slice(0, 2);
+            updates.p2Cards = drawn.slice(2, 4);
+        }
+    } else if (data.mode === 'bestof3') {
+        Object.assign(updates, buildBestOf3State());
+        if (hasCafe) {
+            updates.phase = 'cafe-pick-b3';
+            updates.cafePicks = null;
+            updates.cafeResolving = null;
+        } else {
+            const drawn = await drawHeroes(8);
+            updates.phase = 'phase1-j1-save';
+            updates.p1Cards = drawn.slice(0, 4);
+            updates.p2Cards = drawn.slice(4, 8);
+        }
+    }
+    return updates;
 }
 
 function generateRoomId() {
@@ -393,7 +435,7 @@ function getDeviceId() {
 const BACK_TRACKED_SCREENS = new Set([
     'screen-home', 'screen-configure', 'screen-enter-code', 'screen-creator-role-pick',
     'screen-quick-setup', 'screen-quick-result', 'screen-tools', 'screen-add-match',
-    'screen-hero-stats', 'screen-tournament-setup', 'screen-join-error'
+    'screen-hero-stats', 'screen-hero-rank', 'screen-join-error'
 ]);
 let suppressHistoryPush = false;
 
@@ -410,13 +452,13 @@ function showScreen(id) {
     }
 }
 
-// Enquanto uma sala, sorteio rápido ou torneio está em andamento, o botão
+// Enquanto uma sala ou sorteio rápido está em andamento, o botão
 // Voltar (do navegador OU o botão/gesto físico de voltar do sistema do
 // celular — os dois disparam esse mesmo evento "popstate") encerra essa
 // sessão com segurança (mesma limpeza do botão "Voltar ao Início") em vez
 // de deixar a tela dessincronizada.
 window.addEventListener('popstate', (e) => {
-    const sessionActive = !!roomRef || !!quickState || !!tournamentRef;
+    const sessionActive = !!roomRef || !!quickState;
     if (sessionActive) {
         goHome();
     } else {
@@ -437,6 +479,7 @@ window.addEventListener('popstate', (e) => {
 
 function updateRoomHeader() {
     const header = document.getElementById('room-code-header');
+    document.body.classList.toggle('has-room-header', !!roomId);
     if (roomId) {
         header.style.display = 'flex';
         document.getElementById('room-code-display').innerText = roomId;
@@ -451,6 +494,8 @@ function fillCardContent(div, char) {
         img.className = 'card-image';
         img.src = char.img;
         img.alt = char.nome;
+        img.loading = 'lazy';
+        img.decoding = 'async';
         div.appendChild(img);
     }
     let textSpan = document.createElement('span');
@@ -530,22 +575,14 @@ document.getElementById('btn-finish-bestof3')?.addEventListener('click', () => {
 
 function goHome() {
     stopCombatTimerDisplay();
-    stopTournamentCombatTimerDisplay();
     if (roomRef) roomRef.off();
-    if (tournamentRef) tournamentRef.off();
+    hideRerollUI();
     roomId = null;
     myRole = null;
     myNameIndex = null;
     roomRef = null;
     gameState = null;
-    tournamentId = null;
-    tournamentRef = null;
-    tournamentState = null;
-    myTournamentIndex = null;
-    myTournamentHero = null;
     updateRoomHeader();
-    updateTournamentHeader();
-    renderDevTournamentPanel();
     window.history.replaceState({ appScreen: 'screen-home' }, '', window.location.pathname);
     showScreen('screen-home');
     attachFeedListener();
@@ -737,35 +774,7 @@ function tryJoinRoom() {
             myRole = freeRole;
             localStorage.setItem('unmatched_role_' + roomId, String(freeRole));
 
-            const updates = { player2Joined: true };
-            const cafeFlags = data.cafeComLeite || {};
-            const hasCafe = Object.values(cafeFlags).some(Boolean);
-
-            if (data.mode === 'single') {
-                if (hasCafe) {
-                    updates.phase = 'cafe-pick-single';
-                    updates.cafePicks = {};
-                } else {
-                    const otherRoomHeroes = await getActiveRoomHeroNames();
-                    const shuffled = drawUniqueHeroes(4, otherRoomHeroes);
-                    updates.phase = 'single-pick';
-                    updates.p1Cards = shuffled.slice(0, 2);
-                    updates.p2Cards = shuffled.slice(2, 4);
-                    updates.p1Pick = null;
-                    updates.p2Pick = null;
-                }
-            } else if (data.mode === 'bestof3') {
-                if (hasCafe) {
-                    updates.phase = 'cafe-pick-b3';
-                    updates.cafePicks = {};
-                } else {
-                    const otherRoomHeroes = await getActiveRoomHeroNames();
-                    const shuffled = drawUniqueHeroes(8, otherRoomHeroes);
-                    updates.p1Cards = shuffled.slice(0, 4);
-                    updates.p2Cards = shuffled.slice(4, 8);
-                    updates.phase = 'phase1-j1-save';
-                }
-            }
+            const updates = Object.assign({ player2Joined: true }, await buildDealUpdates(data));
 
             roomRef.update(updates).then(() => attachRoomListener());
             return;
@@ -852,6 +861,7 @@ function syncMyRole() {
 
 function renderGame() {
     updateRoomHeader();
+    renderRerollUI();
 
     const phase = gameState.phase;
 
@@ -1284,14 +1294,9 @@ async function finalizeCafePickIfNeeded() {
         const chosenNames = new Set();
         cafeRoles.forEach(r => (cafePicks[r] || []).forEach(h => chosenNames.add(h.nome)));
 
-        // Excluir os já escolhidos pelos café com leite é obrigatório (nunca
-        // pode repetir); evitar heróis de outras salas é só uma preferência,
-        // então só aplicamos se sobrar gente suficiente depois de tudo.
-        const mandatoryPool = PERSONAGENS.filter(p => !chosenNames.has(p.nome));
-        const preferredPool = mandatoryPool.filter(p => !otherRoomHeroes.includes(p.nome));
-        const finalPool = preferredPool.length >= needed ? preferredPool : mandatoryPool;
-        const drawn = shuffleArray(finalPool).slice(0, needed);
-        addRecentHeroNames(drawn.map(p => p.nome));
+        // Os já escolhidos pelos café com leite nunca podem sair (obrigatório);
+        // evitar heróis de outras salas é só preferência.
+        const drawn = drawUniqueHeroes(needed, otherRoomHeroes, Array.from(chosenNames));
 
         const updates = {};
         let idx = 0;
@@ -1330,6 +1335,18 @@ function isMyDraftTurn(phase) {
 function buildDraftInterface() {
     const draftActive = document.getElementById('draft-active');
     const draftWaiting = document.getElementById('draft-waiting');
+
+    // Enquanto existe um pedido de re-sorteio aguardando resposta, o draft
+    // fica parado para os dois jogadores (evita escolher algo que vai ser resetado).
+    const rr = gameState.rerollRequest;
+    if (gameState.mode === 'bestof3' && rr && rr.status === 'pending') {
+        draftActive.style.display = 'none';
+        draftWaiting.style.display = 'block';
+        document.getElementById('draft-waiting-text').innerText = rr.by === myRole
+            ? '⏳ Aguardando ' + getPlayerDisplayName(rr.by === 1 ? 2 : 1) + ' responder ao seu pedido de re-sorteio...'
+            : '🎲 ' + getPlayerDisplayName(rr.by) + ' pediu para re-sortear os personagens. Responda na janela que apareceu.';
+        return;
+    }
 
     if (!isMyDraftTurn(gameState.phase)) {
         draftActive.style.display = 'none';
@@ -1383,6 +1400,145 @@ function buildDraftInterface() {
 
     renderCardGrid(container, cardsToDisplay);
 }
+
+// ============================================================
+// RE-SORTEIO DE PERSONAGENS (Melhor de 3) — com permissão do oponente
+// ============================================================
+// Durante o draft da Melhor de 3 (antes do 1º combate), qualquer jogador
+// pode pedir para re-sortear os personagens. O pedido fica salvo na sala
+// (rerollRequest) e o OUTRO jogador vê uma janela para permitir ou recusar.
+// Só quem aceita executa o novo sorteio, então nunca há sorteio duplo.
+// Se permitido: os heróis dos jogadores normais são sorteados de novo (os
+// de quem é café com leite continuam iguais) e o draft recomeça do zero.
+let rerollDeniedTimer = null;
+
+function isBestOf3DraftPhase(phase) {
+    return typeof phase === 'string' && /^phase[123]-/.test(phase);
+}
+
+function hideRerollUI() {
+    const area = document.getElementById('reroll-area');
+    const modal = document.getElementById('reroll-modal');
+    if (area) area.style.display = 'none';
+    if (modal) modal.style.display = 'none';
+}
+
+function renderRerollUI() {
+    const area = document.getElementById('reroll-area');
+    const modal = document.getElementById('reroll-modal');
+    if (!area || !modal) return;
+
+    const inDraft = gameState && gameState.mode === 'bestof3' && myRole && isBestOf3DraftPhase(gameState.phase);
+    if (!inDraft) {
+        hideRerollUI();
+        return;
+    }
+
+    const req = gameState.rerollRequest || null;
+    const cafeFlags = gameState.cafeComLeite || {};
+    const iAmCafe = !!cafeFlags[myRole - 1];
+    const oppRole = myRole === 1 ? 2 : 1;
+    const oppName = getPlayerDisplayName(oppRole);
+
+    // Janela de permissão para quem RECEBEU o pedido
+    if (req && req.status === 'pending' && req.by !== myRole) {
+        document.getElementById('reroll-modal-text').innerText =
+            getPlayerDisplayName(req.by) + ' quer re-sortear os personagens. ' +
+            'Se você permitir, os heróis serão sorteados de novo e o draft recomeça do início.';
+        modal.style.display = 'flex';
+    } else {
+        modal.style.display = 'none';
+    }
+
+    // Botão de pedir (café com leite não pede: os heróis dele são escolhidos à mão)
+    const btn = document.getElementById('btn-request-reroll');
+    const status = document.getElementById('reroll-status');
+    area.style.display = iAmCafe ? 'none' : 'block';
+    status.style.display = 'none';
+    btn.disabled = false;
+    btn.innerText = '🎲 Re-sortear personagens';
+
+    if (req && req.status === 'pending') {
+        if (req.by === myRole) {
+            btn.innerText = '✖ Cancelar pedido';
+            status.innerText = '⏳ Aguardando ' + oppName + ' permitir...';
+            status.style.display = 'block';
+        } else {
+            btn.disabled = true;
+        }
+    } else if (req && req.status === 'denied' && req.by === myRole) {
+        status.innerText = '❌ ' + oppName + ' não permitiu o re-sorteio.';
+        status.style.display = 'block';
+        if (!rerollDeniedTimer) {
+            rerollDeniedTimer = setTimeout(() => {
+                rerollDeniedTimer = null;
+                if (roomRef) roomRef.child('rerollRequest').remove();
+            }, 4000);
+        }
+    }
+}
+
+document.getElementById('btn-request-reroll')?.addEventListener('click', () => {
+    if (!roomRef || !gameState || !myRole || !isBestOf3DraftPhase(gameState.phase)) return;
+    const req = gameState.rerollRequest;
+
+    if (req && req.status === 'pending') {
+        if (req.by === myRole) roomRef.child('rerollRequest').remove(); // cancelar o meu pedido
+        return;
+    }
+
+    if (rerollDeniedTimer) { clearTimeout(rerollDeniedTimer); rerollDeniedTimer = null; }
+    roomRef.child('rerollRequest').transaction(current => {
+        if (current && current.status === 'pending') return; // já existe pedido em aberto
+        return { by: myRole, status: 'pending', at: Date.now() };
+    });
+});
+
+document.getElementById('btn-reroll-deny')?.addEventListener('click', () => {
+    if (!roomRef || !gameState || !gameState.rerollRequest) return;
+    roomRef.child('rerollRequest').update({ status: 'denied' });
+});
+
+document.getElementById('btn-reroll-accept')?.addEventListener('click', async () => {
+    if (!roomRef || !gameState) return;
+    const req = gameState.rerollRequest;
+    if (!req || req.status !== 'pending' || req.by === myRole) return;
+
+    // O draft já passou da fase de escolha: só limpa o pedido.
+    if (!isBestOf3DraftPhase(gameState.phase)) {
+        roomRef.child('rerollRequest').remove();
+        return;
+    }
+
+    const cafeFlags = gameState.cafeComLeite || {};
+    const rerollRoles = [1, 2].filter(r => !cafeFlags[r - 1]);
+    const cafeRoles = [1, 2].filter(r => cafeFlags[r - 1]);
+    const namesOf = r => (gameState['p' + r + 'Cards'] || []).map(c => c.nome);
+
+    const oldNames = rerollRoles.flatMap(namesOf);          // evita repetir o que acabou de sair
+    const cafeNames = cafeRoles.flatMap(namesOf);           // nunca pode sair (já escolhidos à mão)
+    const needed = rerollRoles.length * 4;
+
+    const drawn = await drawHeroes(needed, oldNames, cafeNames);
+    if (drawn.length < needed) {
+        alert('Não há heróis suficientes para re-sortear.');
+        roomRef.child('rerollRequest').update({ status: 'denied' });
+        return;
+    }
+
+    const updates = {
+        phase: 'phase1-j1-save',
+        p1Saved: null, p2Saved: null,
+        p1Banned: null, p2Banned: null,
+        p1Final: null, p2Final: null,
+        rerollRequest: null,
+        rerollCount: (gameState.rerollCount || 0) + 1
+    };
+    rerollRoles.forEach((r, i) => {
+        updates['p' + r + 'Cards'] = drawn.slice(i * 4, i * 4 + 4);
+    });
+    roomRef.update(updates);
+});
 
 // ============================================================
 // DRAFT MODO EQUIPE
@@ -1576,7 +1732,7 @@ function firstRoomTimerStartUpdates() {
     if (!neverStarted) return null;
     return {
         combatTimer: resumeTimer(timer || newTimer()),
-        startingPlayer: Math.random() < 0.5 ? 1 : 2
+        startingPlayer: secureRandomInt(2) + 1
     };
 }
 
@@ -2285,10 +2441,15 @@ function recordHeroBattleResult(winnerNames, loserNames) {
     heroStatsCache = null;
 }
 
-// Lê direto do contador separado (2 leituras rápidas, sem varrer partidas).
+// Lê direto do contador separado (poucas leituras rápidas, sem varrer partidas).
+// Retorna:
+//   source 'h2h'     -> existe histórico direto A x B (pctA/pctB somam 100, total = nº de jogos)
+//   source 'general' -> nunca se enfrentaram: usa o aproveitamento GERAL de cada herói
+//                       (genA/genB = { pct, games } ou null se o herói nunca jogou)
+//   source 'none'    -> sem nenhum dado
 async function getHeroHeadToHead(heroA, heroB) {
     if (!heroA || !heroB || heroA === heroB) {
-        return { pctA: 50, pctB: 50, total: 0 };
+        return { source: 'none', pctA: 50, pctB: 50, total: 0 };
     }
 
     const kA = heroKey(heroA);
@@ -2308,14 +2469,33 @@ async function getHeroHeadToHead(heroA, heroB) {
     const winsA = Math.max(snapABwins.val() || 0, snapABlosses.val() || 0);
     const winsB = Math.max(snapBAwins.val() || 0, snapBAlosses.val() || 0);
     const total = winsA + winsB;
-    if (total === 0) return { pctA: 50, pctB: 50, total: 0 };
 
-    const pctA = Math.round((winsA / total) * 100);
-    return { pctA, pctB: 100 - pctA, total };
+    if (total > 0) {
+        const pctA = Math.round((winsA / total) * 100);
+        return { source: 'h2h', pctA, pctB: 100 - pctA, total };
+    }
+
+    // Nunca se enfrentaram: cai pro aproveitamento geral de cada herói.
+    const [wA, lA, wB, lB] = await Promise.all([
+        db.ref('heroStats/' + kA + '/wins').once('value'),
+        db.ref('heroStats/' + kA + '/losses').once('value'),
+        db.ref('heroStats/' + kB + '/wins').once('value'),
+        db.ref('heroStats/' + kB + '/losses').once('value')
+    ]);
+    const mk = (w, l) => {
+        const wins = w.val() || 0, losses = l.val() || 0, games = wins + losses;
+        return games > 0 ? { pct: Math.round((wins / games) * 100), games } : null;
+    };
+    const genA = mk(wA, lA);
+    const genB = mk(wB, lB);
+
+    if (!genA && !genB) return { source: 'none', pctA: 50, pctB: 50, total: 0 };
+    return { source: 'general', genA, genB, pctA: 50, pctB: 50, total: 0 };
 }
 
 // Cria (ou atualiza) o selo de porcentagem dentro do card do lutador.
-function renderMatchupOddsBadge(cardEl, text) {
+// `main` é o número/símbolo grande; `sub` (opcional) é a legenda pequena.
+function renderMatchupOddsBadge(cardEl, main, sub) {
     if (!cardEl) return;
     let badge = cardEl.querySelector('.matchup-odds-badge');
     if (!badge) {
@@ -2323,19 +2503,46 @@ function renderMatchupOddsBadge(cardEl, text) {
         badge.className = 'matchup-odds-badge';
         cardEl.appendChild(badge);
     }
-    badge.innerText = text;
+    badge.innerText = '';
+    const mainEl = document.createElement('span');
+    mainEl.innerText = main;
+    badge.appendChild(mainEl);
+    if (sub) {
+        const subEl = document.createElement('small');
+        subEl.className = 'odds-sub';
+        subEl.innerText = sub;
+        badge.appendChild(subEl);
+    }
 }
+
+function plural(n, one, many) { return n + ' ' + (n === 1 ? one : many); }
 
 // Calcula e exibe a porcentagem de vitória de cada lado dentro dos cards
 // de dois lutadores 1x1, lendo do contador separado (rápido, não pesa
 // conforme o site acumula partidas).
+//  - Com confrontos diretos: "62%" + "8 jogos"
+//  - Sem confrontos diretos: aproveitamento geral do herói + "geral · N jogos"
+//  - Sem nenhum dado: "—" + "sem dados"
 async function renderMatchupOdds(cardP1El, heroP1, cardP2El, heroP2) {
     if (!heroP1 || !heroP2) return;
     renderMatchupOddsBadge(cardP1El, '...');
     renderMatchupOddsBadge(cardP2El, '...');
     const odds = await getHeroHeadToHead(heroP1.nome, heroP2.nome);
-    renderMatchupOddsBadge(cardP1El, odds.pctA + '%');
-    renderMatchupOddsBadge(cardP2El, odds.pctB + '%');
+
+    if (odds.source === 'h2h') {
+        const sub = plural(odds.total, 'jogo', 'jogos');
+        renderMatchupOddsBadge(cardP1El, odds.pctA + '%', sub);
+        renderMatchupOddsBadge(cardP2El, odds.pctB + '%', sub);
+    } else if (odds.source === 'general') {
+        const show = (el, g) => g
+            ? renderMatchupOddsBadge(el, g.pct + '%', 'geral · ' + plural(g.games, 'jogo', 'jogos'))
+            : renderMatchupOddsBadge(el, '—', 'sem dados');
+        show(cardP1El, odds.genA);
+        show(cardP2El, odds.genB);
+    } else {
+        renderMatchupOddsBadge(cardP1El, '—', 'sem dados');
+        renderMatchupOddsBadge(cardP2El, '—', 'sem dados');
+    }
 }
 
 // ============================================================
@@ -2541,6 +2748,143 @@ function goToHeroStatsScreen() {
 }
 
 // ============================================================
+// RANKING DE HERÓIS (todos os heróis, do mais forte ao mais fraco)
+// ============================================================
+// Usa o mesmo contador leve (heroStats) da tela Heróis. A ordem é pelo
+// aproveitamento AJUSTADO: cada herói começa com RANK_PRIOR_GAMES jogos
+// "imaginários" a 50%, para que 1 vitória em 1 jogo não passe à frente de
+// 20 vitórias em 25. Heróis sem nenhum jogo ficam no final.
+const RANK_PRIOR_GAMES = 4;
+let heroRankRows = null;
+
+function computeHeroRanking(stats) {
+    const rows = PERSONAGENS.map(p => {
+        const node = (stats && stats[heroKey(p.nome)]) || {};
+        const wins = node.wins || 0;
+        const losses = node.losses || 0;
+        const games = wins + losses;
+        return {
+            hero: p, wins, losses, games,
+            pct: games ? Math.round((wins / games) * 100) : null,
+            score: (wins + RANK_PRIOR_GAMES * 0.5) / (games + RANK_PRIOR_GAMES)
+        };
+    });
+    rows.sort((a, b) =>
+        (b.games > 0) - (a.games > 0) ||
+        b.score - a.score || b.wins - a.wins || a.losses - b.losses ||
+        a.hero.nome.localeCompare(b.hero.nome, 'pt-BR'));
+    rows.forEach((r, i) => { r.rank = i + 1; });
+    return rows;
+}
+
+function renderHeroRank() {
+    const list = document.getElementById('rank-list');
+    if (!list || !heroRankRows) return;
+    const q = document.getElementById('rank-filter').value.trim().toLowerCase();
+    const medals = { 1: '🥇', 2: '🥈', 3: '🥉' };
+    const frag = document.createDocumentFragment();
+
+    heroRankRows.forEach(r => {
+        if (q && !r.hero.nome.toLowerCase().includes(q)) return;
+        const row = document.createElement('div');
+        row.className = 'rank-row' + (r.games === 0 ? ' nogames' : (r.rank <= 3 ? ' r' + r.rank : ''));
+        row.onclick = () => openHeroFromRank(r.hero.nome);
+
+        const pos = document.createElement('div');
+        pos.className = 'rank-pos';
+        pos.innerText = (r.games > 0 && medals[r.rank]) || ('#' + r.rank);
+        row.appendChild(pos);
+
+        if (r.hero.img) {
+            const img = document.createElement('img');
+            img.className = 'rank-img';
+            img.loading = 'lazy';
+            img.decoding = 'async';
+            img.alt = '';
+            img.src = r.hero.img;
+            row.appendChild(img);
+        }
+
+        const info = document.createElement('div');
+        info.className = 'rank-info';
+        const name = document.createElement('div');
+        name.className = 'rank-name';
+        name.innerText = r.hero.nome;
+        const rec = document.createElement('div');
+        rec.className = 'rank-record';
+        rec.innerText = r.games ? (r.wins + 'V · ' + r.losses + 'D · ' + r.games + (r.games === 1 ? ' jogo' : ' jogos')) : 'sem jogos';
+        info.appendChild(name);
+        info.appendChild(rec);
+        row.appendChild(info);
+
+        const pct = document.createElement('div');
+        pct.className = 'rank-pct';
+        if (r.games) {
+            const color = r.pct >= 60 ? '#2ecc71' : (r.pct >= 45 ? '#f1c40f' : '#ff4757');
+            pct.style.color = color;
+            pct.innerText = r.pct + '%';
+            const bar = document.createElement('div');
+            bar.className = 'rank-bar';
+            const fill = document.createElement('i');
+            fill.style.width = r.pct + '%';
+            fill.style.background = color;
+            bar.appendChild(fill);
+            pct.appendChild(bar);
+        } else {
+            pct.innerText = '—';
+        }
+        row.appendChild(pct);
+        frag.appendChild(row);
+    });
+
+    list.innerHTML = '';
+    if (!frag.childNodes.length) {
+        list.innerHTML = '<p class="waiting-text">Nenhum herói encontrado.</p>';
+        return;
+    }
+    list.appendChild(frag);
+}
+
+async function goToHeroRank() {
+    showScreen('screen-hero-rank');
+    document.getElementById('rank-filter').value = '';
+    const loading = document.getElementById('rank-loading');
+
+    // Se já tem uma versão em memória, mostra na hora e atualiza em seguida.
+    if (heroRankRows) renderHeroRank(); else loading.style.display = 'block';
+    try {
+        const stats = await ensureHeroStatsCache(true);
+        heroRankRows = computeHeroRanking(stats);
+    } catch (e) {
+        if (!heroRankRows) {
+            loading.style.display = 'none';
+            document.getElementById('rank-list').innerHTML = '<p class="waiting-text">Não foi possível carregar o ranking. Verifique sua internet.</p>';
+            return;
+        }
+    }
+    loading.style.display = 'none';
+    renderHeroRank();
+}
+
+function openHeroFromRank(heroName) {
+    goToHeroStatsScreen();
+    document.getElementById('hero-search-input').value = heroName;
+    renderHeroStatsResults(heroName);
+}
+
+document.querySelectorAll('.js-go-rank').forEach(btn => btn.addEventListener('click', goToHeroRank));
+document.getElementById('btn-rank-back')?.addEventListener('click', () => showScreen('screen-home'));
+document.getElementById('rank-filter')?.addEventListener('input', renderHeroRank);
+
+// Vibração curtinha ao tocar (só onde o aparelho suporta) — dá retorno
+// imediato nos botões e cartas.
+document.addEventListener('click', (e) => {
+    if (navigator.vibrate && e.target.closest('button:not(:disabled), .card, .name-claim-item, .rank-row')) {
+        navigator.vibrate(8);
+    }
+}, { passive: true });
+
+// ============================================================
 // MIGRAÇÃO ÚNICA: preenche o contador separado com as partidas que já
 // aconteceram e estão salvas no feed (posts). Roda sozinha, uma única
 // vez, na primeira vez que qualquer pessoa abrir o site depois desta
@@ -2699,7 +3043,7 @@ async function runHeroStatsMigrationV3IfNeeded() {
                 });
             } else {
                 // Modos com 1 combate por post (single, equipe, sorteio
-                // rápido, torneio): os participantes já refletem o resultado
+                // rápido): os participantes já refletem o resultado
                 // exato daquele único combate.
                 participants.forEach(p => {
                     if (!p || !p.hero) return;
@@ -3145,16 +3489,11 @@ document.getElementById('btn-rematch')?.addEventListener('click', async () => {
 
     const otherRoomHeroes = await getActiveRoomHeroNames();
 
-    if (gameState.mode === 'single') {
-        const shuffled = drawUniqueHeroes(4, otherRoomHeroes);
-        updates.phase = 'single-pick';
-        updates.p1Cards = shuffled.slice(0, 2);
-        updates.p2Cards = shuffled.slice(2, 4);
-        updates.p1Pick = null;
-        updates.p2Pick = null;
-    } else if (gameState.mode === 'bestof3') {
-        Object.assign(updates, buildBestOf3State());
-        updates.phase = 'phase1-j1-save';
+    updates.rerollRequest = null;
+    updates.rerollCount = null;
+
+    if (gameState.mode === 'single' || gameState.mode === 'bestof3') {
+        Object.assign(updates, await buildDealUpdates(gameState));
     } else if (gameState.mode === 'team') {
         const shuffledIndices = shuffleArray([0, 1, 2, 3]);
         updates.slotAssignments = {
@@ -3349,7 +3688,12 @@ function rerollCurrentQuickMatchHeroes() {
         if (!involvedIndexes.includes(idx) && p.hero) otherHeroNames.add(p.hero.nome);
     });
 
-    const pool = shuffleArray(PERSONAGENS.filter(h => !otherHeroNames.has(h.nome)));
+    // Os heróis que acabaram de sair são evitados (pra não "re-sortear" o
+    // mesmo herói); os de quem não está no confronto são proibidos.
+    const currentNames = involvedIndexes
+        .map(idx => quickState.players[idx].hero && quickState.players[idx].hero.nome)
+        .filter(Boolean);
+    const pool = drawUniqueHeroes(involvedIndexes.length, currentNames, Array.from(otherHeroNames));
     if (pool.length < involvedIndexes.length) {
         alert('Não há heróis suficientes disponíveis pra sortear de novo sem repetir.');
         return;
@@ -3539,7 +3883,7 @@ function firstQuickTimerStart(match) {
     if (!neverStarted) return;
     quickState.timer = resumeTimer(timer || newTimer());
     if (match && (match.type === 'ffa' && match.players.length === 2 || match.type === 'team')) {
-        quickState.startingPlayer = Math.random() < 0.5 ? 1 : 2;
+        quickState.startingPlayer = secureRandomInt(2) + 1;
     }
     updateQuickTimerDisplay();
 }
@@ -3802,35 +4146,6 @@ window.addEventListener('DOMContentLoaded', () => {
         window.history.replaceState({ appScreen: 'screen-home' }, '', window.location.href);
     }
 
-    // Bolinha discreta do Modo Dev: clique + senha "bolas" liga/desliga.
-    // Serve pra testar um torneio inteiro sozinho, num único aparelho.
-    const devDot = document.getElementById('dev-mode-dot');
-    if (devDot) {
-        if (devMode) devDot.classList.add('active');
-        devDot.onclick = () => {
-            if (devMode) {
-                const off = window.confirm('Modo Dev está ativo. Quer desativar?');
-                if (!off) return;
-                devMode = false;
-                localStorage.setItem('unmatched_dev_mode', '0');
-                devDot.classList.remove('active');
-                renderDevTournamentPanel();
-                return;
-            }
-            const pass = window.prompt('Senha do Modo Dev:');
-            if (pass === null) return;
-            if (pass !== 'bolas') {
-                alert('Senha incorreta.');
-                return;
-            }
-            devMode = true;
-            localStorage.setItem('unmatched_dev_mode', '1');
-            devDot.classList.add('active');
-            alert('🧪 Modo Dev ativado! Agora você pode reivindicar todos os nomes de um torneio no mesmo aparelho e trocar de jogador pelo painel que aparece embaixo da tela.');
-            renderDevTournamentPanel();
-        };
-    }
-
     document.getElementById('btn-go-create').onclick = () => {
         pendingConfig = null;
         buildNameInputs(2, 'single');
@@ -3932,19 +4247,8 @@ window.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-copy-link').onclick = copyRoomLink;
     document.getElementById('btn-copy-code').onclick = copyRoomCode;
 
-    // Eventos do Torneio
-    document.getElementById('btn-go-tournament').onclick = () => {
-        showScreen('screen-tournament-setup');
-        updateTournamentSetupUI();
-    };
-    document.getElementById('btn-tournament-back').onclick = () => showScreen('screen-tools');
-    document.getElementById('tournament-player-count').addEventListener('input', updateTournamentSetupUI);
-    document.getElementById('btn-tournament-create').onclick = createTournament;
-    document.getElementById('btn-copy-tournament-link').onclick = copyTournamentLink;
-
     const params = new URLSearchParams(window.location.search);
     const urlRoom = params.get('room');
-    const urlTournament = params.get('tournament');
 
     attachFeedListener();
     runHeroStatsMigrationIfNeeded().then(() => runHeroStatsMigrationV3IfNeeded()).then(() => runHeroStatsMigrationV4IfNeeded());
@@ -3953,821 +4257,9 @@ window.addEventListener('DOMContentLoaded', () => {
         roomId = urlRoom.toUpperCase();
         updateRoomHeader();
         tryJoinRoom();
-    } else if (urlTournament) {
-        tournamentId = urlTournament.toUpperCase();
-        updateTournamentHeader();
-        tryJoinTournament();
     } else {
         showScreen('screen-home');
     }
 });
 
 window.goHome = goHome;
-
-// ============================================================
-// SISTEMA DE TORNEIO
-// ============================================================
-
-function updateTournamentSetupUI() {
-    const count = parseInt(document.getElementById('tournament-player-count').value) || 4;
-    const container = document.getElementById('tournament-names-inputs');
-    container.innerHTML = '';
-    for (let i = 0; i < count; i++) {
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.className = 'text-input name-input';
-        input.placeholder = 'Jogador ' + (i + 1);
-        input.value = 'Jogador ' + (i + 1);
-        input.dataset.index = i;
-        container.appendChild(input);
-    }
-}
-
-function getTournamentNames() {
-    return Array.from(document.querySelectorAll('#tournament-names-inputs .name-input'))
-        .map(inp => inp.value.trim() || inp.placeholder);
-}
-
-function generateTournamentBracket(playerCount) {
-    const rounds = Math.log2(playerCount);
-    const bracket = [];
-    
-    // Gerar primeira rodada com todos os jogadores
-    const firstRound = [];
-    for (let i = 0; i < playerCount; i += 2) {
-        firstRound.push({
-            matchId: `r1m${i/2}`,
-            player1: i,
-            player2: i + 1,
-            winner: null,
-            hero1: null,
-            hero2: null,
-            ready1: false,
-            ready2: false,
-            combatStarted: false,
-            combatEnded: false
-        });
-    }
-    bracket.push(firstRound);
-    
-    // Gerar rodadas subsequentes
-    let matchCount = playerCount / 2;
-    for (let r = 1; r < rounds; r++) {
-        const round = [];
-        for (let i = 0; i < matchCount; i++) {
-            round.push({
-                matchId: `r${r+1}m${i}`,
-                player1: null, // Será preenchido pelo vencedor da rodada anterior
-                player2: null,
-                winner: null,
-                hero1: null,
-                hero2: null,
-                ready1: false,
-                ready2: false,
-                combatStarted: false,
-                combatEnded: false
-            });
-        }
-        bracket.push(round);
-        matchCount /= 2;
-    }
-    
-    return bracket;
-}
-
-async function createTournament() {
-    const playerCount = parseInt(document.getElementById('tournament-player-count').value);
-    const validCounts = [2, 4, 8, 16];
-    
-    if (!validCounts.includes(playerCount)) {
-        alert('Número de jogadores deve ser 2, 4, 8 ou 16');
-        return;
-    }
-    
-    const playerNames = getTournamentNames();
-    if (playerNames.length !== playerCount) {
-        alert('Preencha todos os nomes dos jogadores');
-        return;
-    }
-    
-    tournamentId = generateRoomId();
-    
-    // Sortear 2 heróis únicos para cada jogador
-    const heroOptions = {};
-    const totalHeroesNeeded = playerCount * 2;
-    const otherRoomHeroes = await getActiveRoomHeroNames();
-    const shuffledHeroes = drawUniqueHeroes(totalHeroesNeeded, otherRoomHeroes);
-    
-    for (let i = 0; i < playerCount; i++) {
-        heroOptions[i] = shuffledHeroes.slice(i * 2, (i + 1) * 2);
-    }
-    
-    const initialState = {
-        playerCount,
-        playerNames,
-        heroOptions,
-        heroSelections: {}, // Índice do jogador -> herói escolhido
-        bracket: generateTournamentBracket(playerCount),
-        phase: 'lobby',
-        nameClaims: {},
-        currentRound: 0,
-        tournamentEnded: false,
-        champion: null,
-        createdAt: Date.now()
-    };
-    
-    tournamentRef = db.ref('tournaments/' + tournamentId);
-    tournamentRef.set(initialState).then(() => {
-        const link = window.location.origin + window.location.pathname + '?tournament=' + tournamentId;
-        document.getElementById('tournament-link-input').value = link;
-        document.getElementById('tournament-room-code').innerText = tournamentId;
-        updateTournamentHeader();
-        window.history.replaceState({}, '', link);
-        showScreen('screen-tournament-lobby');
-        attachTournamentListener();
-    });
-}
-
-function copyTournamentLink() {
-    const input = document.getElementById('tournament-link-input');
-    input.select();
-    navigator.clipboard.writeText(input.value).then(() => {
-        const btn = document.getElementById('btn-copy-tournament-link');
-        const original = btn.innerText;
-        btn.innerText = 'Copiado! ✅';
-        setTimeout(() => { btn.innerText = original; }, 1500);
-    });
-}
-
-function updateTournamentHeader() {
-    const header = document.getElementById('room-code-header');
-    if (tournamentId) {
-        header.style.display = 'flex';
-        document.getElementById('room-code-display').innerText = tournamentId;
-    } else {
-        header.style.display = 'none';
-    }
-}
-
-function tryJoinTournament() {
-    updateTournamentHeader();
-    const savedIndex = localStorage.getItem('unmatched_tournament_idx_' + tournamentId);
-    
-    if (savedIndex !== null) {
-        myTournamentIndex = parseInt(savedIndex, 10);
-        attachTournamentListener();
-        return;
-    }
-    
-    const ref = db.ref('tournaments/' + tournamentId);
-    ref.get().then(snapshot => {
-        if (!snapshot.exists()) {
-            alert('Torneio não encontrado');
-            showScreen('screen-home');
-            return;
-        }
-        
-        tournamentRef = ref;
-        attachTournamentListener();
-    }).catch(() => {
-        alert('Erro ao conectar ao torneio');
-        showScreen('screen-home');
-    });
-}
-
-function attachTournamentListener() {
-    tournamentRef = db.ref('tournaments/' + tournamentId);
-    tournamentRef.on('value', snapshot => {
-        tournamentState = snapshot.val();
-        if (!tournamentState) {
-            goHome();
-            return;
-        }
-        renderTournament();
-    });
-}
-
-function renderTournament() {
-    updateTournamentHeader();
-    renderDevTournamentPanel();
-
-    const phase = tournamentState.phase;
-    
-    if (phase === 'lobby') {
-        renderTournamentLobby();
-        return;
-    }
-    
-    if (phase === 'hero-selection') {
-        renderTournamentHeroSelection();
-        return;
-    }
-    
-    if (phase === 'bracket') {
-        renderTournamentBracket();
-        return;
-    }
-    
-    if (phase === 'combat') {
-        renderTournamentCombat();
-        return;
-    }
-    
-    if (phase === 'ended') {
-        renderTournamentResult();
-        return;
-    }
-}
-
-function renderTournamentLobby() {
-    showScreen('screen-tournament-lobby');
-    const link = window.location.origin + window.location.pathname + '?tournament=' + tournamentId;
-    document.getElementById('tournament-link-input').value = link;
-    document.getElementById('tournament-room-code').innerText = tournamentId;
-    
-    const list = document.getElementById('tournament-players-list');
-    list.innerHTML = '';
-    
-    tournamentState.playerNames.forEach((name, idx) => {
-        const claimed = tournamentState.nameClaims && tournamentState.nameClaims[idx];
-        const isMe = devMode ? (idx === myTournamentIndex) : (claimed === getDeviceId());
-        const div = document.createElement('div');
-        div.className = 'name-claim-item' + (claimed ? ' claimed' : '') + (isMe ? ' is-me' : '');
-        div.innerHTML = '<span class="player-tag player-' + ((idx % 4) + 1) + '">J' + (idx + 1) + '</span><span>' + name + '</span>';
-        
-        if (!claimed) {
-            div.onclick = () => claimTournamentName(idx);
-        } else if (isMe) {
-            div.innerHTML += ' <span class="you-badge">(Você)</span>';
-        } else {
-            div.innerHTML += ' <span class="taken-badge">✓</span>';
-        }
-        
-        list.appendChild(div);
-    });
-    
-    const claimedCount = tournamentState.nameClaims ? Object.keys(tournamentState.nameClaims).length : 0;
-    const totalPlayers = tournamentState.playerCount;
-    
-    if (claimedCount < totalPlayers) {
-        document.getElementById('tournament-waiting-status').innerText = `⏳ ${claimedCount}/${totalPlayers} jogadores entraram...`;
-    } else {
-        document.getElementById('tournament-waiting-status').innerText = '✅ Todos entraram! Iniciando seleção de heróis...';
-        
-        // Se todos entraram e eu sou o primeiro, iniciar fase de seleção
-        if (claimedCount === totalPlayers && tournamentState.phase === 'lobby') {
-            tournamentRef.update({ phase: 'hero-selection' });
-        }
-    }
-}
-
-function claimTournamentName(nameIndex) {
-    const claims = tournamentState.nameClaims || {};
-    const alreadyClaimed = !!claims[nameIndex];
-    if (alreadyClaimed) {
-        alert('Este nome já foi escolhido');
-        return;
-    }
-
-    if (devMode) {
-        // Em Modo Dev, o mesmo aparelho pode reivindicar vários (ou todos os)
-        // nomes, pra dar pra testar o torneio inteiro sozinho. Cada nome usa
-        // um "device id" fake e próprio, só pra passar pela trava normal de
-        // "1 nome por aparelho" — depois é só trocar de jogador no painel
-        //🧪 que aparece embaixo da tela.
-        claims[nameIndex] = 'dev-' + tournamentId + '-' + nameIndex;
-        myTournamentIndex = nameIndex;
-        localStorage.setItem('unmatched_tournament_idx_' + tournamentId, nameIndex);
-        tournamentRef.update({ nameClaims: claims });
-        return;
-    }
-
-    const deviceId = getDeviceId();
-
-    // Verificar se já reivindiquei algum nome
-    for (const [idx, dev] of Object.entries(claims)) {
-        if (dev === deviceId) return;
-    }
-
-    claims[nameIndex] = deviceId;
-    myTournamentIndex = nameIndex;
-    localStorage.setItem('unmatched_tournament_idx_' + tournamentId, nameIndex);
-
-    tournamentRef.update({ nameClaims: claims });
-}
-
-// Painel flutuante do Modo Dev: enquanto estiver dentro de um torneio,
-// deixa trocar instantaneamente qual jogador este aparelho está controlando
-// (só pra teste — em uso normal cada jogador usa o próprio aparelho).
-function renderDevTournamentPanel() {
-    const panel = document.getElementById('dev-tournament-panel');
-    if (!panel) return;
-
-    if (!devMode || !tournamentState || !tournamentRef) {
-        panel.style.display = 'none';
-        panel.innerHTML = '';
-        return;
-    }
-
-    panel.style.display = 'flex';
-    panel.innerHTML = '<strong>🧪 Modo Dev — jogar como:</strong>';
-
-    (tournamentState.playerNames || []).forEach((name, idx) => {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.innerText = (idx + 1) + '. ' + name;
-        btn.className = 'dev-panel-btn' + (idx === myTournamentIndex ? ' active' : '');
-        btn.onclick = () => {
-            myTournamentIndex = idx;
-            localStorage.setItem('unmatched_tournament_idx_' + tournamentId, idx);
-            renderTournament();
-        };
-        panel.appendChild(btn);
-    });
-}
-
-function renderTournamentHeroSelection() {
-    showScreen('screen-tournament-hero-selection');
-    
-    // Se já escolhi herói, mostrar waiting
-    if (tournamentState.heroSelections && tournamentState.heroSelections[myTournamentIndex] !== undefined) {
-        document.getElementById('tournament-hero-cards').style.display = 'none';
-        document.getElementById('btn-confirm-tournament-hero').style.display = 'none';
-        document.getElementById('tournament-hero-waiting').style.display = 'block';
-        return;
-    }
-    
-    // Mostrar heróis disponíveis para mim
-    const myOptions = tournamentState.heroOptions[myTournamentIndex];
-    const container = document.getElementById('tournament-hero-cards');
-    container.innerHTML = '';
-    
-    myOptions.forEach((hero, idx) => {
-        const card = document.createElement('div');
-        card.className = 'card';
-        card.onclick = () => selectTournamentHero(idx);
-        fillCardContent(card, hero);
-        container.appendChild(card);
-    });
-    
-    document.getElementById('tournament-hero-cards').style.display = 'grid';
-    document.getElementById('btn-confirm-tournament-hero').style.display = 'block';
-    document.getElementById('tournament-hero-waiting').style.display = 'none';
-    document.getElementById('btn-confirm-tournament-hero').disabled = true;
-}
-
-let selectedTournamentHeroIndex = null;
-
-function selectTournamentHero(index) {
-    selectedTournamentHeroIndex = index;
-    document.querySelectorAll('#tournament-hero-cards .card').forEach((card, idx) => {
-        card.classList.toggle('selected', idx === index);
-    });
-    document.getElementById('btn-confirm-tournament-hero').disabled = false;
-}
-
-document.getElementById('btn-confirm-tournament-hero').onclick = () => {
-    if (selectedTournamentHeroIndex === null) return;
-    
-    const myOptions = tournamentState.heroOptions[myTournamentIndex];
-    const selectedHero = myOptions[selectedTournamentHeroIndex];
-    
-    const selections = tournamentState.heroSelections || {};
-    selections[myTournamentIndex] = selectedHero;
-    
-    tournamentRef.update({ heroSelections: selections });
-    selectedTournamentHeroIndex = null;
-};
-
-function renderTournamentBracket() {
-    showScreen('screen-tournament-bracket');
-    
-    myTournamentHero = tournamentState.heroSelections[myTournamentIndex];
-    
-    // Renderizar bracket visual
-    const container = document.getElementById('tournament-bracket-container');
-    container.innerHTML = '';
-    
-    tournamentState.bracket.forEach((round, roundIdx) => {
-        const roundDiv = document.createElement('div');
-        roundDiv.className = 'bracket-round';
-        roundDiv.innerHTML = `<h4>Rodada ${roundIdx + 1}</h4>`;
-        
-        round.forEach(match => {
-            const matchDiv = document.createElement('div');
-            matchDiv.className = 'bracket-match';
-            
-            const p1Name = match.player1 !== null ? tournamentState.playerNames[match.player1] : '???';
-            const p2Name = match.player2 !== null ? tournamentState.playerNames[match.player2] : '???';
-            const hero1Name = match.hero1 ? match.hero1.nome : '???';
-            const hero2Name = match.hero2 ? match.hero2.nome : '???';
-            
-            matchDiv.innerHTML = `
-                <div class="match-player ${match.winner === 1 ? 'winner' : ''}">
-                    <span class="player-name">${p1Name}</span>
-                    <span class="hero-name">${hero1Name}</span>
-                </div>
-                <div class="match-vs">VS</div>
-                <div class="match-player ${match.winner === 2 ? 'winner' : ''}">
-                    <span class="player-name">${p2Name}</span>
-                    <span class="hero-name">${hero2Name}</span>
-                </div>
-            `;
-            
-            roundDiv.appendChild(matchDiv);
-        });
-        
-        container.appendChild(roundDiv);
-    });
-    
-    // Encontrar minha próxima luta
-    const myMatch = findMyCurrentMatch();
-    
-    if (myMatch) {
-        document.getElementById('tournament-current-match').style.display = 'block';
-        
-        const opponentIndex = myMatch.player1 === myTournamentIndex ? myMatch.player2 : myMatch.player1;
-        const opponentName = tournamentState.playerNames[opponentIndex];
-        const opponentHero = tournamentState.heroSelections[opponentIndex];
-        
-        document.getElementById('tournament-matchup-display').innerHTML = `
-            <div class="fighter-card">
-                <img src="${myTournamentHero.img}" alt="${myTournamentHero.nome}">
-                <span>${myTournamentHero.nome}</span>
-            </div>
-            <div class="vs">VS</div>
-            <div class="fighter-card">
-                <img src="${opponentHero.img}" alt="${opponentHero.nome}">
-                <span>${opponentHero.nome}</span>
-            </div>
-        `;
-        
-        const myReady = myMatch.player1 === myTournamentIndex ? myMatch.ready1 : myMatch.ready2;
-        const opponentReady = myMatch.player1 === myTournamentIndex ? myMatch.ready2 : myMatch.ready1;
-        
-        document.getElementById('btn-tournament-ready').disabled = myReady;
-        document.getElementById('btn-tournament-ready').innerText = myReady ? 'Aguardando oponente...' : 'Pronto para Combate';
-        
-        if (opponentReady) {
-            document.getElementById('tournament-opponent-status').innerText = '✅ Oponente pronto!';
-        } else {
-            document.getElementById('tournament-opponent-status').innerText = '⏳ Aguardando oponente...';
-        }
-        
-        // Se ambos prontos, iniciar combate
-        if (myReady && opponentReady && !myMatch.combatStarted) {
-            tournamentRef.update({
-                [`bracket/${tournamentState.currentRound}/${myMatch.matchId}/combatStarted`]: true,
-                phase: 'combat'
-            });
-        }
-    } else {
-        document.getElementById('tournament-current-match').style.display = 'none';
-    }
-}
-
-function findMyCurrentMatch() {
-    const currentRound = tournamentState.bracket[tournamentState.currentRound];
-    if (!currentRound) return null;
-    
-    for (const match of currentRound) {
-        if (match.player1 === myTournamentIndex || match.player2 === myTournamentIndex) {
-            if (!match.combatEnded) {
-                return match;
-            }
-        }
-    }
-    return null;
-}
-
-document.getElementById('btn-tournament-ready').onclick = () => {
-    const myMatch = findMyCurrentMatch();
-    if (!myMatch) return;
-    
-    const updatePath = `bracket/${tournamentState.currentRound}/${myMatch.matchId}`;
-    const updates = {};
-    
-    if (myMatch.player1 === myTournamentIndex) {
-        updates[`${updatePath}/ready1`] = true;
-    } else {
-        updates[`${updatePath}/ready2`] = true;
-    }
-    
-    tournamentRef.update(updates);
-};
-
-function renderTournamentCombat() {
-    showScreen('screen-tournament-combat');
-    
-    const myMatch = findMyCurrentMatch();
-    if (!myMatch) {
-        // Não estou em combate, aguardar
-        showScreen('screen-tournament-bracket');
-        return;
-    }
-    
-    const opponentIndex = myMatch.player1 === myTournamentIndex ? myMatch.player2 : myMatch.player1;
-    const opponentHero = tournamentState.heroSelections[opponentIndex];
-
-    // Reseta o sorteio de mapa a cada nova partida do torneio
-    tournamentDrawnMap = null;
-    document.getElementById('tournament-map-draw-result').style.display = 'none';
-    document.getElementById('btn-tournament-draw-map').style.display = 'inline-block';
-    document.getElementById('btn-tournament-reroll-map').style.display = 'none';
-
-    document.getElementById('tournament-fighter-you').innerHTML = `
-        <img src="${myTournamentHero.img}" alt="${myTournamentHero.nome}">
-        <span>${myTournamentHero.nome}</span>
-    `;
-    
-    document.getElementById('tournament-fighter-opponent').innerHTML = `
-        <img src="${opponentHero.img}" alt="${opponentHero.nome}">
-        <span>${opponentHero.nome}</span>
-    `;
-    
-    // Timer
-    if (!tournamentState.combatTimer) {
-        tournamentRef.update({ combatTimer: newTimer() });
-    }
-    
-    startTournamentCombatTimerDisplay();
-}
-
-function startTournamentCombatTimerDisplay() {
-    stopTournamentCombatTimerDisplay();
-    updateTournamentCombatTimerDisplay();
-    tournamentTimerInterval = setInterval(updateTournamentCombatTimerDisplay, 1000);
-}
-
-function stopTournamentCombatTimerDisplay() {
-    if (tournamentTimerInterval) {
-        clearInterval(tournamentTimerInterval);
-        tournamentTimerInterval = null;
-    }
-}
-
-function updateTournamentCombatTimerDisplay() {
-    const el = document.getElementById('tournament-combat-timer');
-    if (el && tournamentState && tournamentState.combatTimer) {
-        el.innerText = '⏱️ ' + formatDuration(getElapsedMs(tournamentState.combatTimer));
-    }
-    
-    const pauseBtn = document.getElementById('btn-pause-tournament-combat');
-    if (pauseBtn && tournamentState && tournamentState.combatTimer) {
-        pauseBtn.innerText = pauseBtnLabel(tournamentState.combatTimer);
-    }
-}
-
-document.getElementById('btn-pause-tournament-combat').onclick = () => {
-    if (!tournamentState || !tournamentRef) return;
-    const timer = tournamentState.combatTimer;
-    const updated = (timer && !timer.paused) ? pauseTimer(timer) : resumeTimer(timer);
-    tournamentRef.update({ combatTimer: updated });
-};
-
-let tournamentDrawnMap = null;
-
-function applyTournamentMapDraw(map) {
-    tournamentDrawnMap = map;
-    document.getElementById('tournament-map-draw-image').src = map.img;
-    document.getElementById('tournament-map-draw-name').innerText = map.nome;
-    document.getElementById('tournament-map-draw-result').style.display = 'block';
-    document.getElementById('btn-tournament-draw-map').style.display = 'none';
-    const rerollBtn = document.getElementById('btn-tournament-reroll-map');
-    if (rerollBtn) rerollBtn.style.display = 'inline-block';
-}
-
-document.getElementById('btn-tournament-draw-map').onclick = () => {
-    applyTournamentMapDraw(drawRandomMap(false));
-};
-
-document.getElementById('btn-tournament-reroll-map').onclick = () => {
-    const exclude = tournamentDrawnMap ? [tournamentDrawnMap.nome] : [];
-    applyTournamentMapDraw(drawRandomMap(false, exclude));
-};
-
-document.getElementById('btn-tournament-winner-you').onclick = () => endTournamentMatch(true);
-document.getElementById('btn-tournament-winner-opponent').onclick = () => endTournamentMatch(false);
-
-function endTournamentMatch(iWon) {
-    const myMatch = findMyCurrentMatch();
-    if (!myMatch) return;
-    
-    const updatePath = `bracket/${tournamentState.currentRound}/${myMatch.matchId}`;
-    const updates = {};
-    
-    // Determinar vencedor
-    let winnerIndex;
-    if (iWon) {
-        winnerIndex = myTournamentIndex;
-    } else {
-        winnerIndex = myMatch.player1 === myTournamentIndex ? myMatch.player2 : myMatch.player1;
-    }
-    
-    const loserIndex = myMatch.player1 === winnerIndex ? myMatch.player2 : myMatch.player1;
-    const winnerHero = tournamentState.heroSelections[winnerIndex];
-    const loserHero = tournamentState.heroSelections[loserIndex];
-    
-    updates[`${updatePath}/winner`] = myMatch.player1 === winnerIndex ? 1 : 2;
-    updates[`${updatePath}/combatEnded`] = true;
-    
-    tournamentRef.update(updates).then(() => {
-        // Registrar duelo no feed e nas estatísticas
-        postTournamentDuel(winnerIndex, loserIndex, winnerHero, loserHero, myMatch);
-        updateHeroStats(winnerHero.nome, loserHero.nome, true);
-        updateHeroStats(loserHero.nome, winnerHero.nome, false);
-        
-        // Verificar se a rodada terminou
-        checkRoundCompletion();
-    });
-}
-
-function postTournamentDuel(winnerIndex, loserIndex, winnerHero, loserHero, match) {
-    const durationMs = tournamentState.combatTimer ? getElapsedMs(tournamentState.combatTimer) : null;
-    
-    const participants = [
-        {
-            name: tournamentState.playerNames[winnerIndex],
-            hero: winnerHero.nome,
-            colorClass: 'player-' + ((winnerIndex % 4) + 1),
-            won: true
-        },
-        {
-            name: tournamentState.playerNames[loserIndex],
-            hero: loserHero.nome,
-            colorClass: 'player-' + ((loserIndex % 4) + 1),
-            won: false
-        }
-    ];
-    
-    db.ref('posts').push({
-        participants,
-        mode: 'tournament',
-        tournamentId: tournamentId,
-        round: tournamentState.currentRound + 1,
-        combats: [{
-            p1Hero: winnerHero.nome,
-            p2Hero: loserHero.nome,
-            winner: winnerIndex === match?.player1 ? 1 : 2
-        }],
-        durationMs: durationMs,
-        timestamp: Date.now()
-    });
-}
-
-function updateHeroStats(heroName, opponentName, won) {
-    const hKey = heroKey(heroName);
-    const oKey = heroKey(opponentName);
-    
-    const updates = {};
-    
-    // Atualizar contadores gerais
-    updates[`heroStats/${hKey}/${won ? 'wins' : 'losses'}`] = firebase.database.ServerValue.increment(1);
-    
-    // Atualizar contadores específicos contra o oponente
-    updates[`heroStats/${hKey}/vs/${oKey}/${won ? 'wins' : 'losses'}`] = firebase.database.ServerValue.increment(1);
-    
-    db.ref().update(updates);
-}
-
-function postTournamentFinalResult(championIndex, championHero) {
-    const participants = tournamentState.playerNames.map((name, idx) => ({
-        name: name,
-        hero: tournamentState.heroSelections[idx].nome,
-        colorClass: 'player-' + ((idx % 4) + 1),
-        won: idx === championIndex,
-        note: idx === championIndex ? '🏆 Campeão' : ''
-    }));
-    
-    db.ref('posts').push({
-        participants,
-        mode: 'tournament-final',
-        tournamentId: tournamentId,
-        champion: championIndex,
-        championHero: championHero.nome,
-        timestamp: Date.now()
-    });
-}
-
-function checkRoundCompletion() {
-    const currentRound = tournamentState.bracket[tournamentState.currentRound];
-    const allMatchesEnded = currentRound.every(match => match.combatEnded);
-    
-    if (allMatchesEnded) {
-        // Avançar vencedores para próxima rodada
-        advanceRound();
-    }
-}
-
-function advanceRound() {
-    const currentRound = tournamentState.bracket[tournamentState.currentRound];
-    const nextRoundIndex = tournamentState.currentRound + 1;
-    
-    if (nextRoundIndex >= tournamentState.bracket.length) {
-        // Torneio acabou
-        const finalMatch = currentRound[0];
-        const championIndex = finalMatch.winner === 1 ? finalMatch.player1 : finalMatch.player2;
-        const championHero = tournamentState.heroSelections[championIndex];
-        
-        tournamentRef.update({
-            tournamentEnded: true,
-            champion: championIndex,
-            phase: 'ended'
-        });
-        
-        // Postar resultado final do torneio no feed
-        postTournamentFinalResult(championIndex, championHero);
-        return;
-    }
-    
-    const nextRound = tournamentState.bracket[nextRoundIndex];
-    
-    // Avançar vencedores
-    for (let i = 0; i < currentRound.length; i++) {
-        const match = currentRound[i];
-        const winnerIndex = match.winner === 1 ? match.player1 : match.player2;
-        const winnerHero = tournamentState.heroSelections[winnerIndex];
-        
-        const nextMatchIndex = Math.floor(i / 2);
-        const nextMatch = nextRound[nextMatchIndex];
-        
-        if (i % 2 === 0) {
-            nextMatch.player1 = winnerIndex;
-            nextMatch.hero1 = winnerHero;
-        } else {
-            nextMatch.player2 = winnerIndex;
-            nextMatch.hero2 = winnerHero;
-        }
-    }
-    
-    tournamentRef.update({
-        bracket: tournamentState.bracket,
-        currentRound: nextRoundIndex,
-        phase: 'bracket'
-    });
-}
-
-function renderTournamentResult() {
-    showScreen('screen-tournament-result');
-    
-    const championIndex = tournamentState.champion;
-    const championName = tournamentState.playerNames[championIndex];
-    const championHero = tournamentState.heroSelections[championIndex];
-    
-    document.getElementById('tournament-result-title').innerText = 
-        championIndex === myTournamentIndex ? '🏆 Você Venceu o Torneio!' : '🏆 Torneio Encerrado!';
-    
-    document.getElementById('tournament-result-message').innerHTML = `
-        <strong>Campeão:</strong> ${championName} com ${championHero.nome}
-    `;
-    
-    // Mostrar bracket final
-    const container = document.getElementById('tournament-final-bracket');
-    container.innerHTML = '';
-    
-    tournamentState.bracket.forEach((round, roundIdx) => {
-        const roundDiv = document.createElement('div');
-        roundDiv.className = 'bracket-round';
-        roundDiv.innerHTML = `<h4>Rodada ${roundIdx + 1}</h4>`;
-        
-        round.forEach(match => {
-            const matchDiv = document.createElement('div');
-            matchDiv.className = 'bracket-match';
-            
-            const p1Name = match.player1 !== null ? tournamentState.playerNames[match.player1] : '???';
-            const p2Name = match.player2 !== null ? tournamentState.playerNames[match.player2] : '???';
-            const hero1Name = match.hero1 ? match.hero1.nome : '???';
-            const hero2Name = match.hero2 ? match.hero2.nome : '???';
-            
-            matchDiv.innerHTML = `
-                <div class="match-player ${match.winner === 1 ? 'winner' : ''}">
-                    <span class="player-name">${p1Name}</span>
-                    <span class="hero-name">${hero1Name}</span>
-                </div>
-                <div class="match-vs">VS</div>
-                <div class="match-player ${match.winner === 2 ? 'winner' : ''}">
-                    <span class="player-name">${p2Name}</span>
-                    <span class="hero-name">${hero2Name}</span>
-                </div>
-            `;
-            
-            roundDiv.appendChild(matchDiv);
-        });
-        
-        container.appendChild(roundDiv);
-    });
-}
-
-document.getElementById('btn-tournament-home').onclick = () => {
-    stopTournamentCombatTimerDisplay();
-    if (tournamentRef) tournamentRef.off();
-    tournamentId = null;
-    tournamentRef = null;
-    tournamentState = null;
-    myTournamentIndex = null;
-    myTournamentHero = null;
-    updateTournamentHeader();
-    renderDevTournamentPanel();
-    window.history.replaceState({ appScreen: 'screen-home' }, '', window.location.pathname);
-    showScreen('screen-home');
-};
