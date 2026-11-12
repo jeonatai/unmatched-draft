@@ -51,7 +51,7 @@ const PERSONAGENS = [
     { nome: "Philippa | Dijkstra", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/u0_PFJIp0z0ITwRgpitzx.webp" },
     { nome: "Geralt de Rivia | Dandelion", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/CNnTH-5_N8SAAWXV_RSZV.webp" },
     { nome: "Ciri | Ihuarraquax", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/sr7i7S_M7FHSAVuqn21jE.webp" },
-    { nome: "Liche Ancião | Lobos", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/A-XrmwVNY2Gf9TvYj6FES.webp" },
+    { nome: "Lichie Ancião | Lobos", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/A-XrmwVNY2Gf9TvYj6FES.webp" },
     { nome: "Pantera Negra | Shuri", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/VuFF0FGwy-spBM3-5NfDA.webp" },
     { nome: "Soldado Invernal", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/JxKGaAvQQUDqjJK1ec8Ua.webp" },
     { nome: "Viuva Negra | Maria Hill", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/wlWum83DPKQPdY0TfJEcm.webp" },
