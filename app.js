@@ -12,7 +12,7 @@ const PERSONAGENS = [
     { nome: "O Gênio", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/iZi7oBFoZ34YyVa1Qg28u.webp" },
     { nome: "Pé Grande | O Lebrílope", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/mbjF8pursj8AYkalODyXa.jpg" },
     { nome: "Houdini | Bess", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/HkwPbbhKUMb_XWpndh6DN.webp" },
-    { nome: "Simbad | O Carregador", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/iX3R40hAP80XJ-UalPt6E.png" },
+    { nome: "Sinbad | O Carregador", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/iX3R40hAP80XJ-UalPt6E.png" },
     { nome: "Demolidor", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/B0qnKxZyoG3KLwRNvKsrG.webp" },
     { nome: "Yennenga | Arqueiras", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/QQfafCmj_R9Qhz1-XKvhr.jpg" },
     { nome: "Dr. Jekyll | Sr. Hyde", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/ALEF6sBXvEA3kUuJEb3gb.png" },
@@ -36,7 +36,7 @@ const PERSONAGENS = [
     { nome: "Motoqueiro Fantasma", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/LRuz2YID8471dnTGfM1_b.webp" },
     { nome: "Cavaleiro Banana", img: "https://i.imgur.com/SQtDNjJ.png" },
     { nome: "Hamlet", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/bg3s8IEdB07YlbFJQSGS5.webp" },
-    { nome: "Nicolas Tesla", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/byq-c3l_HktvangjGc33q.webp" },
+    { nome: "NiKola Tesla", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/byq-c3l_HktvangjGc33q.webp" },
     { nome: "Oda Nobunaga | Guarda de Honra", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/_hVP2Ah-uMSD_kH5-LUol.webp" },
     { nome: "T-Rex", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/mURpEFDw_zxQRn19mYXgG.webp" },
     { nome: "Homem-Mariposa | Sapo de Loveland", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/npcs/villains/card-covers/XMvDZU9R1vCn5dT4Do6iZ.webp" },
@@ -49,7 +49,7 @@ const PERSONAGENS = [
     { nome: "Yennefer | Triss", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/wyF2xEhMaHY_hYfRIkWWv.webp" },
     { nome: "Eredin | Cavaleiros Vermelhos", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/s3I7T0MDElqnYmN5Kzv3r.webp" },
     { nome: "Philippa | Dijkstra", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/u0_PFJIp0z0ITwRgpitzx.webp" },
-    { nome: "Geralt of Rivia | Dandelion", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/CNnTH-5_N8SAAWXV_RSZV.webp" },
+    { nome: "Geralt de Rivia | Dandelion", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/CNnTH-5_N8SAAWXV_RSZV.webp" },
     { nome: "Ciri | Ihuarraquax", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/sr7i7S_M7FHSAVuqn21jE.webp" },
     { nome: "Liche Ancião | Lobos", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/A-XrmwVNY2Gf9TvYj6FES.webp" },
     { nome: "Pantera Negra | Shuri", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/VuFF0FGwy-spBM3-5NfDA.webp" },
@@ -61,7 +61,7 @@ const PERSONAGENS = [
     { nome: "Willow | Tara", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/rsxAPjEmhngg8mZ-yXDIk.webp" },
     { nome: "Lampião | Corisco", img: "https://storage.googleapis.com/ludopedia-imagens-jogo/3741e_230447.jpg" },
     { nome: "Manto e Adaga", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/WK4lDtMPBv8cTVuZXVBzv.webp" },
-    { nome: "Garota esquilos | Esquilos", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/5eoggYWJKVJ_PNs8bQOCr.webp" },
+    { nome: "Garota Esquilo | Esquilos", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/5eoggYWJKVJ_PNs8bQOCr.webp" },
     { nome: "Ms. Marvel", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/MFiQb6grYsbNNYwR_hoh1.webp" }
 ];
 
