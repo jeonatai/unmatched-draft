@@ -23,7 +23,7 @@
     <meta name="twitter:title" content="Unmatched Draft — Sorteio e Draft Online para Unmatched">
     <meta name="twitter:description" content="Sorteie heróis, monte salas e organize partidas de Unmatched online, de graça, com amigos.">
 
-    <link rel="stylesheet" href="style.css?v=20261111k">
+    <link rel="stylesheet" href="style.css?v=20261111m">
 </head>
 <body>
 
@@ -58,11 +58,12 @@
 
         <!-- TELA: Ferramentas -->
         <div id="screen-tools" class="screen" style="display: none;">
-            <h1>🛠️ Ferramentas</h1>
+            <h1 id="tools-title" style="touch-action: manipulation;">🛠️ Ferramentas</h1>
             <button id="btn-go-matchup" class="btn-secondary">⚔️ Confrontos</button>
-            <button id="btn-go-import" class="btn-secondary" style="margin-top: 12px;">📥 Importar partidas</button>
-            <button id="btn-go-audit" class="btn-secondary" style="margin-top: 12px;">🔍 Verificar estatísticas</button>
-            <button class="btn-secondary js-go-rank" style="margin-top: 12px;">🏅 Ranking</button>
+            <div id="tools-admin" style="display: none;">
+                <button id="btn-go-import" class="btn-secondary" style="margin-top: 12px;">📥 Importar partidas</button>
+                <button id="btn-go-audit" class="btn-secondary" style="margin-top: 12px;">🔍 Verificar estatísticas</button>
+            </div>
             <button id="btn-go-add-match" class="btn-secondary" style="margin-top: 12px;">➕ Adicionar Partida</button>
             <button id="btn-tools-back" class="btn-secondary" style="margin-top: 20px;">Voltar</button>
         </div>
@@ -567,7 +568,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
     <script src="firebase-config.js"></script>
-    <script src="app.js?v=20261111k"></script>
-    <script src="changelog.js?v=096b"></script>
+    <script src="app.js?v=20261111m"></script>
+    <script src="changelog.js?v=097b"></script>
 </body>
 </html>

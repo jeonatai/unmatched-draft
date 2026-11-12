@@ -429,53 +429,74 @@ function getDeviceId() {
 }
 
 // Telas de menu/configuração que ficam "navegáveis" pelo botão Voltar do
-// navegador (ou gesto de voltar no celular). Fora de uma sala/partida ativa,
-// isso evita que a pessoa saia do site sem querer ao usar o voltar do
-// aparelho — ele volta pra tela anterior dentro do próprio site.
+// navegador (ou gesto de voltar no celular). Cada tela navegável vira uma
+// entrada no histórico, e navStack espelha esse histórico. Assim:
+//  - tocar num botão que leva a uma tela NOVA empilha (pushState);
+//  - tocar num botão "Voltar" da tela, que leva a uma tela já visitada, anda
+//    pra trás no histórico (history.go) em vez de empilhar uma cópia;
+//  - o voltar do navegador/celular só mostra a tela anterior.
+// Resultado: o voltar sempre percorre as telas na ordem certa até a principal.
 const BACK_TRACKED_SCREENS = new Set([
     'screen-home', 'screen-configure', 'screen-enter-code', 'screen-creator-role-pick',
     'screen-quick-setup', 'screen-quick-result', 'screen-tools', 'screen-add-match',
     'screen-hero-stats', 'screen-hero-rank', 'screen-matchup', 'screen-stats-audit', 'screen-import', 'screen-join-error'
 ]);
 let suppressHistoryPush = false;
+let navStack = ['screen-home'];
 
 function showScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
     const el = document.getElementById(id);
     if (el) el.style.display = 'block';
 
-    if (!suppressHistoryPush && BACK_TRACKED_SCREENS.has(id)) {
-        const currentTracked = window.history.state && window.history.state.appScreen;
-        if (currentTracked !== id) {
-            window.history.pushState({ appScreen: id }, '', window.location.href);
-        }
+    if (suppressHistoryPush || !BACK_TRACKED_SCREENS.has(id)) return;
+    if (navStack[navStack.length - 1] === id) return;
+
+    const idx = navStack.lastIndexOf(id);
+    if (idx !== -1) {
+        // Tela já visitada: volta até ela no histórico (sem empilhar de novo)
+        const steps = navStack.length - 1 - idx;
+        navStack.length = idx + 1;
+        window.history.go(-steps);
+    } else {
+        navStack.push(id);
+        window.history.pushState({ appScreen: id }, '', window.location.href);
     }
 }
 
-// Enquanto uma sala ou sorteio rápido está em andamento, o botão
-// Voltar (do navegador OU o botão/gesto físico de voltar do sistema do
-// celular — os dois disparam esse mesmo evento "popstate") encerra essa
-// sessão com segurança (mesma limpeza do botão "Voltar ao Início") em vez
-// de deixar a tela dessincronizada.
+// Enquanto uma sala ou sorteio rápido está em andamento, o botão Voltar (do
+// navegador OU o botão/gesto de voltar do sistema do celular — os dois
+// disparam o mesmo evento "popstate") encerra essa sessão com segurança
+// (mesma limpeza do botão "Voltar ao Início"). Fora disso, só mostra a tela
+// anterior que está no histórico.
 window.addEventListener('popstate', (e) => {
-    const sessionActive = !!roomRef || !!quickState;
-    if (sessionActive) {
-        goHome();
-    } else {
-        const target = (e.state && e.state.appScreen) || 'screen-home';
-        if (document.getElementById(target)) {
-            suppressHistoryPush = true;
-            showScreen(target);
-            suppressHistoryPush = false;
-        }
+    const target = (e.state && e.state.appScreen) || 'screen-home';
+    const knownTarget = !!document.getElementById(target);
+    if (knownTarget) {
+        // mantém a pilha de telas igual à entrada do histórico em que estamos
+        const idx = navStack.lastIndexOf(target);
+        navStack = idx !== -1 ? navStack.slice(0, idx + 1) : navStack.concat(target);
     }
-
-    // Repõe uma entrada no histórico logo em seguida. Assim, tanto o botão
-    // de voltar do navegador quanto o botão/gesto de voltar do próprio
-    // sistema do celular nunca "esgotam" o histórico e saem do site — eles
-    // sempre continuam presos dentro do app, navegando pelas telas.
-    window.history.pushState(window.history.state || { appScreen: 'screen-home' }, '', window.location.href);
+    if (roomRef || quickState) {
+        goHome();
+        return;
+    }
+    if (!knownTarget) return;
+    suppressHistoryPush = true;
+    showScreen(target);
+    suppressHistoryPush = false;
 });
+
+// Volta para a tela principal e limpa a pilha de telas. Se havia telas
+// empilhadas no histórico (ex: principal > código > ...), volta até a
+// entrada da principal em vez de deixar cópias dela pelo caminho.
+function resetNavToHome() {
+    const steps = navStack.length - 1;
+    navStack = ['screen-home'];
+    window.history.replaceState({ appScreen: 'screen-home' }, '', window.location.pathname);
+    if (steps > 0) window.history.go(-steps);
+    showScreen('screen-home');
+}
 
 function updateRoomHeader() {
     const header = document.getElementById('room-code-header');
@@ -632,8 +653,7 @@ function goHome() {
     roomRef = null;
     gameState = null;
     updateRoomHeader();
-    window.history.replaceState({ appScreen: 'screen-home' }, '', window.location.pathname);
-    showScreen('screen-home');
+    resetNavToHome();
     attachFeedListener();
 }
 
@@ -652,7 +672,6 @@ function buildNameInputs(count, mode) {
         input.type = 'text';
         input.className = 'text-input name-input';
         input.placeholder = 'Jogador ' + (i + 1);
-        input.value = 'Jogador ' + (i + 1);
         input.dataset.index = i;
         row.appendChild(input);
 
@@ -856,15 +875,45 @@ function showJoinError(msg) {
     showScreen('screen-join-error');
 }
 
+// No celular (tela de toque) o botão abre o menu de compartilhar do aparelho
+// (WhatsApp, Instagram, Telegram...). No computador continua copiando o link.
+function canShareRoomLink() {
+    return typeof navigator.share === 'function' && window.matchMedia('(pointer: coarse)').matches;
+}
+
+function flashButtonText(btn, text, original) {
+    btn.innerText = text;
+    setTimeout(() => { btn.innerText = original; }, 1500);
+}
+
 function copyRoomLink() {
     const input = document.getElementById('room-link-input');
-    input.select();
-    navigator.clipboard.writeText(input.value).then(() => {
-        const btn = document.getElementById('btn-copy-link');
-        const original = btn.innerText;
-        btn.innerText = 'Copiado! ✅';
-        setTimeout(() => { btn.innerText = original; }, 1500);
-    });
+    const btn = document.getElementById('btn-copy-link');
+    const link = input.value;
+    const original = btn.dataset.label || btn.innerText;
+
+    const fallbackCopy = () => {
+        input.select();
+        const done = () => flashButtonText(btn, 'Copiado! ✅', original);
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(link).then(done).catch(() => { try { document.execCommand('copy'); done(); } catch (e) { /* sem cópia */ } });
+        } else {
+            try { document.execCommand('copy'); done(); } catch (e) { /* sem cópia */ }
+        }
+    };
+
+    if (canShareRoomLink()) {
+        navigator.share({
+            title: 'Unmatched Draft',
+            text: 'Bora jogar Unmatched Draft! Entre na minha sala ' + (roomId || '') + ':',
+            url: link
+        }).catch(err => {
+            if (err && err.name === 'AbortError') return; // a pessoa fechou o menu de compartilhar
+            fallbackCopy();
+        });
+    } else {
+        fallbackCopy();
+    }
 }
 
 function copyRoomCode() {
@@ -3169,10 +3218,7 @@ document.getElementById('mu-picker-filter')?.addEventListener('input', renderMat
 document.getElementById('btn-mu-picker-close')?.addEventListener('click', closeMatchupPicker);
 document.getElementById('mu-picker')?.addEventListener('click', (e) => { if (e.target.id === 'mu-picker') closeMatchupPicker(); });
 document.getElementById('btn-go-matchup')?.addEventListener('click', () => goToMatchup());
-document.getElementById('btn-mu-back')?.addEventListener('click', () => {
-    window.history.replaceState(window.history.state, '', window.location.pathname);
-    showScreen('screen-tools');
-});
+document.getElementById('btn-mu-back')?.addEventListener('click', () => showScreen('screen-tools'));
 document.getElementById('btn-mu-swap')?.addEventListener('click', () => {
     muPicks = [muPicks[1], muPicks[0]];
     renderMatchupSlots();
@@ -3861,6 +3907,22 @@ async function runImport() {
     btn.disabled = false;
 }
 
+// Importar partidas e Verificar estatísticas ficam escondidas em Ferramentas.
+// Para mostrar/esconder: toque 5 vezes seguidas no título "Ferramentas".
+(function () {
+    let taps = 0, timer = null;
+    document.getElementById('tools-title')?.addEventListener('click', () => {
+        taps++;
+        clearTimeout(timer);
+        timer = setTimeout(() => { taps = 0; }, 2500);
+        if (taps >= 5) {
+            taps = 0;
+            const box = document.getElementById('tools-admin');
+            if (box) box.style.display = box.style.display === 'none' ? 'block' : 'none';
+        }
+    });
+})();
+
 document.getElementById('btn-go-import')?.addEventListener('click', () => {
     showScreen('screen-import');
     document.getElementById('import-file').value = '';
@@ -4523,7 +4585,6 @@ function buildQuickNameInputs(count) {
         input.type = 'text';
         input.className = 'text-input name-input quick-name-input';
         input.placeholder = 'Jogador ' + (i + 1);
-        input.value = 'Jogador ' + (i + 1);
         input.dataset.index = i;
         if (i > 0) input.style.marginTop = '10px';
         container.appendChild(input);
@@ -5183,7 +5244,10 @@ window.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('btn-creator-role-back').onclick = () => showScreen('screen-configure');
 
-    document.getElementById('btn-copy-link').onclick = copyRoomLink;
+    const copyLinkBtn = document.getElementById('btn-copy-link');
+    if (canShareRoomLink()) copyLinkBtn.innerText = '📤 Compartilhar Link';
+    copyLinkBtn.dataset.label = copyLinkBtn.innerText;
+    copyLinkBtn.onclick = copyRoomLink;
     document.getElementById('btn-copy-code').onclick = copyRoomCode;
 
     const params = new URLSearchParams(window.location.search);
@@ -5199,6 +5263,7 @@ window.addEventListener('DOMContentLoaded', () => {
     } else if (params.get('h1') || params.get('h2')) {
         const h1 = findHeroBySlugParam(params.get('h1'));
         const h2 = findHeroBySlugParam(params.get('h2'));
+        window.history.replaceState({ appScreen: 'screen-home' }, '', window.location.pathname);
         goToMatchup(h1 ? h1.nome : null, h2 ? h2.nome : null);
     } else {
         showScreen('screen-home');
