@@ -2,7 +2,8 @@
 // NOVIDADES DA VERSÃO
 // Para lançar uma nova atualização: adicione um novo bloco NO TOPO da lista
 // "versions" (a mais nova primeiro). A aba aparece uma vez para cada pessoa
-// (fica salvo no navegador) mostrando as versões que ela ainda não viu, e pode
+// (fica salvo no navegador) mostrando as versões que ela ainda não viu (ou cuja
+// "rev" mudou, para reexibir uma versão já vista), e pode
 // ser reaberta pelo "Novidades" na tela inicial.
 // ===================================================================
 const CHANGELOG = {
@@ -10,7 +11,11 @@ const CHANGELOG = {
     versions: [
         {
             version: 'V0.9.7',
+            rev: 2, // aumente este número para a janela aparecer de novo para quem já viu esta versão
             items: [
+                { icon: '📦', text: 'Escolha das caixas: ao criar uma sala ou Sorteio Rápido, toque nas capas das caixas que vão usar e os personagens delas entram no sorteio. Tem também o botão "Usar todas as caixas".' },
+                { icon: '🗺️', text: 'Sorteio de mapas melhorado: não repete mapa dentro da mesma série ou sessão, o re-sorteio nunca traz o mesmo mapa e os mapas vistos há pouco saem bem menos.' },
+                { icon: '🏅', text: 'Os cards do confronto agora mostram, num cantinho da imagem, a posição de cada herói no Ranking (ex.: #12).' },
                 { icon: '🧭', text: 'Correção: o botão voltar do navegador e do celular agora passa pelas telas na ordem certa até a tela principal (ex.: Ranking → herói → Ranking → início).' },
                 { icon: '✍️', text: 'Caixas de nome dos jogadores agora começam vazias, com "Jogador 1", "Jogador 2"... em cinza claro como dica. É só tocar e digitar.' },
                 { icon: '📤', text: 'Link da sala: no celular, o botão agora abre o compartilhar do aparelho (WhatsApp, Instagram e outros apps).' }
@@ -25,17 +30,24 @@ const CHANGELOG = {
     function getSeen() {
         try { return localStorage.getItem(SEEN_KEY); } catch (e) { return null; }
     }
+    const tokenOf = v => v.version + '#' + (v.rev || 1);
     const LATEST = CHANGELOG.versions[0].version;
 
     function setSeen() {
-        try { localStorage.setItem(SEEN_KEY, LATEST); } catch (e) { /* sem localStorage: só mostra de novo */ }
+        try { localStorage.setItem(SEEN_KEY, tokenOf(CHANGELOG.versions[0])); } catch (e) { /* sem localStorage: só mostra de novo */ }
     }
 
     // Versões que a pessoa ainda não viu (no máximo 3, da mais nova para a mais antiga)
     function unseenVersions() {
-        const idx = CHANGELOG.versions.findIndex(v => v.version === getSeen());
+        const seen = getSeen();
+        let idx = CHANGELOG.versions.findIndex(v => tokenOf(v) === seen);
         if (idx === 0) return [];
-        return (idx === -1 ? CHANGELOG.versions : CHANGELOG.versions.slice(0, idx)).slice(0, 3);
+        if (idx === -1) {
+            // valor salvo antes de existir "rev" (ex: "V0.9.7"): essa versão é mostrada de novo
+            const legacy = CHANGELOG.versions.findIndex(v => v.version === seen);
+            idx = legacy === -1 ? CHANGELOG.versions.length : legacy + 1;
+        }
+        return CHANGELOG.versions.slice(0, idx).slice(0, 3);
     }
 
     function injectStyles() {

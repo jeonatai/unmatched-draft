@@ -7,6 +7,7 @@
     <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://unmatched-draft-default-rtdb.firebaseio.com" crossorigin>
     <link rel="preconnect" href="https://yptpnirqgfmxphjvsdjz.supabase.co" crossorigin>
+    <link rel="preconnect" href="https://storage.googleapis.com" crossorigin>
     <title>Unmatched Draft — Sorteio e Draft Online para Unmatched</title>
     <meta name="description" content="Unmatched Draft: ferramenta online gratuita para sortear heróis, fazer draft e organizar partidas do jogo de tabuleiro Unmatched, sozinho ou com amigos, em salas, 1v1, melhor de 3 ou modo equipe.">
     <meta name="keywords" content="unmatched draft, unmatched, sorteio de heróis, draft unmatched, jogo de tabuleiro unmatched, unmatched online, sorteio de personagens">
@@ -23,7 +24,7 @@
     <meta name="twitter:title" content="Unmatched Draft — Sorteio e Draft Online para Unmatched">
     <meta name="twitter:description" content="Sorteie heróis, monte salas e organize partidas de Unmatched online, de graça, com amigos.">
 
-    <link rel="stylesheet" href="style.css?v=20261111m">
+    <link rel="stylesheet" href="style.css?v=20261111o">
 </head>
 <body>
 
@@ -330,6 +331,21 @@
             <button id="btn-back-home" class="btn-secondary">Voltar</button>
         </div>
 
+        <!-- TELA: Escolher caixas -->
+        <div id="screen-box-select" class="screen" style="display: none;">
+            <h1>📦 Caixas</h1>
+            <p>Toque nas caixas que vão ser usadas. Os personagens delas entram no sorteio.</p>
+            <button id="btn-box-all" class="btn-secondary">✅ Usar todas as caixas</button>
+            <div id="box-grid" class="box-grid"></div>
+            <p id="box-summary" class="box-summary"></p>
+            <details id="box-heroes-details" class="audit-row" style="display: none;">
+                <summary>Ver personagens do sorteio</summary>
+                <div id="box-heroes-list" class="audit-detail" style="display: block;"></div>
+            </details>
+            <button id="btn-box-continue" disabled>Continuar</button>
+            <button id="btn-box-back" class="btn-secondary">Voltar</button>
+        </div>
+
         <!-- TELA: Configurar sala -->
         <div id="screen-configure" class="screen" style="display: none;">
             <h1>Configurar Sala</h1>
@@ -388,6 +404,7 @@
                 <button id="btn-copy-link">Copiar Link</button>
             </div>
             <p class="room-code-inline">Código: <strong id="waiting-room-code">-</strong></p>
+            <p id="waiting-boxes" class="odds-note"></p>
             <div id="waiting-players-list" class="waiting-players-list"></div>
             <p id="waiting-status" class="waiting-text">⏳ Aguardando jogadores...</p>
         </div>
@@ -568,7 +585,8 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
     <script src="firebase-config.js"></script>
-    <script src="app.js?v=20261111m"></script>
-    <script src="changelog.js?v=097b"></script>
+    <script src="boxes.js?v=1"></script>
+    <script src="app.js?v=20261111p"></script>
+    <script src="changelog.js?v=097e"></script>
 </body>
 </html>

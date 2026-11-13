@@ -12,7 +12,7 @@ const PERSONAGENS = [
     { nome: "O Gênio", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/iZi7oBFoZ34YyVa1Qg28u.webp" },
     { nome: "Pé Grande | O Lebrílope", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/mbjF8pursj8AYkalODyXa.jpg" },
     { nome: "Houdini | Bess", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/HkwPbbhKUMb_XWpndh6DN.webp" },
-    { nome: "Sinbad | O Carregador", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/iX3R40hAP80XJ-UalPt6E.png" },
+    { nome: "Simbad | O Carregador", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/iX3R40hAP80XJ-UalPt6E.png" },
     { nome: "Demolidor", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/B0qnKxZyoG3KLwRNvKsrG.webp" },
     { nome: "Yennenga | Arqueiras", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/QQfafCmj_R9Qhz1-XKvhr.jpg" },
     { nome: "Dr. Jekyll | Sr. Hyde", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/ALEF6sBXvEA3kUuJEb3gb.png" },
@@ -36,7 +36,7 @@ const PERSONAGENS = [
     { nome: "Motoqueiro Fantasma", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/LRuz2YID8471dnTGfM1_b.webp" },
     { nome: "Cavaleiro Banana", img: "https://i.imgur.com/SQtDNjJ.png" },
     { nome: "Hamlet", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/bg3s8IEdB07YlbFJQSGS5.webp" },
-    { nome: "NiKola Tesla", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/byq-c3l_HktvangjGc33q.webp" },
+    { nome: "Nicolas Tesla", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/byq-c3l_HktvangjGc33q.webp" },
     { nome: "Oda Nobunaga | Guarda de Honra", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/_hVP2Ah-uMSD_kH5-LUol.webp" },
     { nome: "T-Rex", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/mURpEFDw_zxQRn19mYXgG.webp" },
     { nome: "Homem-Mariposa | Sapo de Loveland", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/npcs/villains/card-covers/XMvDZU9R1vCn5dT4Do6iZ.webp" },
@@ -49,9 +49,9 @@ const PERSONAGENS = [
     { nome: "Yennefer | Triss", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/wyF2xEhMaHY_hYfRIkWWv.webp" },
     { nome: "Eredin | Cavaleiros Vermelhos", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/s3I7T0MDElqnYmN5Kzv3r.webp" },
     { nome: "Philippa | Dijkstra", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/u0_PFJIp0z0ITwRgpitzx.webp" },
-    { nome: "Geralt de Rivia | Dandelion", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/CNnTH-5_N8SAAWXV_RSZV.webp" },
+    { nome: "Geralt of Rivia | Dandelion", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/CNnTH-5_N8SAAWXV_RSZV.webp" },
     { nome: "Ciri | Ihuarraquax", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/sr7i7S_M7FHSAVuqn21jE.webp" },
-    { nome: "Lichie Ancião | Lobos", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/A-XrmwVNY2Gf9TvYj6FES.webp" },
+    { nome: "Liche Ancião | Lobos", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/A-XrmwVNY2Gf9TvYj6FES.webp" },
     { nome: "Pantera Negra | Shuri", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/VuFF0FGwy-spBM3-5NfDA.webp" },
     { nome: "Soldado Invernal", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/JxKGaAvQQUDqjJK1ec8Ua.webp" },
     { nome: "Viuva Negra | Maria Hill", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/wlWum83DPKQPdY0TfJEcm.webp" },
@@ -61,7 +61,7 @@ const PERSONAGENS = [
     { nome: "Willow | Tara", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/rsxAPjEmhngg8mZ-yXDIk.webp" },
     { nome: "Lampião | Corisco", img: "https://storage.googleapis.com/ludopedia-imagens-jogo/3741e_230447.jpg" },
     { nome: "Manto e Adaga", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/WK4lDtMPBv8cTVuZXVBzv.webp" },
-    { nome: "Garota Esquilo | Esquilos", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/5eoggYWJKVJ_PNs8bQOCr.webp" },
+    { nome: "Garota esquilos | Esquilos", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/5eoggYWJKVJ_PNs8bQOCr.webp" },
     { nome: "Ms. Marvel", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/MFiQb6grYsbNNYwR_hoh1.webp" }
 ];
 
@@ -99,15 +99,18 @@ const MAPAS_PEQUENOS = [
 const MAPAS_TODOS = [...MAPAS_GRANDES, ...MAPAS_PEQUENOS];
 
 // ============================================================
-// MEMÓRIA DO SORTEIO DE MAPAS (evita repetir sempre o mesmo)
+// SORTEIO DE MAPAS
 // ============================================================
-// Mesmo princípio da memória de heróis: guarda neste navegador os
-// últimos mapas sorteados e, na maioria das vezes, evita repeti-los.
-// Como o pool de mapas é bem menor que o de heróis (principalmente o de
-// mapas pequenos), a janela de memória é mais curta.
+// Regras, nesta ordem:
+//  1) o mapa que está na tela nunca sai de novo no re-sorteio;
+//  2) mapas já jogados na MESMA série (melhor de 3) ou sessão do Sorteio
+//     Rápido são evitados — só se ainda sobrar algum mapa novo;
+//  3) o sorteio é ponderado pela memória deste aparelho: um mapa visto há
+//     pouco tem chance bem menor, e essa chance vai voltando aos poucos
+//     conforme novos mapas saem (sem a regra "tudo ou nada" de antes);
+//  4) todo o aleatório usa o gerador criptograficamente seguro.
 const RECENT_MAPS_KEY = 'unmatched_recent_maps';
-const RECENT_MAPS_REPEAT_CHANCE = 0.10;
-const RECENT_MAPS_MAX = 5;
+const RECENT_MAPS_MAX = 10;
 
 function getRecentMapNames() {
     try {
@@ -129,28 +132,34 @@ function addRecentMapNames(names) {
     }
 }
 
-// Sorteia um mapa. `excludeNames` (opcional) é usado pelo botão de
-// "re-rolar" pra garantir que o re-sorteio não caia no mesmo mapa que
-// já estava mostrado. Na maioria das vezes (90%) também evita os
-// últimos mapas sorteados neste navegador, dando mais variedade.
-function drawRandomMap(onlyLarge, excludeNames) {
+// excludeNames: nunca (ex: mapa atual no re-sorteio)
+// avoidNames:   evita se possível (mapas já jogados nesta série/sessão)
+function drawRandomMap(onlyLarge, excludeNames, avoidNames) {
     const fullPool = onlyLarge ? MAPAS_GRANDES : MAPAS_TODOS;
 
-    let basePool = fullPool;
-    if (excludeNames && excludeNames.length > 0) {
-        const filtered = fullPool.filter(m => !excludeNames.includes(m.nome));
-        if (filtered.length > 0) basePool = filtered;
+    let pool = fullPool.filter(m => !(excludeNames || []).includes(m.nome));
+    if (!pool.length) pool = fullPool;
+
+    if (avoidNames && avoidNames.length) {
+        const fresh = pool.filter(m => !avoidNames.includes(m.nome));
+        if (fresh.length) pool = fresh;
     }
 
-    const recentNames = new Set(getRecentMapNames());
-    const allowRepeat = recentNames.size === 0 || secureRandomFloat() < RECENT_MAPS_REPEAT_CHANCE;
-    let pool = basePool;
-    if (!allowRepeat) {
-        const filtered = basePool.filter(m => !recentNames.has(m.nome));
-        if (filtered.length > 0) pool = filtered;
+    // Peso: mapa nunca visto = 1; visto agora há pouco ≈ 0,15; volta a subir
+    // até ≈ 0,9 quando está para sair da memória.
+    const recent = getRecentMapNames();
+    const weights = pool.map(m => {
+        const i = recent.indexOf(m.nome);
+        return i === -1 ? 1 : 0.15 + 0.85 * (i / RECENT_MAPS_MAX);
+    });
+    const total = weights.reduce((sum, w) => sum + w, 0);
+    let r = secureRandomFloat() * total;
+    let picked = pool[pool.length - 1];
+    for (let k = 0; k < pool.length; k++) {
+        r -= weights[k];
+        if (r <= 0) { picked = pool[k]; break; }
     }
 
-    const picked = pool[secureRandomInt(pool.length)];
     addRecentMapNames([picked.nome]);
     return picked;
 }
@@ -346,9 +355,12 @@ async function getActiveRoomHeroNames() {
 // Além disso, em 90% dos sorteios os heróis vistos recentemente neste
 // navegador ficam de fora (10% é totalmente livre), e todo o aleatório usa
 // o gerador criptograficamente seguro.
-function drawUniqueHeroes(count, excludeNames, mandatoryNames) {
+//   poolNames      -> (opcional) só sorteia entre esses heróis; é a lista das
+//                     CAIXAS escolhidas na criação da sala. null = todos.
+function drawUniqueHeroes(count, excludeNames, mandatoryNames, poolNames) {
     const mandatory = new Set(mandatoryNames || []);
-    const available = PERSONAGENS.filter(p => !mandatory.has(p.nome));
+    const allowed = poolNames && poolNames.length ? new Set(poolNames) : null;
+    const available = PERSONAGENS.filter(p => !mandatory.has(p.nome) && (!allowed || allowed.has(p.nome)));
 
     let basePool = available;
     if (excludeNames && excludeNames.length > 0) {
@@ -373,9 +385,9 @@ function drawUniqueHeroes(count, excludeNames, mandatoryNames) {
 }
 
 // Versão que já consulta as outras salas abertas antes de sortear.
-async function drawHeroes(count, extraExclude, mandatoryNames) {
+async function drawHeroes(count, extraExclude, mandatoryNames, poolNames) {
     const otherRoomHeroes = await getActiveRoomHeroNames();
-    return drawUniqueHeroes(count, [...otherRoomHeroes, ...(extraExclude || [])], mandatoryNames);
+    return drawUniqueHeroes(count, [...otherRoomHeroes, ...(extraExclude || [])], mandatoryNames, poolNames);
 }
 
 // Monta as atualizações de "distribuição de heróis" de uma sala 1v1
@@ -394,7 +406,7 @@ async function buildDealUpdates(data) {
             updates.cafePicks = null;
             updates.cafeResolving = null;
         } else {
-            const drawn = await drawHeroes(4);
+            const drawn = await drawHeroes(4, [], [], data.heroPool);
             updates.phase = 'single-pick';
             updates.p1Cards = drawn.slice(0, 2);
             updates.p2Cards = drawn.slice(2, 4);
@@ -406,7 +418,7 @@ async function buildDealUpdates(data) {
             updates.cafePicks = null;
             updates.cafeResolving = null;
         } else {
-            const drawn = await drawHeroes(8);
+            const drawn = await drawHeroes(8, [], [], data.heroPool);
             updates.phase = 'phase1-j1-save';
             updates.p1Cards = drawn.slice(0, 4);
             updates.p2Cards = drawn.slice(4, 8);
@@ -439,7 +451,7 @@ function getDeviceId() {
 const BACK_TRACKED_SCREENS = new Set([
     'screen-home', 'screen-configure', 'screen-enter-code', 'screen-creator-role-pick',
     'screen-quick-setup', 'screen-quick-result', 'screen-tools', 'screen-add-match',
-    'screen-hero-stats', 'screen-hero-rank', 'screen-matchup', 'screen-stats-audit', 'screen-import', 'screen-join-error'
+    'screen-box-select', 'screen-hero-stats', 'screen-hero-rank', 'screen-matchup', 'screen-stats-audit', 'screen-import', 'screen-join-error'
 ]);
 let suppressHistoryPush = false;
 let navStack = ['screen-home'];
@@ -653,6 +665,7 @@ function goHome() {
     roomRef = null;
     gameState = null;
     updateRoomHeader();
+    quickPool = null;
     resetNavToHome();
     attachFeedListener();
 }
@@ -744,6 +757,8 @@ async function createRoomFromConfig(creatorRole) {
         phase: 'lobby',
         playerNames,
         cafeComLeite: pendingConfig.cafeComLeite || {},
+        heroPool: pendingConfig.heroPool || null,
+        boxIds: pendingConfig.boxIds || null,
         creatorRole: mode === 'team' ? null : myRole,
         player2Joined: false,
         nameClaims: {},
@@ -766,7 +781,7 @@ async function createRoomFromConfig(creatorRole) {
         Object.assign(initialState, buildBestOf3State());
     } else if (mode === 'team') {
         const otherRoomHeroes = await getActiveRoomHeroNames();
-        Object.assign(initialState, buildTeamDraftState(otherRoomHeroes));
+        Object.assign(initialState, buildTeamDraftState(otherRoomHeroes, pendingConfig.heroPool));
     }
 
     roomRef = db.ref('rooms/' + roomId);
@@ -774,6 +789,7 @@ async function createRoomFromConfig(creatorRole) {
         const link = window.location.origin + window.location.pathname + '?room=' + roomId;
         document.getElementById('room-link-input').value = link;
         document.getElementById('waiting-room-code').innerText = roomId;
+        document.getElementById('waiting-boxes').innerText = boxSummaryText(pendingConfig.boxIds, pendingConfig.heroPool);
         updateRoomHeader();
         window.history.replaceState({}, '', link);
         showScreen('screen-waiting-room');
@@ -793,9 +809,9 @@ function buildBestOf3State() {
     };
 }
 
-function buildTeamDraftState(excludeNames) {
+function buildTeamDraftState(excludeNames, poolNames) {
     return {
-        teamPool: drawUniqueHeroes(12, excludeNames),
+        teamPool: drawUniqueHeroes(12, excludeNames, null, poolNames),
         teamPicks: { 1: null, 2: null, 3: null, 4: null },
         teamBans: []
     };
@@ -1115,7 +1131,7 @@ async function claimName(nameIndex) {
         };
         const otherRoomHeroes = await getActiveRoomHeroNames();
         updates.phase = 'team-assignment';
-        updates.teamPool = drawUniqueHeroes(12, otherRoomHeroes);
+        updates.teamPool = drawUniqueHeroes(12, otherRoomHeroes, null, gameState.heroPool);
         updates.teamPicks = { 1: null, 2: null, 3: null, 4: null };
         updates.teamBans = [];
     }
@@ -1334,7 +1350,8 @@ function renderCafePick() {
     confirmBtn.disabled = cafeTempSelection.length !== required;
     if (counterEl) counterEl.innerText = cafeTempSelection.length + ' / ' + required;
 
-    PERSONAGENS.filter(char => !takenNames.has(char.nome)).forEach(char => {
+    const cafeAllowed = gameState.heroPool && gameState.heroPool.length ? new Set(gameState.heroPool) : null;
+    PERSONAGENS.filter(char => !takenNames.has(char.nome) && (!cafeAllowed || cafeAllowed.has(char.nome))).forEach(char => {
         const div = document.createElement('div');
         const isSelected = cafeTempSelection.some(h => h.nome === char.nome);
         div.className = 'card' + (isSelected ? ' selected' : '');
@@ -1394,7 +1411,7 @@ async function finalizeCafePickIfNeeded() {
 
         // Os já escolhidos pelos café com leite nunca podem sair (obrigatório);
         // evitar heróis de outras salas é só preferência.
-        const drawn = drawUniqueHeroes(needed, otherRoomHeroes, Array.from(chosenNames));
+        const drawn = drawUniqueHeroes(needed, otherRoomHeroes, Array.from(chosenNames), gameState.heroPool);
 
         const updates = {};
         let idx = 0;
@@ -1617,7 +1634,7 @@ document.getElementById('btn-reroll-accept')?.addEventListener('click', async ()
     const cafeNames = cafeRoles.flatMap(namesOf);           // nunca pode sair (já escolhidos à mão)
     const needed = rerollRoles.length * 4;
 
-    const drawn = await drawHeroes(needed, oldNames, cafeNames);
+    const drawn = await drawHeroes(needed, oldNames, cafeNames, gameState.heroPool);
     if (drawn.length < needed) {
         alert('Não há heróis suficientes para re-sortear.');
         roomRef.child('rerollRequest').update({ status: 'denied' });
@@ -1782,6 +1799,7 @@ function renderMapDrawSection(ids, onlyLarge, onDraw) {
     if (!btn) return;
 
     const map = ids.getMap();
+    const used = ids.getUsed ? ids.getUsed() : [];
     if (map) {
         btn.style.display = 'none';
         resultBox.style.display = 'flex';
@@ -1790,13 +1808,13 @@ function renderMapDrawSection(ids, onlyLarge, onDraw) {
         nameEl.innerText = '🗺️ Mapa sorteado: ' + map.nome;
         if (rerollBtn) {
             rerollBtn.style.display = 'inline-flex';
-            rerollBtn.onclick = () => onDraw(drawRandomMap(onlyLarge, [map.nome]));
+            rerollBtn.onclick = () => onDraw(drawRandomMap(onlyLarge, [map.nome], used));
         }
     } else {
         btn.style.display = 'inline-block';
         resultBox.style.display = 'none';
         if (rerollBtn) rerollBtn.style.display = 'none';
-        btn.onclick = () => onDraw(drawRandomMap(onlyLarge));
+        btn.onclick = () => onDraw(drawRandomMap(onlyLarge, null, used));
     }
 }
 
@@ -1850,7 +1868,8 @@ function renderRoomMapDraw(onlyLarge) {
         img: 'map-draw-image',
         name: 'map-draw-name',
         reroll: 'btn-reroll-map',
-        getMap: () => gameState.currentMap
+        getMap: () => gameState.currentMap,
+        getUsed: () => (gameState.combatLogs || []).map(l => l.mapName).filter(Boolean)
     }, onlyLarge, (map) => {
         if (!roomRef) return;
         const updates = { currentMap: map };
@@ -1860,9 +1879,44 @@ function renderRoomMapDraw(onlyLarge) {
     });
 }
 
+// Indicador minúsculo com a posição do herói no Ranking, no canto da imagem
+// dos cards do confronto (sala e Sorteio Rápido). Usa o mesmo ranking da tela
+// Ranking e só aparece quando as estatísticas terminam de carregar.
+async function ensureHeroRankRows() {
+    if (heroRankRows) return heroRankRows;
+    try {
+        const stats = await ensureHeroStatsCache(false);
+        heroRankRows = computeHeroRanking(stats);
+    } catch (e) { /* sem estatísticas: sem indicador */ }
+    return heroRankRows;
+}
+
+async function applyRankBadges(rootId) {
+    const root = document.getElementById(rootId);
+    if (!root) return;
+    const rows = await ensureHeroRankRows();
+    if (!rows) return;
+    const byName = new Map(rows.map(r => [r.hero.nome, r]));
+    root.querySelectorAll('.fighter-card').forEach(card => {
+        const old = card.querySelector('.rank-badge');
+        if (old) old.remove();
+        const img = card.querySelector('.card-image');
+        const nameSpan = card.querySelector('span');
+        const heroName = img ? img.alt : (nameSpan ? nameSpan.innerText : null);
+        const r = heroName && byName.get(heroName);
+        if (!r) return;
+        const badge = document.createElement('span');
+        badge.className = 'rank-badge' + (r.games === 0 ? ' nogames' : (r.rank <= 3 ? ' r' + r.rank : ''));
+        badge.innerText = '#' + r.rank;
+        badge.title = 'Posição no ranking';
+        card.appendChild(badge);
+    });
+}
+
 function buildCombatInterface() {
     buildCombatInterfaceInner();
     renderRoomStartingPlayer();
+    applyRankBadges('screen-combat');
 }
 
 function buildCombatInterfaceInner() {
@@ -2550,6 +2604,7 @@ function recordHeroBattleResult(winnerNames, loserNames) {
     // exemplo), a busca já baixa os números atualizados na hora, em vez de
     // mostrar dados de antes desse combate.
     heroStatsCache = null;
+    heroRankRows = null;
 }
 
 // Lê direto do contador separado (poucas leituras rápidas, sem varrer partidas).
@@ -3555,6 +3610,166 @@ document.getElementById('btn-audit-undo')?.addEventListener('click', undoStatsFi
 document.getElementById('btn-audit-back')?.addEventListener('click', () => showScreen('screen-tools'));
 
 // ============================================================
+// ESCOLHA DE CAIXAS (quais personagens entram no sorteio)
+// ============================================================
+// Ao criar uma sala (ou um Sorteio Rápido) a pessoa toca nas capas das caixas
+// que vai usar. Cada caixa selecionada coloca os personagens dela no sorteio.
+// "Usar todas" = sem restrição (todos os heróis do site). A escolha fica salva
+// neste aparelho e vai junto com a sala (heroPool), então os dois jogadores
+// sorteiam entre os mesmos personagens.
+const BOX_STORAGE_KEY = 'unmatched_selected_boxes';
+let boxSelection = new Set();
+let boxNext = 'room';            // o que fazer ao continuar: 'room' | 'quick'
+let boxConfig = { ids: null, heroPool: null };
+let quickPool = null;            // lista de heróis do Sorteio Rápido (null = todos)
+
+// Todas as caixas + "Outros personagens" (heróis do site que não estão em nenhuma caixa)
+function getAllBoxes() {
+    const inBoxes = new Set(BOXES.flatMap(b => b.herois));
+    const others = PERSONAGENS.filter(p => !inBoxes.has(p.nome)).map(p => p.nome);
+    return others.length ? BOXES.concat([{ id: 'outros', nome: 'Outros personagens', img: null, herois: others }]) : BOXES;
+}
+
+function heroNamesOfBoxes(ids) {
+    const valid = new Set(PERSONAGENS.map(p => p.nome));
+    const names = new Set();
+    getAllBoxes().forEach(b => { if (ids.has(b.id)) b.herois.forEach(h => { if (valid.has(h)) names.add(h); }); });
+    return Array.from(names);
+}
+
+function boxSummaryText(ids, pool) {
+    if (!ids || !ids.length) return '📦 Todas as caixas';
+    return '📦 ' + ids.length + (ids.length === 1 ? ' caixa' : ' caixas') + ' · ' + (pool ? pool.length : '?') + ' personagens';
+}
+
+function loadSavedBoxes() {
+    try {
+        const saved = JSON.parse(localStorage.getItem(BOX_STORAGE_KEY) || '[]');
+        const valid = new Set(getAllBoxes().map(b => b.id));
+        return new Set(saved.filter(id => valid.has(id)));
+    } catch (e) { return new Set(); }
+}
+
+function saveBoxes() {
+    try { localStorage.setItem(BOX_STORAGE_KEY, JSON.stringify(Array.from(boxSelection))); } catch (e) { /* sem armazenamento */ }
+}
+
+function openBoxSelect(next) {
+    boxNext = next;
+    boxSelection = loadSavedBoxes();
+    renderBoxGrid();
+    updateBoxSummary();
+    showScreen('screen-box-select');
+}
+
+function renderBoxGrid() {
+    const grid = document.getElementById('box-grid');
+    grid.innerHTML = '';
+    const frag = document.createDocumentFragment();
+    getAllBoxes().forEach(box => {
+        const tile = document.createElement('div');
+        tile.className = 'box-tile' + (boxSelection.has(box.id) ? ' selected' : '');
+        tile.dataset.id = box.id;
+        tile.setAttribute('role', 'button');
+        tile.setAttribute('aria-label', box.nome);
+
+        const addName = () => {
+            const label = document.createElement('div');
+            label.className = 'box-name';
+            label.innerText = box.nome;
+            tile.insertBefore(label, tile.firstChild);
+        };
+        if (box.img) {
+            const img = document.createElement('img');
+            img.src = box.img;
+            img.alt = box.nome;
+            img.loading = 'lazy';
+            img.decoding = 'async';
+            img.referrerPolicy = 'no-referrer';
+            img.onerror = () => { img.remove(); addName(); };   // sem capa: mostra o nome
+            tile.appendChild(img);
+        } else {
+            addName();
+        }
+
+        const count = document.createElement('span');
+        count.className = 'box-count';
+        count.innerText = box.herois.length;
+        tile.appendChild(count);
+
+        const check = document.createElement('span');
+        check.className = 'box-check';
+        check.innerText = '✓';
+        tile.appendChild(check);
+
+        tile.onclick = () => {
+            if (boxSelection.has(box.id)) boxSelection.delete(box.id); else boxSelection.add(box.id);
+            tile.classList.toggle('selected', boxSelection.has(box.id));
+            saveBoxes();
+            updateBoxSummary();
+        };
+        frag.appendChild(tile);
+    });
+    grid.appendChild(frag);
+}
+
+function updateBoxSummary() {
+    const boxes = getAllBoxes();
+    const pool = heroNamesOfBoxes(boxSelection);
+    const summary = document.getElementById('box-summary');
+    const btn = document.getElementById('btn-box-continue');
+
+    summary.innerText = boxSelection.size
+        ? boxSelection.size + (boxSelection.size === 1 ? ' caixa' : ' caixas') + ' · ' + pool.length + ' personagens no sorteio'
+        : 'Nenhuma caixa escolhida ainda';
+    btn.disabled = pool.length < 4;
+    btn.innerText = pool.length < 4 && boxSelection.size ? 'Escolha mais caixas (mínimo 4 personagens)' : 'Continuar';
+
+    const allSelected = boxSelection.size === boxes.length;
+    document.getElementById('btn-box-all').innerText = allSelected ? '↩️ Desmarcar todas' : '✅ Usar todas as caixas';
+
+    // Lista de conferência: personagens agrupados por caixa
+    const list = document.getElementById('box-heroes-list');
+    list.innerHTML = '';
+    boxes.filter(b => boxSelection.has(b.id)).forEach(b => {
+        const line = document.createElement('div');
+        const title = document.createElement('b');
+        title.innerText = b.nome + ': ';
+        line.appendChild(title);
+        line.appendChild(document.createTextNode(b.herois.join(', ')));
+        list.appendChild(line);
+    });
+    document.getElementById('box-heroes-details').style.display = boxSelection.size ? 'block' : 'none';
+}
+
+function confirmBoxSelection() {
+    const boxes = getAllBoxes();
+    const all = boxSelection.size === boxes.length;
+    const ids = all ? null : Array.from(boxSelection);
+    boxConfig = { ids, heroPool: all ? null : heroNamesOfBoxes(boxSelection) };
+
+    if (boxNext === 'quick') {
+        quickPool = boxConfig.heroPool;
+        startQuickSetup();
+    } else {
+        pendingConfig = null;
+        buildNameInputs(2, 'single');
+        showScreen('screen-configure');
+    }
+}
+
+document.getElementById('btn-box-all')?.addEventListener('click', () => {
+    const boxes = getAllBoxes();
+    if (boxSelection.size === boxes.length) boxSelection = new Set();
+    else boxSelection = new Set(boxes.map(b => b.id));
+    saveBoxes();
+    renderBoxGrid();
+    updateBoxSummary();
+});
+document.getElementById('btn-box-continue')?.addEventListener('click', confirmBoxSelection);
+document.getElementById('btn-box-back')?.addEventListener('click', () => showScreen('screen-home'));
+
+// ============================================================
 // IDENTIFICAÇÃO DE HERÓIS POR SEMELHANÇA
 // ============================================================
 function normHeroText(s) {
@@ -4556,7 +4771,7 @@ document.getElementById('btn-rematch')?.addEventListener('click', async () => {
             3: shuffledIndices[2],
             4: shuffledIndices[3]
         };
-        updates.teamPool = drawUniqueHeroes(12, otherRoomHeroes);
+        updates.teamPool = drawUniqueHeroes(12, otherRoomHeroes, null, gameState.heroPool);
         updates.teamPicks = { 1: null, 2: null, 3: null, 4: null };
         updates.teamBans = [];
         updates.phase = 'team-assignment';
@@ -4681,7 +4896,11 @@ async function startQuickDraft() {
     }
 
     const otherRoomHeroes = await getActiveRoomHeroNames();
-    const drawnHeroes = drawUniqueHeroes(names.length, otherRoomHeroes);
+    if (quickPool && quickPool.length < names.length) {
+        alert('As caixas escolhidas têm só ' + quickPool.length + ' personagens e você precisa de ' + names.length + '. Volte e escolha mais caixas.');
+        return;
+    }
+    const drawnHeroes = drawUniqueHeroes(names.length, otherRoomHeroes, null, quickPool);
 
     const players = names.map((name, idx) => ({
         name,
@@ -4746,7 +4965,7 @@ function rerollCurrentQuickMatchHeroes() {
     const currentNames = involvedIndexes
         .map(idx => quickState.players[idx].hero && quickState.players[idx].hero.nome)
         .filter(Boolean);
-    const pool = drawUniqueHeroes(involvedIndexes.length, currentNames, Array.from(otherHeroNames));
+    const pool = drawUniqueHeroes(involvedIndexes.length, currentNames, Array.from(otherHeroNames), quickPool);
     if (pool.length < involvedIndexes.length) {
         alert('Não há heróis suficientes disponíveis pra sortear de novo sem repetir.');
         return;
@@ -4904,6 +5123,7 @@ function renderQuickCombat() {
     }
 
     renderQuickStartingPlayer(match);
+    applyRankBadges('screen-quick-combat');
     updateQuickTimerDisplay();
     renderQuickMapDraw(match);
 }
@@ -4916,7 +5136,8 @@ function renderQuickMapDraw(match) {
         img: 'quick-map-draw-image',
         name: 'quick-map-draw-name',
         reroll: 'btn-quick-reroll-map',
-        getMap: () => match.map || null
+        getMap: () => match.map || null,
+        getUsed: () => quickState ? quickState.matches.filter(m => m !== match && m.map).map(m => m.map.nome) : []
     }, onlyLarge, (map) => {
         match.map = map;
         firstQuickTimerStart(match);
@@ -5156,15 +5377,11 @@ window.addEventListener('DOMContentLoaded', () => {
         window.history.replaceState({ appScreen: 'screen-home' }, '', window.location.href);
     }
 
-    document.getElementById('btn-go-create').onclick = () => {
-        pendingConfig = null;
-        buildNameInputs(2, 'single');
-        showScreen('screen-configure');
-    };
+    document.getElementById('btn-go-create').onclick = () => openBoxSelect('room');
 
     document.getElementById('btn-go-join').onclick = () => showScreen('screen-enter-code');
 
-    document.getElementById('btn-go-quick').onclick = startQuickSetup;
+    document.getElementById('btn-go-quick').onclick = () => openBoxSelect('quick');
     document.getElementById('btn-go-tools').onclick = () => showScreen('screen-tools');
     document.getElementById('btn-tools-back').onclick = () => showScreen('screen-home');
     document.getElementById('btn-go-add-match').onclick = () => {
@@ -5177,7 +5394,7 @@ window.addEventListener('DOMContentLoaded', () => {
     });
     document.getElementById('btn-submit-add-match').onclick = submitAddMatch;
     document.getElementById('btn-hero-stats-back').onclick = () => goToHeroRank(true);
-    document.getElementById('btn-quick-back').onclick = () => showScreen('screen-home');
+    document.getElementById('btn-quick-back').onclick = () => showScreen('screen-box-select');
     document.getElementById('btn-quick-start').onclick = startQuickDraft;
     document.getElementById('btn-quick-again').onclick = () => startQuickSetup();
     document.getElementById('btn-quick-home').onclick = () => { stopQuickTimer(); showScreen('screen-home'); };
@@ -5211,7 +5428,7 @@ window.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('btn-back-home').onclick = goHome;
-    document.getElementById('btn-back-config').onclick = () => showScreen('screen-home');
+    document.getElementById('btn-back-config').onclick = () => showScreen('screen-box-select');
 
     document.getElementById('btn-join-room').onclick = () => {
         const code = document.getElementById('input-room-code').value.trim();
@@ -5233,7 +5450,14 @@ window.addEventListener('DOMContentLoaded', () => {
         const mode = getSelectedMode();
         const playerNames = getNameInputs();
         const cafeComLeite = mode === 'team' ? {} : getCafeComLeiteFlags();
-        pendingConfig = { mode, playerNames, cafeComLeite };
+
+        // As caixas escolhidas precisam ter heróis suficientes para o modo
+        const needed = mode === 'team' ? 12 : (mode === 'bestof3' ? 8 : 4);
+        if (boxConfig.heroPool && boxConfig.heroPool.length < needed) {
+            alert('As caixas escolhidas têm só ' + boxConfig.heroPool.length + ' personagens, e esse modo precisa de pelo menos ' + needed + '. Volte e escolha mais caixas.');
+            return;
+        }
+        pendingConfig = { mode, playerNames, cafeComLeite, heroPool: boxConfig.heroPool, boxIds: boxConfig.ids };
 
         if (mode === 'team') {
             createRoomFromConfig();
