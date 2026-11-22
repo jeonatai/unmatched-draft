@@ -10,15 +10,13 @@ const CHANGELOG = {
     title: 'Novidades da atualização',
     versions: [
         {
-            version: 'V0.9.7',
-            rev: 2, // aumente este número para a janela aparecer de novo para quem já viu esta versão
+            version: 'V0.9.8',
+            rev: 1, // aumente este número para a janela aparecer de novo para quem já viu esta versão
             items: [
-                { icon: '📦', text: 'Escolha das caixas: ao criar uma sala ou Sorteio Rápido, toque nas capas das caixas que vão usar e os personagens delas entram no sorteio. Tem também o botão "Usar todas as caixas".' },
-                { icon: '🗺️', text: 'Sorteio de mapas melhorado: não repete mapa dentro da mesma série ou sessão, o re-sorteio nunca traz o mesmo mapa e os mapas vistos há pouco saem bem menos.' },
-                { icon: '🏅', text: 'Os cards do confronto agora mostram, num cantinho da imagem, a posição de cada herói no Ranking (ex.: #12).' },
-                { icon: '🧭', text: 'Correção: o botão voltar do navegador e do celular agora passa pelas telas na ordem certa até a tela principal (ex.: Ranking → herói → Ranking → início).' },
-                { icon: '✍️', text: 'Caixas de nome dos jogadores agora começam vazias, com "Jogador 1", "Jogador 2"... em cinza claro como dica. É só tocar e digitar.' },
-                { icon: '📤', text: 'Link da sala: no celular, o botão agora abre o compartilhar do aparelho (WhatsApp, Instagram e outros apps).' }
+                { icon: '🎲', text: 'Correção no Sorteio Rápido: agora dá para escolher qualquer quantidade de jogadores, de 2 a 10 (antes só funcionava com 2 ou 10). A escolha é por botões, sem precisar digitar.' },
+                { icon: '👥', text: 'Equipes no Sorteio Rápido: quando o número de jogadores não divide igual, o excedente é distribuído entre as equipes (5 jogadores viram 3 + 2), sem sobrar um jogador sozinho.' },
+                { icon: '✍️', text: 'Os nomes digitados não somem mais ao mudar a quantidade de jogadores, o formato ou o modo da sala. Nomes repetidos agora geram um aviso.' },
+                { icon: '🦸', text: 'Na tela de um herói, agora dá para tocar num dos adversários para abrir aquele herói. O botão voltar (do navegador, do celular ou da tela) volta herói por herói, na ordem certa, até o Ranking.' }
             ]
         }
     ]

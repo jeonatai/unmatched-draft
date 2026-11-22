@@ -472,7 +472,7 @@ function showScreen(id) {
         window.history.go(-steps);
     } else {
         navStack.push(id);
-        window.history.pushState({ appScreen: id }, '', window.location.href);
+        window.history.pushState({ appScreen: id, navIndex: navStack.length - 1 }, '', window.location.href);
     }
 }
 
@@ -484,10 +484,16 @@ function showScreen(id) {
 window.addEventListener('popstate', (e) => {
     const target = (e.state && e.state.appScreen) || 'screen-home';
     const knownTarget = !!document.getElementById(target);
+    const st = e.state || {};
     if (knownTarget) {
         // mantém a pilha de telas igual à entrada do histórico em que estamos
-        const idx = navStack.lastIndexOf(target);
-        navStack = idx !== -1 ? navStack.slice(0, idx + 1) : navStack.concat(target);
+        if (typeof st.navIndex === 'number') {
+            // a entrada sabe a sua posição: funciona mesmo com a mesma tela repetida (herói > herói > herói)
+            navStack = st.navIndex < navStack.length ? navStack.slice(0, st.navIndex + 1) : navStack.concat(target);
+        } else {
+            const idx = navStack.lastIndexOf(target);
+            navStack = idx !== -1 ? navStack.slice(0, idx + 1) : navStack.concat(target);
+        }
     }
     if (roomRef || quickState) {
         goHome();
@@ -497,6 +503,14 @@ window.addEventListener('popstate', (e) => {
     suppressHistoryPush = true;
     showScreen(target);
     suppressHistoryPush = false;
+
+    if (target === 'screen-hero-stats' && st.hero) {
+        window.scrollTo(0, 0);
+        renderHeroStatsResults(st.hero);
+        updateHeroBackButton();
+    } else if (target === 'screen-hero-rank') {
+        requestAnimationFrame(() => window.scrollTo(0, rankScrollY));
+    }
 });
 
 // Volta para a tela principal e limpa a pilha de telas. Se havia telas
@@ -673,8 +687,11 @@ function goHome() {
 // ============================================================
 // CONFIGURAÇÃO DE SALA
 // ============================================================
-function buildNameInputs(count, mode) {
+function buildNameInputs(count, mode, keepValues) {
     const container = document.getElementById('player-names-inputs');
+    // Ao trocar de modo (1v1 <-> equipe) mantém o que já foi digitado
+    const previous = keepValues ? Array.from(container.querySelectorAll('.name-input')).map(inp => inp.value) : [];
+    const previousCafe = keepValues ? Array.from(container.querySelectorAll('.cafe-checkbox')).map(c => c.checked) : [];
     container.innerHTML = '';
     const showCafe = mode !== 'team';
     for (let i = 0; i < count; i++) {
@@ -685,6 +702,7 @@ function buildNameInputs(count, mode) {
         input.type = 'text';
         input.className = 'text-input name-input';
         input.placeholder = 'Jogador ' + (i + 1);
+        input.value = previous[i] || '';
         input.dataset.index = i;
         row.appendChild(input);
 
@@ -695,6 +713,7 @@ function buildNameInputs(count, mode) {
             checkbox.type = 'checkbox';
             checkbox.className = 'cafe-checkbox';
             checkbox.dataset.index = i;
+            checkbox.checked = !!previousCafe[i];
             label.appendChild(checkbox);
             label.appendChild(document.createTextNode('☕ Café com leite'));
             row.appendChild(label);
@@ -2887,6 +2906,7 @@ async function renderHeroStatsResults(heroName) {
         items.forEach(m => {
             const card = document.createElement('div');
             card.className = 'hero-stat-card';
+            card.onclick = () => openHeroDetail(m.hero.nome);
 
             if (m.hero.img) {
                 const img = document.createElement('img');
@@ -2918,11 +2938,37 @@ async function renderHeroStatsResults(heroName) {
     });
 }
 
-function goToHeroStatsScreen() {
+// Abre a tela de um herói. Cada herói aberto vira uma entrada no histórico, então
+// Ranking > A > B > C volta na ordem certa: C > B > A > Ranking > início.
+function openHeroDetail(heroName) {
+    const top = navStack[navStack.length - 1];
+    const current = window.history.state && window.history.state.hero;
+    if (top === 'screen-hero-stats' && current === heroName) return;   // já está nele
+
+    suppressHistoryPush = true;
     showScreen('screen-hero-stats');
+    suppressHistoryPush = false;
     document.getElementById('hero-stats-summary').style.display = 'none';
     document.getElementById('hero-stats-results').innerHTML = '';
     ensureHeroStatsCache(false); // já começa a baixar em segundo plano
+
+    navStack.push('screen-hero-stats');
+    window.history.pushState({ appScreen: 'screen-hero-stats', navIndex: navStack.length - 1, hero: heroName }, '', window.location.href);
+    window.scrollTo(0, 0);
+    renderHeroStatsResults(heroName);
+    updateHeroBackButton();
+}
+
+// Quantos heróis seguidos há no topo da pilha (Ranking > A > B => 2)
+function heroStackDepth() {
+    let depth = 0;
+    for (let i = navStack.length - 1; i >= 0 && navStack[i] === 'screen-hero-stats'; i--) depth++;
+    return depth;
+}
+
+function updateHeroBackButton() {
+    const btn = document.getElementById('btn-hero-stats-back');
+    if (btn) btn.innerText = heroStackDepth() > 1 ? '← Voltar' : '← Voltar ao Ranking';
 }
 
 // ============================================================
@@ -3053,9 +3099,7 @@ async function goToHeroRank(restore) {
 
 function openHeroFromRank(heroName) {
     rankScrollY = window.scrollY;
-    goToHeroStatsScreen();
-    window.scrollTo(0, 0);
-    renderHeroStatsResults(heroName);
+    openHeroDetail(heroName);
 }
 
 document.querySelectorAll('.js-go-rank').forEach(btn => btn.addEventListener('click', () => goToHeroRank()));
@@ -4794,12 +4838,14 @@ document.getElementById('btn-close-room')?.addEventListener('click', () => {
 // ============================================================
 function buildQuickNameInputs(count) {
     const container = document.getElementById('quick-names-inputs');
+    const previous = Array.from(container.querySelectorAll('.quick-name-input')).map(inp => inp.value);
     container.innerHTML = '';
     for (let i = 0; i < count; i++) {
         const input = document.createElement('input');
         input.type = 'text';
         input.className = 'text-input name-input quick-name-input';
         input.placeholder = 'Jogador ' + (i + 1);
+        input.value = previous[i] || '';
         input.dataset.index = i;
         if (i > 0) input.style.marginTop = '10px';
         container.appendChild(input);
@@ -4820,8 +4866,34 @@ function getQuickTeamSize() {
     return checked ? parseInt(checked.value) : 2;
 }
 
+// Botões de 2 a 10 jogadores (antes era um campo de número: ao apagar o valor ele
+// voltava para 2 na hora e o próximo dígito se juntava a ele, então só dava para
+// chegar em 2 ou 10).
+function renderQuickCountChips() {
+    const box = document.getElementById('quick-count-chips');
+    const current = parseInt(document.getElementById('quick-player-count').value) || 2;
+    if (!box.childElementCount) {
+        for (let n = 2; n <= 10; n++) {
+            const chip = document.createElement('button');
+            chip.type = 'button';
+            chip.className = 'count-chip';
+            chip.dataset.n = n;
+            chip.innerText = n;
+            chip.onclick = () => {
+                document.getElementById('quick-player-count').value = n;
+                updateQuickSetupUI();
+            };
+            box.appendChild(chip);
+        }
+    }
+    box.querySelectorAll('.count-chip').forEach(chip => {
+        chip.classList.toggle('active', parseInt(chip.dataset.n) === current);
+    });
+}
+
 function updateQuickSetupUI() {
     const count = parseInt(document.getElementById('quick-player-count').value) || 2;
+    renderQuickCountChips();
     buildQuickNameInputs(count);
 
     const format = getQuickFormat();
@@ -4848,6 +4920,7 @@ function updateQuickSetupUI() {
 function startQuickSetup() {
     quickState = null;
     showScreen('screen-quick-setup');
+    document.getElementById('quick-names-inputs').innerHTML = '';   // começa com as caixas vazias
     document.getElementById('quick-player-count').value = 2;
     document.querySelector('input[name="quick-format"][value="ffa"]').checked = true;
     document.querySelector('input[name="quick-team-size"][value="2"]').checked = true;
@@ -4855,13 +4928,17 @@ function startQuickSetup() {
 }
 
 // Divide os jogadores (já embaralhados) em equipes do tamanho pedido.
-// Se não dividir igualmente, o resto é distribuído entre as primeiras equipes.
+// Se não dividir igualmente, o excedente é distribuído, um a um, entre as
+// primeiras equipes (ex: 5 jogadores em equipes de 2 -> 3 e 2; nunca sobra um
+// jogador sozinho). Sempre há pelo menos 2 equipes.
 function splitIntoTeams(playerIndexes, teamSize) {
+    const total = playerIndexes.length;
+    const teamCount = Math.max(2, Math.floor(total / teamSize));
+    const extra = total - teamCount * teamSize;
     const teams = [];
     let i = 0;
-    while (i < playerIndexes.length) {
-        const remaining = playerIndexes.length - i;
-        const size = (remaining < teamSize * 2 && remaining > teamSize) ? Math.ceil(remaining / 2) : teamSize;
+    for (let t = 0; t < teamCount; t++) {
+        const size = teamSize + (t < extra ? 1 : 0);
         teams.push(playerIndexes.slice(i, i + size));
         i += size;
     }
@@ -4885,6 +4962,10 @@ async function startQuickDraft() {
 
     if (names.length < 2) {
         alert('É necessário pelo menos 2 jogadores.');
+        return;
+    }
+    if (new Set(names.map(n => n.toLowerCase())).size !== names.length) {
+        alert('Cada jogador precisa ter um nome diferente.');
         return;
     }
     if (format === 'team') {
@@ -5393,7 +5474,9 @@ window.addEventListener('DOMContentLoaded', () => {
         radio.addEventListener('change', updateAddMatchModeUI);
     });
     document.getElementById('btn-submit-add-match').onclick = submitAddMatch;
-    document.getElementById('btn-hero-stats-back').onclick = () => goToHeroRank(true);
+    document.getElementById('btn-hero-stats-back').onclick = () => {
+        if (heroStackDepth() > 1) window.history.back(); else goToHeroRank(true);
+    };
     document.getElementById('btn-quick-back').onclick = () => showScreen('screen-box-select');
     document.getElementById('btn-quick-start').onclick = startQuickDraft;
     document.getElementById('btn-quick-again').onclick = () => startQuickSetup();
@@ -5412,14 +5495,6 @@ window.addEventListener('DOMContentLoaded', () => {
         updateQuickPauseBtn();
     };
 
-    document.getElementById('quick-player-count').addEventListener('input', (e) => {
-        let val = parseInt(e.target.value);
-        if (isNaN(val)) val = 2;
-        if (val < 2) val = 2;
-        if (val > 10) val = 10;
-        e.target.value = val;
-        updateQuickSetupUI();
-    });
     document.querySelectorAll('input[name="quick-format"]').forEach(radio => {
         radio.addEventListener('change', updateQuickSetupUI);
     });
@@ -5442,7 +5517,7 @@ window.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('input[name="game-mode"]').forEach(radio => {
         radio.addEventListener('change', () => {
             const mode = getSelectedMode();
-            buildNameInputs(mode === 'team' ? 4 : 2, mode);
+            buildNameInputs(mode === 'team' ? 4 : 2, mode, true);
         });
     });
 
@@ -5450,6 +5525,11 @@ window.addEventListener('DOMContentLoaded', () => {
         const mode = getSelectedMode();
         const playerNames = getNameInputs();
         const cafeComLeite = mode === 'team' ? {} : getCafeComLeiteFlags();
+
+        if (new Set(playerNames.map(n => n.toLowerCase())).size !== playerNames.length) {
+            alert('Cada jogador precisa ter um nome diferente.');
+            return;
+        }
 
         // As caixas escolhidas precisam ter heróis suficientes para o modo
         const needed = mode === 'team' ? 12 : (mode === 'bestof3' ? 8 : 4);

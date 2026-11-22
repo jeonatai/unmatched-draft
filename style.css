@@ -1667,3 +1667,33 @@ details.audit-row summary { cursor: pointer; font-size: 13px; color: #ced6e0; }
 .rank-badge.r2 { color: #bdc3c7; border-color: rgba(189, 195, 199, 0.7); }
 .rank-badge.r3 { color: #cd7f32; border-color: rgba(205, 127, 50, 0.7); }
 .rank-badge.nogames { opacity: 0.6; }
+
+
+/* Sorteio Rápido: botões de quantidade de jogadores (2 a 10) */
+.count-chips {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+}
+.count-chip {
+    width: auto !important;
+    min-height: 46px;
+    padding: 0 !important;
+    font-size: 17px;
+    font-weight: 800;
+    color: #ced6e0;
+    background: #1e1e24 !important;
+    background-image: none !important;
+    border: 2px solid #2a2a33;
+    box-shadow: none !important;
+}
+.count-chip.active {
+    color: #fff;
+    border-color: #ff4757;
+    background: rgba(255, 71, 87, 0.18) !important;
+}
+
+
+/* Cards de adversários na tela do herói: tocar abre aquele herói */
+.hero-stat-card { cursor: pointer; touch-action: manipulation; transition: transform 0.12s ease; }
+.hero-stat-card:active { transform: scale(0.97); }
