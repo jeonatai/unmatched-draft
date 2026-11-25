@@ -24,7 +24,7 @@
     <meta name="twitter:title" content="Unmatched Draft — Sorteio e Draft Online para Unmatched">
     <meta name="twitter:description" content="Sorteie heróis, monte salas e organize partidas de Unmatched online, de graça, com amigos.">
 
-    <link rel="stylesheet" href="style.css?v=20261111r">
+    <link rel="stylesheet" href="style.css?v=20261111s">
 </head>
 <body>
 
@@ -265,6 +265,7 @@
             <h1>🦸 Herói</h1>
 
             <div id="hero-stats-summary" style="display: none;"></div>
+            <button id="btn-hero-matches" class="btn-secondary" style="display: none;">📋 Partidas</button>
             <div id="hero-stats-results"></div>
             <p id="hero-stats-loading" class="waiting-text" style="display: none;">Carregando estatísticas...</p>
 
@@ -310,6 +311,14 @@
             <button id="btn-audit-undo" class="btn-secondary" style="display: none;"></button>
             <button id="btn-audit-reset" style="background-color: #e74c3c; margin-top: 10px;">🗑️ Zerar estatísticas (não mexe no feed)</button>
             <button id="btn-audit-back" class="btn-secondary">Voltar</button>
+        </div>
+
+        <!-- TELA: Partidas de um herói -->
+        <div id="screen-hero-matches" class="screen" style="display: none;">
+            <h1>📋 Partidas</h1>
+            <p id="hero-matches-title" class="hero-matches-title"></p>
+            <div id="hero-matches-list" class="hero-matches-list"></div>
+            <button id="btn-hero-matches-back" class="btn-secondary">← Voltar</button>
         </div>
 
         <!-- TELA: Ranking de heróis -->
@@ -587,7 +596,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
     <script src="firebase-config.js"></script>
     <script src="boxes.js?v=1"></script>
-    <script src="app.js?v=20261111r"></script>
-    <script src="changelog.js?v=098b"></script>
+    <script src="app.js?v=20261111s"></script>
+    <script src="changelog.js?v=098d"></script>
 </body>
 </html>

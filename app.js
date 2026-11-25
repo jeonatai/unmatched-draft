@@ -508,6 +508,9 @@ window.addEventListener('popstate', (e) => {
         window.scrollTo(0, 0);
         renderHeroStatsResults(st.hero);
         updateHeroBackButton();
+    } else if (target === 'screen-hero-matches' && st.hero) {
+        window.scrollTo(0, 0);
+        renderHeroMatches(st.hero);
     } else if (target === 'screen-hero-rank') {
         requestAnimationFrame(() => window.scrollTo(0, rankScrollY));
     }
@@ -2828,12 +2831,16 @@ async function renderHeroStatsResults(heroName) {
     const resultsEl = document.getElementById('hero-stats-results');
     const loadingEl = document.getElementById('hero-stats-loading');
 
+    const matchesBtn = document.getElementById('btn-hero-matches');
     if (!hero) {
         summaryEl.style.display = 'none';
+        matchesBtn.style.display = 'none';
         resultsEl.innerHTML = '';
         return;
     }
 
+    currentHeroName = hero.nome;
+    matchesBtn.style.display = 'block';
     resultsEl.innerHTML = '';
     summaryEl.style.display = 'none';
     loadingEl.style.display = 'block';
@@ -2949,6 +2956,7 @@ function openHeroDetail(heroName) {
     showScreen('screen-hero-stats');
     suppressHistoryPush = false;
     document.getElementById('hero-stats-summary').style.display = 'none';
+    document.getElementById('btn-hero-matches').style.display = 'none';
     document.getElementById('hero-stats-results').innerHTML = '';
     ensureHeroStatsCache(false); // já começa a baixar em segundo plano
 
@@ -2970,6 +2978,100 @@ function updateHeroBackButton() {
     const btn = document.getElementById('btn-hero-stats-back');
     if (btn) btn.innerText = heroStackDepth() > 1 ? '← Voltar' : '← Voltar ao Ranking';
 }
+
+// ============================================================
+// PARTIDAS DE UM HERÓI (botão "Partidas" na tela do herói)
+// ============================================================
+// Lê o histórico do feed e lista todas as partidas do herói: jogador, jogador
+// adversário, herói adversário, data e resultado (verde = vitória, vermelho =
+// derrota). Cada combate de uma Melhor de 3 conta como uma partida.
+let currentHeroName = null;
+let heroMatchLogs = null;
+let heroMatchLogsAt = 0;
+let heroMatchesToken = 0;
+
+async function ensureHeroMatchLogs() {
+    // reaproveita por 1 minuto para a tela abrir rápido ao ir e voltar
+    if (heroMatchLogs && Date.now() - heroMatchLogsAt < 60000) return heroMatchLogs;
+    const snap = await db.ref('posts').once('value');
+    heroMatchLogs = aggregateHeroStatsFromPosts(snap.val() || {}).logs;
+    heroMatchLogsAt = Date.now();
+    return heroMatchLogs;
+}
+
+async function renderHeroMatches(heroName) {
+    const list = document.getElementById('hero-matches-list');
+    const title = document.getElementById('hero-matches-title');
+    const token = ++heroMatchesToken;
+    title.innerText = heroName;
+    list.innerHTML = '<p class="waiting-text">Carregando partidas...</p>';
+
+    let logs;
+    try {
+        logs = await ensureHeroMatchLogs();
+    } catch (e) {
+        if (token === heroMatchesToken) list.innerHTML = '<p class="waiting-text">Não foi possível carregar as partidas. Verifique sua internet.</p>';
+        return;
+    }
+    if (token !== heroMatchesToken) return;   // a pessoa já abriu outra tela/herói
+
+    const games = (logs[heroName] || []).slice().sort((a, b) => b.ts - a.ts);
+    const wins = games.filter(g => g.won).length;
+    title.innerText = heroName + ' · ' + games.length + (games.length === 1 ? ' partida' : ' partidas') +
+        ' · ' + wins + 'V · ' + (games.length - wins) + 'D';
+
+    list.innerHTML = '';
+    if (!games.length) {
+        list.innerHTML = '<p class="waiting-text">Nenhuma partida registrada para este herói.</p>';
+        return;
+    }
+
+    const frag = document.createDocumentFragment();
+    games.forEach(g => {
+        const row = document.createElement('div');
+        row.className = 'hero-match ' + (g.won ? 'win' : 'loss');
+
+        const top = document.createElement('div');
+        top.className = 'hero-match-top';
+        const result = document.createElement('span');
+        result.className = 'hero-match-result';
+        result.innerText = g.won ? '✓ Vitória' : '✗ Derrota';
+        const meta = document.createElement('span');
+        meta.className = 'hero-match-date';
+        const tag = g.mode === 'bestof3' ? 'Melhor de 3 · ' : (g.imported ? 'BG Stats · ' : '');
+        meta.innerText = tag + formatAuditDate(g.ts);
+        top.appendChild(result);
+        top.appendChild(meta);
+
+        const players = document.createElement('div');
+        players.className = 'hero-match-players';
+        players.innerText = (g.player || '?') + '  vs  ' + (g.oppPlayer || '?');
+
+        const opp = document.createElement('div');
+        opp.className = 'hero-match-opp';
+        opp.innerText = 'contra ' + g.opp;
+
+        row.appendChild(top);
+        row.appendChild(players);
+        row.appendChild(opp);
+        frag.appendChild(row);
+    });
+    list.appendChild(frag);
+}
+
+// Abre a lista como uma etapa do histórico: Herói > Partidas, e o voltar leva ao herói.
+function openHeroMatches(heroName) {
+    suppressHistoryPush = true;
+    showScreen('screen-hero-matches');
+    suppressHistoryPush = false;
+    navStack.push('screen-hero-matches');
+    window.history.pushState({ appScreen: 'screen-hero-matches', navIndex: navStack.length - 1, hero: heroName }, '', window.location.href);
+    window.scrollTo(0, 0);
+    renderHeroMatches(heroName);
+}
+
+document.getElementById('btn-hero-matches')?.addEventListener('click', () => { if (currentHeroName) openHeroMatches(currentHeroName); });
+document.getElementById('btn-hero-matches-back')?.addEventListener('click', () => window.history.back());
 
 // ============================================================
 // RANKING DE HERÓIS (todos os heróis, do mais forte ao mais fraco)
@@ -3353,9 +3455,12 @@ function aggregateHeroStatsFromPosts(posts) {
     let draws = 0;
     const ensure = n => agg[n] || (agg[n] = { wins: 0, losses: 0, vs: {} });
     const bump = (n, f) => { if (n) ensure(n)[f]++; };
-    const addLog = (name, post, won, opp) => {
+    const addLog = (name, post, won, opp, player, oppPlayer) => {
         if (!name) return;
-        (logs[name] = logs[name] || []).push({ ts: post.timestamp || 0, won, opp, mode: post.mode });
+        (logs[name] = logs[name] || []).push({
+            ts: post.timestamp || 0, won, opp, mode: post.mode,
+            player: player || '', oppPlayer: oppPlayer || '', imported: !!post.imported
+        });
     };
     const bumpVs = (w, l) => {
         if (!w || !l || w === l) return;
@@ -3374,7 +3479,10 @@ function aggregateHeroStatsFromPosts(posts) {
         else if (c.winnerName != null && participants[1] && participants[1].name === c.winnerName) side = 2;
         else if (c.winner === 1 || c.winner === 2) side = c.winner;
         else return null;
-        return side === 1 ? { winner: c.p1Hero, loser: c.p2Hero } : { winner: c.p2Hero, loser: c.p1Hero };
+        const nameOf = i => (participants[i] && participants[i].name) || '';
+        return side === 1
+            ? { winner: c.p1Hero, loser: c.p2Hero, winnerPlayer: nameOf(0), loserPlayer: nameOf(1) }
+            : { winner: c.p2Hero, loser: c.p1Hero, winnerPlayer: nameOf(1), loserPlayer: nameOf(0) };
     };
 
     Object.values(posts || {}).forEach(post => {
@@ -3387,16 +3495,17 @@ function aggregateHeroStatsFromPosts(posts) {
                 bump(r.winner, 'wins');
                 bump(r.loser, 'losses');
                 bumpVs(r.winner, r.loser);
-                addLog(r.winner, post, true, r.loser);
-                addLog(r.loser, post, false, r.winner);
+                addLog(r.winner, post, true, r.loser, r.winnerPlayer, r.loserPlayer);
+                addLog(r.loser, post, false, r.winner, r.loserPlayer, r.winnerPlayer);
             });
         } else {
             if (!participants.some(p => p && p.won)) { draws++; return; } // empate: não conta
             participants.forEach(p => {
                 if (!p || !p.hero) return;
                 bump(p.hero, p.won ? 'wins' : 'losses');
-                const opp = participants.filter(q => q && q.hero && !!q.won !== !!p.won).map(q => q.hero).join(' & ') || '—';
-                addLog(p.hero, post, !!p.won, opp);
+                const rivals = participants.filter(q => q && q.hero && !!q.won !== !!p.won);
+                const opp = rivals.map(q => q.hero).join(' & ') || '—';
+                addLog(p.hero, post, !!p.won, opp, p.name, rivals.map(q => q.name).join(' & '));
             });
             if (combats.length === 1) {
                 const r = combatResult(combats[0], participants);

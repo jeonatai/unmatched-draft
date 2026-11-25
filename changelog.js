@@ -11,12 +11,13 @@ const CHANGELOG = {
     versions: [
         {
             version: 'V0.9.8',
-            rev: 1, // aumente este número para a janela aparecer de novo para quem já viu esta versão
+            rev: 2, // aumente este número para a janela aparecer de novo para quem já viu esta versão
             items: [
                 { icon: '🎲', text: 'Correção no Sorteio Rápido: agora dá para escolher qualquer quantidade de jogadores, de 2 a 10 (antes só funcionava com 2 ou 10). A escolha é por botões, sem precisar digitar.' },
                 { icon: '👥', text: 'Equipes no Sorteio Rápido: quando o número de jogadores não divide igual, o excedente é distribuído entre as equipes (5 jogadores viram 3 + 2), sem sobrar um jogador sozinho.' },
                 { icon: '✍️', text: 'Os nomes digitados não somem mais ao mudar a quantidade de jogadores, o formato ou o modo da sala. Nomes repetidos agora geram um aviso.' },
-                { icon: '🦸', text: 'Na tela de um herói, agora dá para tocar num dos adversários para abrir aquele herói. O botão voltar (do navegador, do celular ou da tela) volta herói por herói, na ordem certa, até o Ranking.' }
+                { icon: '🦸', text: 'Na tela de um herói, agora dá para tocar num dos adversários para abrir aquele herói. O botão voltar (do navegador, do celular ou da tela) volta herói por herói, na ordem certa, até o Ranking.' },
+                { icon: '📋', text: 'Novo botão "Partidas" na tela de um herói: mostra todas as partidas dele no site, com os jogadores, o herói adversário, a data e o resultado (verde = vitória, vermelho = derrota).' }
             ]
         }
     ]
