@@ -24,7 +24,7 @@
     <meta name="twitter:title" content="Unmatched Draft — Sorteio e Draft Online para Unmatched">
     <meta name="twitter:description" content="Sorteie heróis, monte salas e organize partidas de Unmatched online, de graça, com amigos.">
 
-    <link rel="stylesheet" href="style.css?v=20261111s">
+    <link rel="stylesheet" href="style.css?v=20261111t">
 </head>
 <body>
 
@@ -571,6 +571,35 @@
 
     </div>
 
+    <!-- Editar / excluir partida (administrador) -->
+    <div id="match-edit-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-box match-edit-box">
+            <h3>✏️ Editar partida</h3>
+            <p id="match-edit-note" class="odds-note"></p>
+            <label class="me-label">Data e hora</label>
+            <input type="datetime-local" id="me-date" class="text-input me-input">
+            <div id="me-fields">
+                <label class="me-label">Jogador 1</label>
+                <input type="text" id="me-name1" class="text-input me-input" placeholder="Jogador 1" autocomplete="off">
+                <select id="me-hero1" class="text-input me-input"></select>
+                <label class="me-label">Jogador 2</label>
+                <input type="text" id="me-name2" class="text-input me-input" placeholder="Jogador 2" autocomplete="off">
+                <select id="me-hero2" class="text-input me-input"></select>
+                <label class="me-label">Quem venceu?</label>
+                <div class="me-winner">
+                    <label><input type="radio" name="me-winner" value="1"> Jogador 1</label>
+                    <label><input type="radio" name="me-winner" value="2"> Jogador 2</label>
+                    <label><input type="radio" name="me-winner" value="0"> Empate</label>
+                </div>
+            </div>
+            <div class="judge-buttons">
+                <button id="me-save" style="background-color: #2ecc71;">Salvar</button>
+                <button id="me-cancel" class="btn-secondary">Cancelar</button>
+            </div>
+            <button id="me-delete" style="background-color: #e74c3c; margin-top: 10px;">🗑️ Excluir partida</button>
+        </div>
+    </div>
+
     <!-- Seletor de herói (Confrontos) -->
     <div id="mu-picker" class="modal-overlay" style="display: none;">
         <div class="modal-box mu-picker-box">
@@ -596,7 +625,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
     <script src="firebase-config.js"></script>
     <script src="boxes.js?v=1"></script>
-    <script src="app.js?v=20261111s"></script>
+    <script src="app.js?v=20261111t"></script>
     <script src="changelog.js?v=098d"></script>
 </body>
 </html>

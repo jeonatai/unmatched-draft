@@ -482,6 +482,8 @@ function showScreen(id) {
 // (mesma limpeza do botão "Voltar ao Início"). Fora disso, só mostra a tela
 // anterior que está no histórico.
 window.addEventListener('popstate', (e) => {
+    const editModal = document.getElementById('match-edit-modal');
+    if (editModal) editModal.style.display = 'none';
     const target = (e.state && e.state.appScreen) || 'screen-home';
     const knownTarget = !!document.getElementById(target);
     const st = e.state || {};
@@ -512,7 +514,9 @@ window.addEventListener('popstate', (e) => {
         window.scrollTo(0, 0);
         renderHeroMatches(st.hero);
     } else if (target === 'screen-hero-rank') {
-        requestAnimationFrame(() => window.scrollTo(0, rankScrollY));
+        // se algo mudou (edição/exclusão), o ranking foi invalidado e é refeito ao voltar
+        const rebuild = heroRankRows ? Promise.resolve() : ensureHeroRankRows().then(() => renderHeroRank());
+        rebuild.then(() => requestAnimationFrame(() => window.scrollTo(0, rankScrollY)));
     }
 });
 
@@ -3040,16 +3044,26 @@ async function renderHeroMatches(heroName) {
         meta.className = 'hero-match-date';
         const tag = g.mode === 'bestof3' ? 'Melhor de 3 · ' : (g.imported ? 'BG Stats · ' : '');
         meta.innerText = tag + formatAuditDate(g.ts);
+        const editBtn = document.createElement('button');
+        editBtn.type = 'button';
+        editBtn.className = 'hero-match-edit';
+        editBtn.innerText = '✏️';
+        editBtn.title = 'Editar ou excluir esta partida';
+        editBtn.onclick = () => { if (g.postId) openMatchEdit(g.postId); };
+        const right = document.createElement('span');
+        right.className = 'hero-match-right';
+        right.appendChild(meta);
+        right.appendChild(editBtn);
         top.appendChild(result);
-        top.appendChild(meta);
+        top.appendChild(right);
 
         const players = document.createElement('div');
         players.className = 'hero-match-players';
-        players.innerText = (g.player || '?') + '  vs  ' + (g.oppPlayer || '?');
+        players.innerText = (g.player || 'Jogador não registrado') + '  vs  ' + (g.oppPlayer || 'adversário não registrado');
 
         const opp = document.createElement('div');
         opp.className = 'hero-match-opp';
-        opp.innerText = 'contra ' + g.opp;
+        opp.innerText = g.opp ? 'contra ' + g.opp : 'herói adversário não registrado';
 
         row.appendChild(top);
         row.appendChild(players);
@@ -3072,6 +3086,213 @@ function openHeroMatches(heroName) {
 
 document.getElementById('btn-hero-matches')?.addEventListener('click', () => { if (currentHeroName) openHeroMatches(currentHeroName); });
 document.getElementById('btn-hero-matches-back')?.addEventListener('click', () => window.history.back());
+
+// ============================================================
+// EDITAR / EXCLUIR PARTIDA (botão ✏️ na lista de partidas do herói)
+// ============================================================
+// Exige a senha do administrador (pedida uma vez por visita). Ao salvar ou
+// excluir, o post é atualizado no Firebase e as estatísticas são corrigidas na
+// hora: o que a partida antiga contava é desfeito e o que a nova conta é somado,
+// então o Ranking, as porcentagens e os confrontos já saem certos.
+// Partidas de 1x1 podem ser editadas por inteiro (jogadores, heróis, vencedor,
+// data). Melhor de 3, equipes e todos contra todos permitem mudar a data ou excluir.
+const ADMIN_PASSWORD = 'bolas';
+let adminUnlocked = false;
+let matchEditCtx = null;
+
+function ensureAdmin() {
+    if (adminUnlocked) return true;
+    const pass = window.prompt('Digite a senha do administrador:');
+    if (pass === null) return false;
+    if (pass !== ADMIN_PASSWORD) { alert('Senha incorreta. Nada foi alterado.'); return false; }
+    adminUnlocked = true;
+    return true;
+}
+
+// Soma/subtrai da tabela de estatísticas a diferença entre a partida antiga e a nova
+// (oldPost = null: partida nova; newPost = null: partida excluída).
+async function applyStatsDelta(oldPost, newPost) {
+    const before = oldPost ? aggregateHeroStatsFromPosts({ x: oldPost }).agg : {};
+    const after = newPost ? aggregateHeroStatsFromPosts({ x: newPost }).agg : {};
+    const deltas = {};
+    new Set([...Object.keys(before), ...Object.keys(after)]).forEach(name => {
+        const a = before[name] || { wins: 0, losses: 0, vs: {} };
+        const b = after[name] || { wins: 0, losses: 0, vs: {} };
+        const d = { wins: b.wins - a.wins, losses: b.losses - a.losses, vs: {} };
+        new Set([...Object.keys(a.vs), ...Object.keys(b.vs)]).forEach(opp => {
+            const av = a.vs[opp] || { wins: 0, losses: 0 };
+            const bv = b.vs[opp] || { wins: 0, losses: 0 };
+            if (bv.wins !== av.wins || bv.losses !== av.losses) d.vs[opp] = { wins: bv.wins - av.wins, losses: bv.losses - av.losses };
+        });
+        if (d.wins || d.losses || Object.keys(d.vs).length) deltas[name] = d;
+    });
+    if (!Object.keys(deltas).length) return;
+
+    await db.ref('heroStats').transaction(cur => {
+        cur = cur || {};
+        Object.entries(deltas).forEach(([name, d]) => {
+            const key = heroKey(name);
+            const node = cur[key] || { name, wins: 0, losses: 0 };
+            node.name = name;
+            node.wins = Math.max(0, (node.wins || 0) + d.wins);
+            node.losses = Math.max(0, (node.losses || 0) + d.losses);
+            Object.entries(d.vs).forEach(([opp, v]) => {
+                const vkey = heroKey(opp);
+                node.vs = node.vs || {};
+                const vn = node.vs[vkey] || { name: opp, wins: 0, losses: 0 };
+                vn.name = opp;
+                vn.wins = Math.max(0, (vn.wins || 0) + v.wins);
+                vn.losses = Math.max(0, (vn.losses || 0) + v.losses);
+                node.vs[vkey] = vn;
+            });
+            cur[key] = node;
+        });
+        return cur;
+    });
+}
+
+// Descarta os dados em memória para que Ranking, herói e partidas sejam relidos
+function refreshAfterMatchChange() {
+    heroStatsCache = null;
+    heroRankRows = null;
+    heroMatchLogs = null;
+}
+
+function toLocalInputValue(ts) {
+    const d = new Date(ts || Date.now());
+    const pad = n => String(n).padStart(2, '0');
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+}
+
+function fillHeroSelect(select, current) {
+    select.innerHTML = '';
+    const blank = document.createElement('option');
+    blank.value = '';
+    blank.innerText = 'Escolha o herói...';
+    select.appendChild(blank);
+    const names = PERSONAGENS.map(p => p.nome);
+    if (current && !names.includes(current)) {   // nome antigo que não existe mais na lista
+        const old = document.createElement('option');
+        old.value = current;
+        old.innerText = current + ' (nome antigo)';
+        select.appendChild(old);
+    }
+    PERSONAGENS.slice().sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')).forEach(p => {
+        const o = document.createElement('option');
+        o.value = p.nome;
+        o.innerText = p.nome;
+        select.appendChild(o);
+    });
+    select.value = current || '';
+}
+
+async function openMatchEdit(postId) {
+    if (!ensureAdmin()) return;
+    let post;
+    try {
+        post = (await db.ref('posts/' + postId).once('value')).val();
+    } catch (e) {
+        alert('Não foi possível abrir a partida. Verifique sua internet.');
+        return;
+    }
+    if (!post) {
+        alert('Essa partida não existe mais.');
+        refreshAfterMatchChange();
+        if (currentHeroName) renderHeroMatches(currentHeroName);
+        return;
+    }
+
+    const parts = post.participants || [];
+    const combat = (post.combats || [])[0] || null;
+    const fullEdit = post.mode !== 'bestof3' && parts.length <= 2 && (post.combats || []).length <= 1;
+    matchEditCtx = { postId, old: post, fullEdit };
+
+    document.getElementById('me-date').value = toLocalInputValue(post.timestamp);
+    document.getElementById('me-fields').style.display = fullEdit ? 'block' : 'none';
+    document.getElementById('match-edit-note').innerText = fullEdit
+        ? 'Complete ou corrija os dados da partida.'
+        : 'Esta partida é de Melhor de 3, equipes ou todos contra todos: aqui dá para mudar a data ou excluir a partida inteira.';
+
+    if (fullEdit) {
+        const p1 = parts[0] || {}, p2 = parts[1] || {};
+        document.getElementById('me-name1').value = p1.name || '';
+        document.getElementById('me-name2').value = p2.name || '';
+        fillHeroSelect(document.getElementById('me-hero1'), p1.hero || (combat && combat.p1Hero) || '');
+        fillHeroSelect(document.getElementById('me-hero2'), p2.hero || (combat && combat.p2Hero) || '');
+        const isDraw = !parts.some(p => p && p.won) && parts.some(p => p && p.note && /empate/i.test(p.note));
+        const winner = p1.won ? '1' : (p2.won ? '2' : (isDraw ? '0' : ''));
+        document.querySelectorAll('input[name="me-winner"]').forEach(r => { r.checked = r.value === winner; });
+    }
+    document.getElementById('match-edit-modal').style.display = 'flex';
+}
+
+function closeMatchEdit() {
+    document.getElementById('match-edit-modal').style.display = 'none';
+    matchEditCtx = null;
+}
+
+async function saveMatchEdit() {
+    if (!matchEditCtx) return;
+    const { postId, old, fullEdit } = matchEditCtx;
+    const dateVal = document.getElementById('me-date').value;
+    const ts = dateVal ? new Date(dateVal).getTime() : (old.timestamp || Date.now());
+    if (isNaN(ts)) { alert('Data inválida.'); return; }
+
+    let fields = { timestamp: ts };
+    if (fullEdit) {
+        const name1 = document.getElementById('me-name1').value.trim() || 'Jogador 1';
+        const name2 = document.getElementById('me-name2').value.trim() || 'Jogador 2';
+        const hero1 = document.getElementById('me-hero1').value;
+        const hero2 = document.getElementById('me-hero2').value;
+        const checked = document.querySelector('input[name="me-winner"]:checked');
+        if (!hero1 || !hero2) { alert('Escolha o herói dos dois jogadores.'); return; }
+        if (!checked) { alert('Escolha quem venceu (ou Empate).'); return; }
+        if (name1.toLowerCase() === name2.toLowerCase()) { alert('Cada jogador precisa ter um nome diferente.'); return; }
+
+        const w = checked.value;
+        const isDraw = w === '0';
+        const p1 = { name: name1, hero: hero1, colorClass: PLAYER_COLORS[1].class, won: w === '1' };
+        const p2 = { name: name2, hero: hero2, colorClass: PLAYER_COLORS[2].class, won: w === '2' };
+        if (isDraw) p1.note = 'Empate';
+        const combat = { round: 1, p1Hero: hero1, p2Hero: hero2, winnerName: isDraw ? null : (w === '1' ? name1 : name2) };
+        const oldDuration = ((old.combats || [])[0] || {}).durationMs;
+        if (oldDuration != null) combat.durationMs = oldDuration;
+        fields = { ...fields, participants: [p1, p2], combats: [combat], mode: old.mode || 'manual-1v1' };
+    }
+
+    const btn = document.getElementById('me-save');
+    btn.disabled = true;
+    try {
+        await db.ref('posts/' + postId).update(fields);
+        await applyStatsDelta(old, { ...old, ...fields });
+        closeMatchEdit();
+        refreshAfterMatchChange();
+        if (currentHeroName) renderHeroMatches(currentHeroName);
+    } catch (e) {
+        alert('Não foi possível salvar. Verifique sua internet e tente de novo.');
+    }
+    btn.disabled = false;
+}
+
+async function deleteMatchFromEdit() {
+    if (!matchEditCtx) return;
+    const { postId, old } = matchEditCtx;
+    if (!window.confirm('Excluir esta partida definitivamente?\n\nEla some do feed e as estatísticas e o ranking são corrigidos.')) return;
+    try {
+        await db.ref('posts/' + postId).remove();
+        await applyStatsDelta(old, null);
+        closeMatchEdit();
+        refreshAfterMatchChange();
+        if (currentHeroName) renderHeroMatches(currentHeroName);
+    } catch (e) {
+        alert('Não foi possível excluir. Verifique sua internet e tente de novo.');
+    }
+}
+
+document.getElementById('me-save')?.addEventListener('click', saveMatchEdit);
+document.getElementById('me-cancel')?.addEventListener('click', closeMatchEdit);
+document.getElementById('me-delete')?.addEventListener('click', deleteMatchFromEdit);
+document.getElementById('match-edit-modal')?.addEventListener('click', (e) => { if (e.target.id === 'match-edit-modal') closeMatchEdit(); });
 
 // ============================================================
 // RANKING DE HERÓIS (todos os heróis, do mais forte ao mais fraco)
@@ -3455,11 +3676,11 @@ function aggregateHeroStatsFromPosts(posts) {
     let draws = 0;
     const ensure = n => agg[n] || (agg[n] = { wins: 0, losses: 0, vs: {} });
     const bump = (n, f) => { if (n) ensure(n)[f]++; };
-    const addLog = (name, post, won, opp, player, oppPlayer) => {
+    const addLog = (name, post, won, opp, player, oppPlayer, postId) => {
         if (!name) return;
         (logs[name] = logs[name] || []).push({
             ts: post.timestamp || 0, won, opp, mode: post.mode,
-            player: player || '', oppPlayer: oppPlayer || '', imported: !!post.imported
+            player: player || '', oppPlayer: oppPlayer || '', imported: !!post.imported, postId: postId || null
         });
     };
     const bumpVs = (w, l) => {
@@ -3485,7 +3706,7 @@ function aggregateHeroStatsFromPosts(posts) {
             : { winner: c.p2Hero, loser: c.p1Hero, winnerPlayer: nameOf(1), loserPlayer: nameOf(0) };
     };
 
-    Object.values(posts || {}).forEach(post => {
+    Object.entries(posts || {}).forEach(([postId, post]) => {
         const participants = post.participants || [];
         const combats = post.combats || [];
         if (post.mode === 'bestof3') {
@@ -3495,17 +3716,23 @@ function aggregateHeroStatsFromPosts(posts) {
                 bump(r.winner, 'wins');
                 bump(r.loser, 'losses');
                 bumpVs(r.winner, r.loser);
-                addLog(r.winner, post, true, r.loser, r.winnerPlayer, r.loserPlayer);
-                addLog(r.loser, post, false, r.winner, r.loserPlayer, r.winnerPlayer);
+                addLog(r.winner, post, true, r.loser, r.winnerPlayer, r.loserPlayer, postId);
+                addLog(r.loser, post, false, r.winner, r.loserPlayer, r.winnerPlayer, postId);
             });
         } else {
             if (!participants.some(p => p && p.won)) { draws++; return; } // empate: não conta
             participants.forEach(p => {
                 if (!p || !p.hero) return;
                 bump(p.hero, p.won ? 'wins' : 'losses');
-                const rivals = participants.filter(q => q && q.hero && !!q.won !== !!p.won);
-                const opp = rivals.map(q => q.hero).join(' & ') || '—';
-                addLog(p.hero, post, !!p.won, opp, p.name, rivals.map(q => q.name).join(' & '));
+                // Registros antigos guardavam só o vencedor: o que não souber fica vazio
+                // (a lista de partidas mostra "não registrado" e dá para completar pela edição)
+                const rivals = participants.filter(q => q && !!q.won !== !!p.won);
+                let opp = rivals.filter(q => q.hero).map(q => q.hero).join(' & ');
+                if (!opp && combats[0]) {
+                    const c = combats[0];
+                    opp = c.p1Hero === p.hero ? (c.p2Hero || '') : (c.p2Hero === p.hero ? (c.p1Hero || '') : '');
+                }
+                addLog(p.hero, post, !!p.won, opp, p.name, rivals.map(q => q.name).filter(Boolean).join(' & '), postId);
             });
             if (combats.length === 1) {
                 const r = combatResult(combats[0], participants);
@@ -4765,7 +4992,10 @@ function renderFeed(posts) {
                 'ou Cancelar para apenas OCULTAR ele do feed (fica escondido, mas não é apagado).'
             );
             if (wantsDelete) {
-                db.ref('posts/' + postId).remove();
+                db.ref('posts/' + postId).remove()
+                    .then(() => applyStatsDelta(post, null))
+                    .then(() => refreshAfterMatchChange())
+                    .catch(() => {});
             } else {
                 db.ref('posts/' + postId + '/hidden').set(true);
             }

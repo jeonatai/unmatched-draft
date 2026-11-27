@@ -1721,3 +1721,25 @@ details.audit-row summary { cursor: pointer; font-size: 13px; color: #ced6e0; }
 .hero-match-date { font-size: 11px; color: #a4b0be; }
 .hero-match-players { font-size: 14px; font-weight: 700; color: #fff; }
 .hero-match-opp { font-size: 12px; color: #ced6e0; margin-top: 2px; }
+
+
+/* Botão de editar na lista de partidas e janela de edição */
+.hero-match-right { display: flex; align-items: center; gap: 6px; }
+.hero-match-edit {
+    width: auto !important;
+    min-height: 0 !important;
+    padding: 2px 6px !important;
+    font-size: 13px;
+    line-height: 1.2;
+    background: rgba(255, 255, 255, 0.08) !important;
+    background-image: none !important;
+    box-shadow: none !important;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+}
+.match-edit-box { max-height: 90vh; max-height: 90dvh; overflow-y: auto; text-align: left; }
+.me-label { display: block; font-size: 12px; font-weight: 700; color: #a4b0be; margin: 10px 0 4px; }
+.me-input { margin-bottom: 6px !important; text-transform: none !important; letter-spacing: 0 !important; font-size: 14px !important; }
+.me-winner { display: flex; gap: 14px; flex-wrap: wrap; font-size: 14px; color: #ced6e0; margin-bottom: 14px; }
+.me-winner label { display: flex; align-items: center; gap: 6px; }
+.match-edit-box .judge-buttons { margin-top: 12px; }
