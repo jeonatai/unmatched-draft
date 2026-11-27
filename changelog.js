@@ -11,28 +11,16 @@ const CHANGELOG = {
     versions: [
         {
             version: 'V0.9.8',
-            rev: 13, // aumente este número para a janela aparecer de novo para quem já viu esta versão
+            rev: 15, // aumente este número para a janela aparecer de novo para quem já viu esta versão
             items: [
-                { icon: '📊', text: 'O ranking de jogadores agora ajusta a porcentagem pelo numero de partidas, reduzindo o efeito de amostras pequenas.' },
-                { icon: '🔀', text: 'Administradores podem mesclar nomes de jogadores; as partidas antigas sao atualizadas e o ranking soma os resultados.' },
-                { icon: '🗑️', text: 'Administradores podem remover um nome do ranking sem apagar as partidas; tambem podem restaurar o nome depois.' },
-                { icon: '👥', text: 'Novo ranking de jogadores no feed, ordenado pela porcentagem de vitórias e com vitórias, derrotas, empates e partidas registradas.' },
-                { icon: '📱', text: 'Um único botão de exportação escolhe automaticamente o formato Android ou iPhone pelo aparelho.' },
-                { icon: '📐', text: 'Os botões e a navegação da tela inicial e do feed ficaram mais compactos no celular.' },
-                { icon: '🛠️', text: 'Os arquivos para Android agora incluem datas nos dados das expansões e seguem o formato de importação do app.' },
-                { icon: '📦', text: 'Os arquivos do BG Stats agora incluem as expansões correspondentes aos heróis usados, identificadas pelas caixas do site.' },
-                { icon: '📤', text: 'A exportação para o BG Stats agora também está disponível no feed. Em partidas Melhor de 3, o arquivo inclui cada combate como uma partida separada, com seu herói, vencedor, mapa e duração.' },
-                { icon: '🖼️', text: 'As artes dos heróis no confronto agora aparecem maiores e mostram mais da imagem nos celulares e computadores.' },
-                { icon: '📤', text: 'No fim da partida, agora é possível gerar e compartilhar um arquivo de jogo para importar no BG Stats.' },
-                { icon: '🎲', text: 'O sorteio ficou mais equilibrado: todos os heróis disponíveis têm a mesma chance, sem reduzir a probabilidade dos que saíram recentemente.' },
-                { icon: '📱', text: 'Ao avançar ou voltar entre telas, a página agora retorna ao topo, facilitando o uso no celular.' },
-                { icon: '🎨', text: 'A tela inicial ganhou um novo layout responsivo, mantendo as cores originais do site.' },
-                { icon: '🏁', text: 'Ao declarar o vencedor, a partida é encerrada para todos os jogadores e registrada no feed automaticamente.' },
-                { icon: '🎲', text: 'Correção no Sorteio Rápido: agora dá para escolher qualquer quantidade de jogadores, de 2 a 10 (antes só funcionava com 2 ou 10). A escolha é por botões, sem precisar digitar.' },
-                { icon: '👥', text: 'Equipes no Sorteio Rápido: quando o número de jogadores não divide igual, o excedente é distribuído entre as equipes (5 jogadores viram 3 + 2), sem sobrar um jogador sozinho.' },
-                { icon: '✍️', text: 'Os nomes digitados não somem mais ao mudar a quantidade de jogadores, o formato ou o modo da sala. Nomes repetidos agora geram um aviso.' },
-                { icon: '🦸', text: 'Na tela de um herói, agora dá para tocar num dos adversários para abrir aquele herói. O botão voltar (do navegador, do celular ou da tela) volta herói por herói, na ordem certa, até o Ranking.' },
-                { icon: '📋', text: 'Novo botão "Partidas" na tela de um herói: mostra todas as partidas dele no site, com os jogadores, o herói adversário, a data e o resultado (verde = vitória, vermelho = derrota).' }
+                { icon: '📱', text: 'Um unico botao do BG Stats detecta Android ou iPhone e prepara o arquivo no formato correspondente.' },
+                { icon: '🛠️', text: 'A exportacao Android agora inclui as datas exigidas nos dados das expansoes.' },
+                { icon: '📐', text: 'Os botoes e a navegacao da tela inicial e do feed ficaram mais compactos no celular.' },
+                { icon: '👥', text: 'O ranking de jogadores usa as partidas registradas no feed.' },
+                { icon: '📊', text: 'O ranking ajusta a porcentagem pelo numero de partidas, reduzindo o efeito de amostras pequenas.' },
+                { icon: '🔀', text: 'Administradores podem mesclar nomes e atualizar os nomes nas partidas antigas.' },
+                { icon: '🗑️', text: 'Administradores podem remover jogadores do ranking sem apagar partidas e restaura-los depois.' },
+                { icon: '🔎', text: 'Os campos de nomes sugerem jogadores que ja apareceram nas partidas registradas.' }
             ]
         }
     ]

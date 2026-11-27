@@ -706,6 +706,7 @@ function buildNameInputs(count, mode, keepValues) {
         const input = document.createElement('input');
         input.type = 'text';
         input.className = 'text-input name-input';
+        input.setAttribute('list', 'player-name-suggestions');
         input.placeholder = 'Jogador ' + (i + 1);
         input.value = previous[i] || '';
         input.dataset.index = i;
@@ -2805,11 +2806,26 @@ let playerRankHiddenRef = null;
 let playerRankingHiddenNames = new Set();
 let allPostsData = {};
 
+function refreshPlayerNameSuggestions() {
+    const datalist = document.getElementById("player-name-suggestions");
+    if (!datalist) return;
+    const knownPlayers = computePlayerRanking(allPostsData)
+        .filter(player => !/^Jogador\s+\d+$/i.test(player.name))
+        .sort((a, b) => b.games - a.games || a.name.localeCompare(b.name, "pt-BR"));
+    datalist.innerHTML = "";
+    knownPlayers.forEach(player => {
+        const option = document.createElement("option");
+        option.value = player.name;
+        datalist.appendChild(option);
+    });
+}
+
 function attachFeedListener() {
     if (!feedRef) {
         feedRef = db.ref('posts');
         feedRef.on('value', snapshot => {
             allPostsData = snapshot.val() || {};
+            refreshPlayerNameSuggestions();
             renderFeed(allPostsData);
             if (document.getElementById('screen-player-rank')?.style.display === 'block') renderPlayerRanking();
         });
@@ -2820,6 +2836,7 @@ function attachFeedListener() {
             playerRankingHiddenNames = new Set(
                 Object.values(snapshot.val() || {}).filter(name => typeof name === 'string').map(name => name.trim())
             );
+            refreshPlayerNameSuggestions();
             if (document.getElementById('screen-player-rank')?.style.display === 'block') {
                 renderPlayerRanking();
                 if (playerMergeModeActive) renderHiddenPlayerNames();
@@ -5715,6 +5732,7 @@ function buildQuickNameInputs(count) {
         const input = document.createElement('input');
         input.type = 'text';
         input.className = 'text-input name-input quick-name-input';
+        input.setAttribute('list', 'player-name-suggestions');
         input.placeholder = 'Jogador ' + (i + 1);
         input.value = previous[i] || '';
         input.dataset.index = i;

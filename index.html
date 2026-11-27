@@ -33,6 +33,7 @@
         <span>Sala: <strong id="room-code-display">-</strong></span>
         <button id="btn-copy-code" class="btn-copy-code">Copiar</button>
     </div>
+    <datalist id="player-name-suggestions"></datalist>
 
     <div class="container">
 
@@ -101,12 +102,12 @@
             <div id="add-match-1v1-fields">
                 <div class="config-section">
                     <h3>Jogador 1</h3>
-                    <input type="text" id="add-match-p1-name" class="text-input" placeholder="Nome do Jogador 1" style="margin-bottom: 10px;">
+                    <input type="text" id="add-match-p1-name" list="player-name-suggestions" class="text-input" placeholder="Nome do Jogador 1" style="margin-bottom: 10px;">
                     <input type="text" id="add-match-p1-hero" class="text-input" list="add-match-heroes-datalist" placeholder="Herói do Jogador 1">
                 </div>
                 <div class="config-section">
                     <h3>Jogador 2</h3>
-                    <input type="text" id="add-match-p2-name" class="text-input" placeholder="Nome do Jogador 2" style="margin-bottom: 10px;">
+                    <input type="text" id="add-match-p2-name" list="player-name-suggestions" class="text-input" placeholder="Nome do Jogador 2" style="margin-bottom: 10px;">
                     <input type="text" id="add-match-p2-hero" class="text-input" list="add-match-heroes-datalist" placeholder="Herói do Jogador 2">
                 </div>
                 <div class="config-section">
@@ -122,16 +123,16 @@
             <div id="add-match-2v2-fields" style="display: none;">
                 <div class="config-section">
                     <h3>Equipe A</h3>
-                    <input type="text" id="add-match-a1-name" class="text-input" placeholder="Jogador 1 (Equipe A)" style="margin-bottom: 10px;">
+                    <input type="text" id="add-match-a1-name" list="player-name-suggestions" class="text-input" placeholder="Jogador 1 (Equipe A)" style="margin-bottom: 10px;">
                     <input type="text" id="add-match-a1-hero" class="text-input" list="add-match-heroes-datalist" placeholder="Herói" style="margin-bottom: 10px;">
-                    <input type="text" id="add-match-a2-name" class="text-input" placeholder="Jogador 2 (Equipe A)" style="margin-bottom: 10px;">
+                    <input type="text" id="add-match-a2-name" list="player-name-suggestions" class="text-input" placeholder="Jogador 2 (Equipe A)" style="margin-bottom: 10px;">
                     <input type="text" id="add-match-a2-hero" class="text-input" list="add-match-heroes-datalist" placeholder="Herói">
                 </div>
                 <div class="config-section">
                     <h3>Equipe B</h3>
-                    <input type="text" id="add-match-b1-name" class="text-input" placeholder="Jogador 1 (Equipe B)" style="margin-bottom: 10px;">
+                    <input type="text" id="add-match-b1-name" list="player-name-suggestions" class="text-input" placeholder="Jogador 1 (Equipe B)" style="margin-bottom: 10px;">
                     <input type="text" id="add-match-b1-hero" class="text-input" list="add-match-heroes-datalist" placeholder="Herói" style="margin-bottom: 10px;">
-                    <input type="text" id="add-match-b2-name" class="text-input" placeholder="Jogador 2 (Equipe B)" style="margin-bottom: 10px;">
+                    <input type="text" id="add-match-b2-name" list="player-name-suggestions" class="text-input" placeholder="Jogador 2 (Equipe B)" style="margin-bottom: 10px;">
                     <input type="text" id="add-match-b2-hero" class="text-input" list="add-match-heroes-datalist" placeholder="Herói">
                 </div>
                 <div class="config-section">
@@ -612,10 +613,10 @@
             <input type="datetime-local" id="me-date" class="text-input me-input">
             <div id="me-fields">
                 <label class="me-label">Jogador 1</label>
-                <input type="text" id="me-name1" class="text-input me-input" placeholder="Jogador 1" autocomplete="off">
+                <input type="text" id="me-name1" list="player-name-suggestions" class="text-input me-input" placeholder="Jogador 1" autocomplete="off">
                 <select id="me-hero1" class="text-input me-input"></select>
                 <label class="me-label">Jogador 2</label>
-                <input type="text" id="me-name2" class="text-input me-input" placeholder="Jogador 2" autocomplete="off">
+                <input type="text" id="me-name2" list="player-name-suggestions" class="text-input me-input" placeholder="Jogador 2" autocomplete="off">
                 <select id="me-hero2" class="text-input me-input"></select>
                 <label class="me-label">Quem venceu?</label>
                 <div class="me-winner">
@@ -657,8 +658,8 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
     <script src="firebase-config.js"></script>
     <script src="boxes.js?v=1"></script>
-    <script src="app.js?v=20261127n"></script>
-    <script src="changelog.js?v=098o"></script>
+    <script src="app.js?v=20261127o"></script>
+    <script src="changelog.js?v=098q"></script>
 </body>
 </html>
 
