@@ -1846,3 +1846,46 @@ button:focus-visible { outline: 2px solid #e0bd7e; outline-offset: 3px; }
     .home-quick-btn { padding: 12px; }
     .feed-heading h3 { font-size: 22px; }
 }
+
+/* Keep the refreshed layout, restore the original Unmatched Draft palette. */
+body {
+    background-color: #0f0f12;
+    background-image: none;
+    color: #f1f2f6;
+}
+body.is-home-screen .container {
+    background: #16161a;
+    border-color: #26262f;
+}
+.home-eyebrow, .home-section-label { color: #ff6b81; }
+.home-eyebrow span { background: #ff4757; box-shadow: 0 0 12px rgba(255,71,87,.65); }
+.home-hero h1 { color: #f1f2f6; }
+.home-hero h1 em { color: #ff4757; }
+.home-hero p { color: #a4b0be; }
+.home-play-panel {
+    background: #1b1b21;
+    border-color: #30303a;
+}
+.home-play-panel .btn-row button, .home-quick-btn {
+    color: #fff;
+    background: linear-gradient(135deg, #ff4757, #ff6b81) !important;
+    border-color: rgba(255,107,129,.45);
+    box-shadow: 0 4px 15px rgba(255,71,87,.28) !important;
+}
+.home-play-panel .btn-row button:nth-child(2) {
+    background: #3498db !important;
+    border-color: rgba(52,152,219,.5);
+    box-shadow: 0 4px 15px rgba(52,152,219,.22) !important;
+}
+.home-play-panel small, .home-quick-btn small { color: rgba(255,255,255,.78); }
+.home-quick-btn {
+    background: #2f3542 !important;
+    border-color: #454c5a;
+    box-shadow: none !important;
+}
+.home-quick-btn > b { color: #fff; }
+.home-tools-nav button { color: #f1f2f6; background: #2f3542 !important; border-color: #3b4350; }
+.home-feed-section { border-color: #26262f; }
+.feed-heading > span { color: #2ecc71; background: rgba(46,204,113,.12); border-color: rgba(46,204,113,.3); }
+.home-feed-section .feed-post { border-color: #2f3542; background: #1e1e24; }
+button:focus-visible { outline-color: #ff6b81; }
