@@ -2390,10 +2390,16 @@ function createBgStatsPlayFile() {
     const board = (gameState.combatLogs || []).map(c => c.mapName).filter(Boolean).at(-1) || '';
     const gameRefId = 1;
     const logs = gameState.combatLogs || [];
+    const expansions = buildBgStatsExpansions([
+        ...logs.map(c => [c.p1Hero, c.p2Hero]).flat(),
+        ...slots.map(slot => gameState.mode === 'team' ? gameState.teamPicks?.[slot]?.nome : slot === 1 ? gameState.p1Pick?.nome : gameState.p2Pick?.nome)
+    ]);
     const playLogs = gameState.mode === 'bestof3' && logs.length ? logs : [null];
     const plays = playLogs.map((combat, index) => {
         const p1Won = combat ? combat.winnerName === getPlayerDisplayName(1) : (!gameState.isDraw && winner === 1);
         const p2Won = combat ? combat.winnerName === getPlayerDisplayName(2) : (!gameState.isDraw && winner === 2);
+        const hero1 = combat?.p1Hero || scores[0]?.role;
+        const hero2 = combat?.p2Hero || scores[1]?.role;
         const combatScores = teamMode || !combat ? scores : [
             { ...scores[0], role: combat.p1Hero || '?', winner: p1Won, rank: p1Won ? 1 : 2 },
             { ...scores[1], role: combat.p2Hero || '?', winner: p2Won, rank: p2Won ? 1 : 2 }
@@ -2401,7 +2407,7 @@ function createBgStatsPlayFile() {
         return {
             board: combat?.mapName || board,
             durationMin: Math.max(0, Math.round(((combat?.durationMs ?? gameState.matchDurationMs) || 0) / 60000)),
-            entryDate: localDate(now), expansionPlays: [], gameRefId,
+            entryDate: localDate(now), expansionPlays: [...new Set((teamMode ? slots.map(slot => gameState.teamPicks?.[slot]?.nome) : [hero1, hero2]).map(h => expansions.heroToGame[h]).filter(Boolean))].map(gameRefId => ({ gameRefId })), gameRefId,
             ignored: false, manualWinner: true, modificationDate: localDate(now),
             playDate: localDate(now), playDateYmd: ymd,
             playerScores: combatScores, rounds: 1, scoringSetting: 3,
@@ -2420,11 +2426,56 @@ function createBgStatsPlayFile() {
             urlImage: 'https://cf.geekdo-images.com/97szYRbiObtlL-DSnitRaQ__original/img/7wZqBRjBb83CSv8qYtqAUkRrSJM=/0x0/filters:format(png)/pic5088978.png',
             urlThumb: 'https://cf.geekdo-images.com/97szYRbiObtlL-DSnitRaQ__small/img/08zuDwoW6TMANKitjEjN2H1IrYg=/fit-in/200x150/filters:strip_icc()/pic5088978.png',
             usesTeams: false, uuid: '27F3DAD0-ADC0-4217-B998-C2C86D303688'
-        }],
+        }, ...expansions.games],
         locations: [], players,
         plays,
         userInfo: { meRefId: Math.max(1, Math.min(players.length, (myRole || 1))) }
     };
+}
+
+function buildBgStatsExpansions(heroNames) {
+    // BGG item IDs for the boxes represented in boxes.js; the source names
+    // remain the site’s Portuguese/English labels.
+    const bggIds = {
+        'battle-of-legends-volume-1': 274637,
+        'little-red-and-riding-hood-vs-beowulf': 325635,
+        'robin-hood-vs-bigfoot': 274638,
+        'cobble-fog': 294484,
+        'battle-of-legends-volume-2': 335764,
+        'slings-and-arrows': 415945,
+        'houdini-vs-the-genie': 354544,
+        'suns-origin': 383469,
+        'brains-and-brawn': 383467,
+        'jurassic-park': 284778,
+        'jurassic-park-volume-2': 284777,
+        'teen-spirit': 326936,
+        'the-witcher-realms-fall': 411861,
+        'the-witcher-steel-silver': 411860,
+        'for-king-and-country': 326937,
+        'hell-s-kitchen': 326934,
+        'redemption-row': 326933,
+        'buffy-the-vampire-slayer': 315060,
+        'contos-fantasticos': 381297
+    };
+    const used = [];
+    const heroToGame = {};
+    (heroNames || []).filter(Boolean).forEach(hero => {
+        const box = (BOXES || []).find(b => (b.herois || []).some(h => h.toLocaleLowerCase() === String(hero).toLocaleLowerCase()));
+        if (!box || !bggIds[box.id]) return;
+        let expansion = used.find(g => g.boxId === box.id);
+        if (!expansion) {
+            expansion = { id: used.length + 2, boxId: box.id, bggId: bggIds[box.id], name: 'Unmatched: ' + box.nome };
+            used.push(expansion);
+        }
+        heroToGame[hero] = expansion.id;
+    });
+    return { heroToGame, games: used.map(g => ({ id: g.id, bggId: g.bggId, bggName: g.name.replace(/^Unmatched: /, 'Unmatched: '), name: g.name, uuid: uuidFromBoxId(g.boxId), isBaseGame: 1, isExpansion: 1, cooperative: false, highestWins: true, maxPlayerCount: 4, minPlayerCount: 2, maxPlayTime: 40, minPlayTime: 20, minAge: 9, noPoints: true, usesTeams: false })) };
+}
+
+function uuidFromBoxId(value) {
+    // Stable UUID-shaped identifiers let BG Stats recognize the BGG game ID.
+    const hex = Array.from(String(value)).reduce((a, c) => ((a * 31 + c.charCodeAt(0)) >>> 0), 1).toString(16).toUpperCase().padStart(8, '0');
+    return `${hex}-0000-4000-8000-${hex}${hex.slice(0, 4)}`;
 }
 
 function createBgStatsPlayFileFromFeed(post) {
@@ -2437,6 +2488,7 @@ function createBgStatsPlayFileFromFeed(post) {
         return (c === 'x' ? r : (r & 3) | 8).toString(16).toUpperCase();
     });
     const participants = post.participants || [];
+    const expansions = buildBgStatsExpansions(participants.map(p => p.hero));
     const players = participants.map((p, i) => ({ id: i + 1, isAnonymous: false, metaData: '{"isNpc":0}', modificationDate: localDate(now), name: p.name || `Jogador ${i + 1}`, uuid: uuid() }));
     const teams = post.mode === 'team';
     const playerScores = participants.map((p, i) => ({
@@ -2456,7 +2508,7 @@ function createBgStatsPlayFileFromFeed(post) {
         return {
             board: combat?.mapName || combats.map(c => c.mapName).filter(Boolean).at(-1) || '',
             durationMin: Math.max(0, Math.round(((combat?.durationMs ?? post.durationMs) || 0) / 60000)),
-            entryDate: localDate(now), expansionPlays: [], gameRefId: 1,
+            entryDate: localDate(now), expansionPlays: [...new Set((combat ? [combat.p1Hero, combat.p2Hero] : participants.map(p => p.hero)).map(h => expansions.heroToGame[h]).filter(Boolean))].map(gameRefId => ({ gameRefId })), gameRefId: 1,
             ignored: false, manualWinner: true, modificationDate: localDate(now),
             playDate: localDate(new Date(post.timestamp || now)), playDateYmd: ymd,
             playerScores: scores, rounds: 1, scoringSetting: 3,
@@ -2474,12 +2526,13 @@ function createBgStatsPlayFileFromFeed(post) {
             urlImage: 'https://cf.geekdo-images.com/97szYRbiObtlL-DSnitRaQ__original/img/7wZqBRjBb83CSv8qYtqAUkRrSJM=/0x0/filters:format(png)/pic5088978.png',
             urlThumb: 'https://cf.geekdo-images.com/97szYRbiObtlL-DSnitRaQ__small/img/08zuDwoW6TMANKitjEjN2H1IrYg=/fit-in/200x150/filters:strip_icc()/pic5088978.png',
             usesTeams: false, uuid: '27F3DAD0-ADC0-4217-B998-C2C86D303688'
-        }],
+        }, ...expansions.games],
         locations: [], players, plays, userInfo: { meRefId: 1 }
     };
 }
 
 function downloadBgStatsFile(data, filename) {
+    if (/Android/i.test(navigator.userAgent || '')) data = adaptBgStatsForAndroid(data);
     const file = new File([JSON.stringify(data, null, 2)], filename, { type: 'application/json' });
     if (navigator.canShare?.({ files: [file] }) && navigator.share) {
         return navigator.share({ files: [file], title: 'Partida do Unmatched', text: 'Importar partida no BG Stats' })
@@ -2492,6 +2545,29 @@ function downloadBgStatsFile(data, filename) {
         link.href = url; link.download = filename; link.click();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
+}
+
+function adaptBgStatsForAndroid(data) {
+    const result = JSON.parse(JSON.stringify(data));
+    const uuidLower = value => typeof value === 'string' ? value.toLowerCase() : value;
+    (result.games || []).forEach(game => { game.uuid = uuidLower(game.uuid); });
+    (result.players || []).forEach(player => { player.uuid = uuidLower(player.uuid); });
+    (result.locations || []).forEach(location => { location.uuid = uuidLower(location.uuid); });
+    (result.plays || []).forEach(play => {
+        play.uuid = uuidLower(play.uuid);
+        play.metaData = JSON.stringify({
+            playerRefId: result.userInfo?.meRefId || 1,
+            playGameBggVersion: JSON.stringify({ versionId: 0, gameName: 'Unmatched Game System', versionName: '', imageUrl: '', thumbUrl: '', yearPublished: 0 }),
+            playUsedGameCopy: 2
+        });
+        (play.playerScores || []).forEach(score => {
+            if (score.score === '') score.score = null;
+            score.teamRole = score.teamRole || '';
+            score.startPosition = score.startPosition || '';
+            if (score.anonymousName === undefined) score.anonymousName = '';
+        });
+    });
+    return result;
 }
 
 document.getElementById('btn-export-bgstats')?.addEventListener('click', async () => {
