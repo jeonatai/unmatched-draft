@@ -1892,11 +1892,11 @@ button:focus-visible { outline-color: #ff6b81; }
 
 /* Larger full-art hero cards on the combat matchup screen. */
 #screen-combat #matchup-1v1 .fighter-card {
-    width: min(43%, 260px);
+    width: min(46%, 300px);
     min-width: 0;
     min-height: 0;
-    padding: 10px;
-    gap: 8px;
+    padding: 8px;
+    gap: 6px;
     border: 1px solid #34343f;
     border-bottom: 4px solid #3498db;
     border-radius: 15px;
@@ -1906,8 +1906,8 @@ button:focus-visible { outline-color: #ff6b81; }
 #screen-combat #matchup-1v1 .fighter-card .card-image {
     display: block;
     width: 100%;
-    height: auto;
-    aspect-ratio: 2 / 3;
+    height: clamp(190px, 52vw, 300px);
+    flex: 0 0 auto;
     object-fit: contain;
     background: #111116;
     border-radius: 9px;
@@ -1917,8 +1917,9 @@ button:focus-visible { outline-color: #ff6b81; }
 #screen-combat #matchup-1v1 .fighter-card .matchup-odds-badge { flex-shrink: 0; }
 #screen-combat #matchup-1v1 .vs { flex: 0 0 auto; }
 @media (max-width: 520px) {
-    #screen-combat #matchup-1v1 { gap: 7px; margin: 20px 0; }
-    #screen-combat #matchup-1v1 .fighter-card { width: calc((100% - 38px) / 2); padding: 8px; }
+    #screen-combat #matchup-1v1 { gap: 5px; margin: 16px 0; }
+    #screen-combat #matchup-1v1 .fighter-card { width: calc((100% - 32px) / 2); padding: 7px; }
+    #screen-combat #matchup-1v1 .fighter-card .card-image { height: clamp(190px, 56vw, 260px); }
     #screen-combat #matchup-1v1 .fighter-card > span { font-size: 11px; }
     #screen-combat #matchup-1v1 .fighter-card .fighter-player-name { font-size: 10px; }
     #screen-combat #matchup-1v1 .fighter-card .matchup-odds-badge { padding: 3px 7px; font-size: 11px; }

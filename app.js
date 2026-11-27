@@ -1,4 +1,4 @@
-// Lista de personagens
+﻿// Lista de personagens
 const PERSONAGENS = [
     { nome: "Alice | O Jaguadarte", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/UyRTRFSeylTWqKpnkSIus.png" },
     { nome: "Chapeuzinho Vermelho & O Caçador", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/xLyD7qzSKyz94f_F6QtEi.webp" },
@@ -352,9 +352,9 @@ async function getActiveRoomHeroNames() {
 //                     suficiente depois de tirá-los
 //   mandatoryNames -> obrigatório: esses heróis NUNCA podem sair (ex: já
 //                     escolhidos manualmente por um jogador café com leite)
-// Além disso, em 90% dos sorteios os heróis vistos recentemente neste
-// navegador ficam de fora (10% é totalmente livre), e todo o aleatório usa
-// o gerador criptograficamente seguro.
+// Todos os heróis elegíveis têm a mesma chance. O histórico local não altera
+// as probabilidades: ele era diferente em cada dispositivo e podia reduzir
+// demais o conjunto disponível. Todo o aleatório usa o gerador seguro.
 //   poolNames      -> (opcional) só sorteia entre esses heróis; é a lista das
 //                     CAIXAS escolhidas na criação da sala. null = todos.
 function drawUniqueHeroes(count, excludeNames, mandatoryNames, poolNames) {
@@ -370,18 +370,8 @@ function drawUniqueHeroes(count, excludeNames, mandatoryNames, poolNames) {
     }
 
     const n = Math.min(count, basePool.length);
-    const recentNames = new Set(getRecentHeroNames());
-    const allowRepeat = recentNames.size === 0 || secureRandomFloat() < RECENT_HEROES_REPEAT_CHANCE;
-
-    let pool = basePool;
-    if (!allowRepeat) {
-        const filtered = basePool.filter(p => !recentNames.has(p.nome));
-        if (filtered.length >= n) pool = filtered;
-    }
-
-    const picked = shuffleArray(pool).slice(0, n);
-    addRecentHeroNames(picked.map(p => p.nome));
-    return picked;
+    // Fisher–Yates uniforme; a ordem do array não favorece p1 nem p2.
+    return shuffleArray(basePool).slice(0, n);
 }
 
 // Versão que já consulta as outras salas abertas antes de sortear.
@@ -457,10 +447,17 @@ let suppressHistoryPush = false;
 let navStack = ['screen-home'];
 
 function showScreen(id) {
+    const currentScreen = document.querySelector('.screen[style*="display: block"]');
+    const isChangingScreen = !currentScreen || currentScreen.id !== id;
     document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
     const el = document.getElementById(id);
     if (el) el.style.display = 'block';
     document.body.classList.toggle('is-home-screen', id === 'screen-home');
+    if (isChangingScreen) {
+        // Mobile browsers keep the document scroll position between screens.
+        // Reset after layout so the newly displayed screen always starts above.
+        requestAnimationFrame(() => window.scrollTo({ top: 0, left: 0, behavior: 'auto' }));
+    }
 
     if (suppressHistoryPush || !BACK_TRACKED_SCREENS.has(id)) return;
     if (navStack[navStack.length - 1] === id) return;
@@ -5924,3 +5921,4 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 window.goHome = goHome;
+
