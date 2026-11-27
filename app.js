@@ -3297,11 +3297,10 @@ document.getElementById('match-edit-modal')?.addEventListener('click', (e) => { 
 // ============================================================
 // RANKING DE HERÓIS (todos os heróis, do mais forte ao mais fraco)
 // ============================================================
-// Usa o mesmo contador leve (heroStats) da tela Heróis. A ordem é pelo
-// aproveitamento AJUSTADO: cada herói começa com RANK_PRIOR_GAMES jogos
-// "imaginários" a 50%, para que 1 vitória em 1 jogo não passe à frente de
-// 20 vitórias em 25. Heróis sem nenhum jogo ficam no final.
-const RANK_PRIOR_GAMES = 4;
+// Usa o mesmo contador leve (heroStats) da tela Heróis. A ordem é pela
+// PORCENTAGEM DE VITÓRIA (vitórias ÷ jogos), da maior para a menor, comparada
+// de forma exata (sem arredondar). Se duas porcentagens forem iguais, quem tem
+// mais jogos fica na frente. Heróis sem nenhum jogo ficam no final.
 let heroRankRows = null;
 let rankScrollY = 0;
 
@@ -3313,13 +3312,13 @@ function computeHeroRanking(stats) {
         const games = wins + losses;
         return {
             hero: p, wins, losses, games,
-            pct: games ? Math.round((wins / games) * 100) : null,
-            score: (wins + RANK_PRIOR_GAMES * 0.5) / (games + RANK_PRIOR_GAMES)
+            pct: games ? Math.round((wins / games) * 100) : null
         };
     });
     rows.sort((a, b) =>
         (b.games > 0) - (a.games > 0) ||
-        b.score - a.score || b.wins - a.wins || a.losses - b.losses ||
+        (b.wins * a.games - a.wins * b.games) ||   // maior % primeiro (a/b vs c/d sem dividir)
+        b.games - a.games ||                        // mesma %: mais jogos na frente
         a.hero.nome.localeCompare(b.hero.nome, 'pt-BR'));
     rows.forEach((r, i) => { r.rank = i + 1; });
     return rows;
