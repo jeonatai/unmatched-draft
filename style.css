@@ -1443,6 +1443,14 @@ button[style*="background-color"] { background-image: none; }
 .rank-info { flex: 1; min-width: 0; }
 .rank-name { font-size: 13px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rank-record { font-size: 11px; color: #a4b0be; }
+.player-merge-admin { margin: 10px 0 14px; text-align: left; }
+.player-merge-admin > button, .player-merge-panel > button { min-height: 42px; padding: 10px 12px; font-size: 13px; }
+.player-merge-panel { margin-top: 8px; padding: 12px; background: #1e1e24; border: 1px solid #30303a; border-radius: 12px; }
+.player-merge-panel p { margin: 0 0 10px; font-size: 12px; }
+.player-merge-panel label[for="player-merge-canonical"] { display: block; margin-bottom: 5px; color: #a4b0be; font-size: 12px; font-weight: 700; }
+.player-merge-panel .text-input { margin: 0 0 8px; padding: 10px 12px; font-size: 14px; text-transform: none; letter-spacing: 0; }
+.player-merge-select { flex: 0 0 26px; display: flex; justify-content: center; align-items: center; cursor: pointer; }
+.player-merge-select input { width: 18px; height: 18px; margin: 0; accent-color: #ff4757; }
 .rank-pct { flex: 0 0 54px; text-align: right; font-weight: 800; font-size: 14px; }
 .rank-bar { height: 4px; background: #2f3542; border-radius: 4px; margin-top: 3px; overflow: hidden; }
 .rank-bar i { display: block; height: 100%; }

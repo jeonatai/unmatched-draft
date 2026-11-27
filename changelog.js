@@ -11,8 +11,9 @@ const CHANGELOG = {
     versions: [
         {
             version: 'V0.9.8',
-            rev: 10, // aumente este número para a janela aparecer de novo para quem já viu esta versão
+            rev: 11, // aumente este número para a janela aparecer de novo para quem já viu esta versão
             items: [
+                { icon: '🔀', text: 'Administradores podem mesclar nomes de jogadores; as partidas antigas sao atualizadas e o ranking soma os resultados.' },
                 { icon: '👥', text: 'Novo ranking de jogadores no feed, ordenado pela porcentagem de vitórias e com vitórias, derrotas, empates e partidas registradas.' },
                 { icon: '📱', text: 'Um único botão de exportação escolhe automaticamente o formato Android ou iPhone pelo aparelho.' },
                 { icon: '📐', text: 'Os botões e a navegação da tela inicial e do feed ficaram mais compactos no celular.' },

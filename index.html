@@ -24,7 +24,7 @@
     <meta name="twitter:title" content="Unmatched Draft — Sorteio e Draft Online para Unmatched">
     <meta name="twitter:description" content="Sorteie heróis, monte salas e organize partidas de Unmatched online, de graça, com amigos.">
 
-    <link rel="stylesheet" href="style.css?v=20261127g">
+    <link rel="stylesheet" href="style.css?v=20261127h">
 </head>
 <body class="is-home-screen">
 
@@ -344,6 +344,17 @@
             <h1>👥 Jogadores</h1>
             <p>Ranking pelas partidas registradas no feed, agrupadas pelo nome usado no site.</p>
             <input type="text" id="player-rank-filter" class="text-input rank-filter" placeholder="Buscar jogador..." autocomplete="off">
+            <section class="player-merge-admin" aria-label="Mesclar jogadores">
+                <button id="btn-player-merge-enable" class="btn-secondary">🔒 Mesclar nomes (admin)</button>
+                <div id="player-merge-panel" class="player-merge-panel" style="display:none;">
+                    <p>Selecione pelo menos dois nomes no ranking e escolha o nome que vai permanecer.</p>
+                    <label for="player-merge-canonical">Nome final</label>
+                    <input id="player-merge-canonical" class="text-input" type="text" maxlength="40" placeholder="Ex.: Alison" autocomplete="off">
+                    <p id="player-merge-selected-count" class="rank-note">0 nomes selecionados</p>
+                    <button id="btn-player-merge-apply" class="btn-secondary" disabled>Mesclar nomes selecionados</button>
+                    <button id="btn-player-merge-cancel" class="btn-secondary">Bloquear mesclagem</button>
+                </div>
+            </section>
             <p class="rank-note">Ordem pela porcentagem de vitórias. Empates não contam como vitória nem derrota; em caso de empate, quem tem mais vitórias fica na frente.</p>
             <p id="player-rank-loading" class="waiting-text" style="display: none;">Carregando ranking...</p>
             <div id="player-rank-list" class="rank-list"></div>
@@ -644,8 +655,8 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
     <script src="firebase-config.js"></script>
     <script src="boxes.js?v=1"></script>
-    <script src="app.js?v=20261127k"></script>
-    <script src="changelog.js?v=098l"></script>
+    <script src="app.js?v=20261127l"></script>
+    <script src="changelog.js?v=098m"></script>
 </body>
 </html>
 

@@ -2838,6 +2838,19 @@ function computePlayerRanking(posts) {
     return rows;
 }
 
+let playerMergeModeActive = false;
+const playerMergeSelectedNames = new Set();
+
+function updatePlayerMergeSelectionCount() {
+    const selected = [...playerMergeSelectedNames];
+    const count = document.getElementById("player-merge-selected-count");
+    const mergeButton = document.getElementById("btn-player-merge-apply");
+    const canonicalInput = document.getElementById("player-merge-canonical");
+    if (count) count.innerText = selected.length + (selected.length === 1 ? " nome selecionado" : " nomes selecionados");
+    if (mergeButton) mergeButton.disabled = selected.length < 2 || !canonicalInput?.value.trim();
+    if (canonicalInput && !canonicalInput.value.trim() && selected.length) canonicalInput.value = selected[0];
+}
+
 function renderPlayerRanking() {
     const list = document.getElementById('player-rank-list');
     if (!list) return;
@@ -2847,6 +2860,7 @@ function renderPlayerRanking() {
     list.innerHTML = '';
     if (!rows.length) {
         list.innerHTML = '<p class="waiting-text">Ainda não há jogadores no feed que correspondam à busca.</p>';
+        updatePlayerMergeSelectionCount();
         return;
     }
     rows.forEach(r => {
@@ -2874,9 +2888,27 @@ function renderPlayerRanking() {
         fill.style.background = r.pct >= 60 ? '#2ecc71' : (r.pct >= 45 ? '#f1c40f' : '#ff4757');
         bar.appendChild(fill);
         pct.appendChild(bar);
+        if (playerMergeModeActive) {
+            const select = document.createElement("label");
+            select.className = "player-merge-select";
+            const checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            checkbox.className = "player-merge-checkbox";
+            checkbox.value = r.name;
+            checkbox.checked = playerMergeSelectedNames.has(r.name);
+            checkbox.setAttribute("aria-label", "Selecionar " + r.name + " para mesclar");
+            checkbox.addEventListener("change", () => {
+                if (checkbox.checked) playerMergeSelectedNames.add(r.name);
+                else playerMergeSelectedNames.delete(r.name);
+                updatePlayerMergeSelectionCount();
+            });
+            select.appendChild(checkbox);
+            row.appendChild(select);
+        }
         row.append(pos, info, pct);
         list.appendChild(row);
     });
+    updatePlayerMergeSelectionCount();
 }
 
 document.getElementById('btn-go-player-rank')?.addEventListener('click', () => {
@@ -2886,6 +2918,84 @@ document.getElementById('btn-go-player-rank')?.addEventListener('click', () => {
 });
 document.getElementById('btn-player-rank-back')?.addEventListener('click', () => showScreen('screen-home'));
 document.getElementById('player-rank-filter')?.addEventListener('input', renderPlayerRanking);
+
+document.getElementById("btn-player-merge-enable")?.addEventListener("click", () => {
+    if (!ensureAdmin()) return;
+    playerMergeModeActive = true;
+    document.getElementById("btn-player-merge-enable").style.display = "none";
+    document.getElementById("player-merge-panel").style.display = "block";
+    renderPlayerRanking();
+});
+
+document.getElementById("btn-player-merge-cancel")?.addEventListener("click", () => {
+    playerMergeModeActive = false;
+    playerMergeSelectedNames.clear();
+    document.getElementById("player-merge-canonical").value = "";
+    document.getElementById("player-merge-panel").style.display = "none";
+    document.getElementById("btn-player-merge-enable").style.display = "";
+    renderPlayerRanking();
+    updatePlayerMergeSelectionCount();
+});
+
+document.getElementById("player-merge-canonical")?.addEventListener("input", updatePlayerMergeSelectionCount);
+
+document.getElementById("btn-player-merge-apply")?.addEventListener("click", async () => {
+    if (!playerMergeModeActive || !ensureAdmin()) return;
+    const sourceNames = [...playerMergeSelectedNames];
+    const canonicalInput = document.getElementById("player-merge-canonical");
+    const canonicalName = (canonicalInput?.value || "").trim().replace(/\s+/g, " ");
+    if (sourceNames.length < 2) {
+        alert("Selecione pelo menos dois nomes para mesclar.");
+        return;
+    }
+    if (!canonicalName) {
+        alert("Digite o nome que deve permanecer.");
+        canonicalInput?.focus();
+        return;
+    }
+
+    const selectedNames = new Set(sourceNames);
+    const updates = {};
+    const affectedPosts = new Set();
+    Object.entries(allPostsData || {}).forEach(([postId, post]) => {
+        if (!post) return;
+        Object.entries(post.participants || {}).forEach(([participantIndex, participant]) => {
+            if (!participant || !selectedNames.has(String(participant.name || "").trim())) return;
+            if (participant.name !== canonicalName) {
+                updates["posts/" + postId + "/participants/" + participantIndex + "/name"] = canonicalName;
+                affectedPosts.add(postId);
+            }
+        });
+        Object.entries(post.combats || {}).forEach(([combatIndex, combat]) => {
+            const winnerName = String(combat?.winnerName || "").trim();
+            if (!combat || !selectedNames.has(winnerName) || combat.winnerName === canonicalName) return;
+            updates["posts/" + postId + "/combats/" + combatIndex + "/winnerName"] = canonicalName;
+            affectedPosts.add(postId);
+        });
+    });
+
+    if (!Object.keys(updates).length) {
+        alert("As partidas ja estao usando esse nome. Nada foi alterado.");
+        return;
+    }
+    const message = "Mesclar " + sourceNames.join(", ") + " como \"" + canonicalName + "\" em " + affectedPosts.size + " partida(s)?\n\nEssa alteracao atualiza os nomes nas partidas e muda o ranking.";
+    if (!window.confirm(message)) return;
+
+    const applyButton = document.getElementById("btn-player-merge-apply");
+    applyButton.disabled = true;
+    try {
+        await db.ref().update(updates);
+        playerMergeSelectedNames.clear();
+        canonicalInput.value = "";
+        alert("Nomes mesclados. O ranking sera atualizado com as partidas registradas.");
+        renderPlayerRanking();
+        updatePlayerMergeSelectionCount();
+    } catch (error) {
+        alert("Nao foi possivel mesclar os nomes. Nenhuma partida foi atualizada. " + (error?.message || ""));
+    } finally {
+        updatePlayerMergeSelectionCount();
+    }
+});
 
 function detachFeedListener() {
     if (feedRef) feedRef.off();
