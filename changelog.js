@@ -11,8 +11,12 @@ const CHANGELOG = {
     versions: [
         {
             version: 'V0.9.8',
-            rev: 3, // aumente este número para a janela aparecer de novo para quem já viu esta versão
+            rev: 4, // aumente este número para a janela aparecer de novo para quem já viu esta versão
             items: [
+                { icon: '🖼️', text: 'As artes dos heróis no confronto agora aparecem maiores e mostram mais da imagem nos celulares e computadores.' },
+                { icon: '🎲', text: 'O sorteio ficou mais equilibrado: todos os heróis disponíveis têm a mesma chance, sem reduzir a probabilidade dos que saíram recentemente.' },
+                { icon: '📱', text: 'Ao avançar ou voltar entre telas, a página agora retorna ao topo, facilitando o uso no celular.' },
+                { icon: '🎨', text: 'A tela inicial ganhou um novo layout responsivo, mantendo as cores originais do site.' },
                 { icon: '🏁', text: 'Ao declarar o vencedor, a partida é encerrada para todos os jogadores e registrada no feed automaticamente.' },
                 { icon: '🎲', text: 'Correção no Sorteio Rápido: agora dá para escolher qualquer quantidade de jogadores, de 2 a 10 (antes só funcionava com 2 ou 10). A escolha é por botões, sem precisar digitar.' },
                 { icon: '👥', text: 'Equipes no Sorteio Rápido: quando o número de jogadores não divide igual, o excedente é distribuído entre as equipes (5 jogadores viram 3 + 2), sem sobrar um jogador sozinho.' },
