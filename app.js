@@ -1061,8 +1061,21 @@ function renderGame() {
     if (phase === 'post-game') {
         stopCombatTimerDisplay();
         renderPostGame();
+        postMatchAutomatically();
         return;
     }
+}
+
+// Encerra a partida de forma compartilhada e solicita o registro no feed
+// assim que o estado final chega do Firebase (em qualquer dispositivo).
+function finishRoomMatch(updates) {
+    if (!roomRef || !gameState || gameState.phase === 'post-game') return;
+    // Grava todos os dados finais de uma vez. A transação impede dois
+    // aparelhos que escolheram quase juntos de sobrescreverem o resultado.
+    roomRef.transaction(current => {
+        if (!current || current.phase === 'post-game') return;
+        return { ...current, ...updates, phase: 'post-game' };
+    });
 }
 
 // ============================================================
@@ -2148,8 +2161,7 @@ window.registerWinner = function(winnerNum) {
             durationMs: elapsed,
             mapName
         }];
-        roomRef.update({
-            phase: 'post-game',
+        finishRoomMatch({
             winner: winnerNum,
             matchDurationMs: elapsed,
             combatLogs,
@@ -2208,7 +2220,8 @@ window.registerWinner = function(winnerNum) {
         updates.combatTimer = newTimer();
     }
 
-    roomRef.update(updates);
+    if (updates.phase === 'post-game') finishRoomMatch(updates);
+    else roomRef.update(updates);
 };
 
 // Encerra uma "Melhor de 3" antes dos 3 combates (ex: um jogador precisa
@@ -2234,8 +2247,7 @@ window.finishBestOf3Early = function() {
         const ok = window.confirm('Finalizar a Melhor de 3 agora? Placar ' + p1s + ' x ' + p2s + ' — vai terminar em EMPATE.');
         if (!ok) return;
 
-        roomRef.update({
-            phase: 'post-game',
+        finishRoomMatch({
             winner: null,
             winnerTeam: null,
             isDraw: true,
@@ -2259,8 +2271,7 @@ window.finishBestOf3Early = function() {
     const winnerHero = winnerNum === 1 ? p1LastHero : p2LastHero;
     const loserHero = winnerNum === 1 ? p2LastHero : p1LastHero;
 
-    roomRef.update({
-        phase: 'post-game',
+    finishRoomMatch({
         winner: winnerNum,
         winnerTeam: null,
         isDraw: false,
@@ -2294,8 +2305,7 @@ window.registerTeamWinner = function(team) {
         durationMs: elapsed,
         mapName
     }];
-    roomRef.update({
-        phase: 'post-game',
+    finishRoomMatch({
         winnerTeam: team,
         matchDurationMs: elapsed,
         combatLogs,
