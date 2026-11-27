@@ -441,7 +441,7 @@ function getDeviceId() {
 const BACK_TRACKED_SCREENS = new Set([
     'screen-home', 'screen-configure', 'screen-enter-code', 'screen-creator-role-pick',
     'screen-quick-setup', 'screen-quick-result', 'screen-tools', 'screen-add-match',
-    'screen-box-select', 'screen-hero-stats', 'screen-hero-rank', 'screen-matchup', 'screen-stats-audit', 'screen-import', 'screen-join-error'
+    'screen-box-select', 'screen-hero-stats', 'screen-hero-rank', 'screen-player-rank', 'screen-matchup', 'screen-stats-audit', 'screen-import', 'screen-join-error'
 ]);
 let suppressHistoryPush = false;
 let navStack = ['screen-home'];
@@ -2531,8 +2531,8 @@ function createBgStatsPlayFileFromFeed(post) {
     };
 }
 
-function downloadBgStatsFile(data, filename) {
-    if (/Android/i.test(navigator.userAgent || '')) data = adaptBgStatsForAndroid(data);
+function downloadBgStatsFile(data, filename, platform) {
+    if (platform === 'android') data = adaptBgStatsForAndroid(data);
     const file = new File([JSON.stringify(data, null, 2)], filename, { type: 'application/json' });
     if (navigator.canShare?.({ files: [file] }) && navigator.share) {
         return navigator.share({ files: [file], title: 'Partida do Unmatched', text: 'Importar partida no BG Stats' })
@@ -2570,9 +2570,14 @@ function adaptBgStatsForAndroid(data) {
     return result;
 }
 
-document.getElementById('btn-export-bgstats')?.addEventListener('click', async () => {
+document.getElementById('btn-export-bgstats-android')?.addEventListener('click', async () => {
     if (!gameState || gameState.phase !== 'post-game') return;
-    await downloadBgStatsFile(createBgStatsPlayFile(), `Unmatched-partida-${Date.now()}.bgsplay`);
+    await downloadBgStatsFile(createBgStatsPlayFile(), `Unmatched-Android-${Date.now()}.bgsplay`, 'android');
+});
+
+document.getElementById('btn-export-bgstats-ios')?.addEventListener('click', async () => {
+    if (!gameState || gameState.phase !== 'post-game') return;
+    await downloadBgStatsFile(createBgStatsPlayFile(), `Unmatched-iPhone-${Date.now()}.bgsplay`, 'ios');
 });
 
 // ============================================================
@@ -2789,8 +2794,83 @@ function attachFeedListener() {
     feedRef.on('value', snapshot => {
         allPostsData = snapshot.val() || {};
         renderFeed(allPostsData);
+        if (document.getElementById('screen-player-rank')?.style.display === 'block') renderPlayerRanking();
     });
 }
+
+function computePlayerRanking(posts) {
+    const stats = new Map();
+    Object.values(posts || {}).filter(post => post && !post.hidden).forEach(post => {
+        const participants = post.participants || [];
+        if (!participants.length) return;
+        const hasWinner = participants.some(p => p && p.won);
+        const isDraw = !hasWinner && (participants.some(p => /empate/i.test(p.note || '')) || /empate/i.test(participants[0]?.note || ''));
+        participants.forEach(p => {
+            if (!p || !String(p.name || '').trim()) return;
+            const name = String(p.name).trim();
+            const row = stats.get(name) || { name, wins: 0, losses: 0, draws: 0, games: 0 };
+            row.games++;
+            if (isDraw) row.draws++;
+            else if (p.won) row.wins++;
+            else row.losses++;
+            stats.set(name, row);
+        });
+    });
+    const rows = [...stats.values()];
+    rows.forEach(r => { r.pct = r.games ? Math.round(r.wins / r.games * 100) : 0; });
+    rows.sort((a, b) => b.pct - a.pct || b.wins - a.wins || b.games - a.games || a.name.localeCompare(b.name, 'pt-BR'));
+    rows.forEach((r, i) => { r.rank = i + 1; });
+    return rows;
+}
+
+function renderPlayerRanking() {
+    const list = document.getElementById('player-rank-list');
+    if (!list) return;
+    const q = (document.getElementById('player-rank-filter')?.value || '').trim().toLocaleLowerCase();
+    const rows = computePlayerRanking(allPostsData).filter(r => !q || r.name.toLocaleLowerCase().includes(q));
+    const medals = { 1: '🥇', 2: '🥈', 3: '🥉' };
+    list.innerHTML = '';
+    if (!rows.length) {
+        list.innerHTML = '<p class="waiting-text">Ainda não há jogadores no feed que correspondam à busca.</p>';
+        return;
+    }
+    rows.forEach(r => {
+        const row = document.createElement('div');
+        row.className = 'rank-row' + (r.rank <= 3 ? ' r' + r.rank : '');
+        const pos = document.createElement('div');
+        pos.className = 'rank-pos';
+        pos.innerText = medals[r.rank] || ('#' + r.rank);
+        const info = document.createElement('div');
+        info.className = 'rank-info';
+        const name = document.createElement('div');
+        name.className = 'rank-name';
+        name.innerText = r.name;
+        const record = document.createElement('div');
+        record.className = 'rank-record';
+        record.innerText = `${r.wins}V · ${r.losses}D · ${r.draws}E · ${r.games} ${r.games === 1 ? 'partida' : 'partidas'}`;
+        info.append(name, record);
+        const pct = document.createElement('div');
+        pct.className = 'rank-pct';
+        pct.innerText = r.pct + '%';
+        const bar = document.createElement('div');
+        bar.className = 'rank-bar';
+        const fill = document.createElement('i');
+        fill.style.width = r.pct + '%';
+        fill.style.background = r.pct >= 60 ? '#2ecc71' : (r.pct >= 45 ? '#f1c40f' : '#ff4757');
+        bar.appendChild(fill);
+        pct.appendChild(bar);
+        row.append(pos, info, pct);
+        list.appendChild(row);
+    });
+}
+
+document.getElementById('btn-go-player-rank')?.addEventListener('click', () => {
+    showScreen('screen-player-rank');
+    document.getElementById('player-rank-filter').value = '';
+    renderPlayerRanking();
+});
+document.getElementById('btn-player-rank-back')?.addEventListener('click', () => showScreen('screen-home'));
+document.getElementById('player-rank-filter')?.addEventListener('input', renderPlayerRanking);
 
 function detachFeedListener() {
     if (feedRef) feedRef.off();
@@ -5285,15 +5365,24 @@ function renderFeed(posts) {
         time.innerText = formatTimestamp(post.timestamp);
         div.appendChild(time);
 
-        const bgStatsBtn = document.createElement('button');
-        bgStatsBtn.type = 'button';
-        bgStatsBtn.className = 'btn-secondary feed-bgstats-btn';
-        bgStatsBtn.innerText = '📤 Enviar para o BG Stats';
-        bgStatsBtn.onclick = () => downloadBgStatsFile(
-            createBgStatsPlayFileFromFeed(post),
-            `Unmatched-partida-${postId}.bgsplay`
-        );
-        div.appendChild(bgStatsBtn);
+        const bgStatsActions = document.createElement('div');
+        bgStatsActions.className = 'bgstats-export-actions feed-bgstats-actions';
+        [
+            { platform: 'android', label: '🤖 BG Stats Android' },
+            { platform: 'ios', label: '🍎 BG Stats iPhone' }
+        ].forEach(option => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'btn-secondary feed-bgstats-btn';
+            button.innerText = option.label;
+            button.onclick = () => downloadBgStatsFile(
+                createBgStatsPlayFileFromFeed(post),
+                `Unmatched-${option.platform === 'android' ? 'Android' : 'iPhone'}-${postId}.bgsplay`,
+                option.platform
+            );
+            bgStatsActions.appendChild(button);
+        });
+        div.appendChild(bgStatsActions);
 
         // Comentários: área recolhível, fechada por padrão
         const comments = post.comments

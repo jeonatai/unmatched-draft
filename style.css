@@ -1828,6 +1828,7 @@ button:focus-visible { outline: 2px solid #e0bd7e; outline-offset: 3px; }
 @media (min-width: 800px) {
     body.is-home-screen { padding: 56px 28px; }
     body.is-home-screen .container { max-width: 1080px; padding: 54px 64px; }
+    .home-tools-nav { grid-template-columns: repeat(3, 1fr); }
     .home-hero { padding-bottom: 34px; }
     .home-play-panel { padding: 24px; }
     .home-play-panel .btn-row button { min-height: 88px; }
@@ -1888,7 +1889,9 @@ body.is-home-screen .container {
 .home-feed-section { border-color: #26262f; }
 .feed-heading > span { color: #2ecc71; background: rgba(46,204,113,.12); border-color: rgba(46,204,113,.3); }
 .home-feed-section .feed-post { border-color: #2f3542; background: #1e1e24; }
-.feed-bgstats-btn { width: auto; margin: 10px 0 2px; padding: 9px 14px; font-size: 12px; }
+.bgstats-export-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 2px; }
+.bgstats-export-actions > button { width: auto; flex: 1 1 180px; margin: 0; padding: 9px 14px; font-size: 12px; }
+.feed-bgstats-btn { width: auto; }
 button:focus-visible { outline-color: #ff6b81; }
 
 /* Larger full-art hero cards on the combat matchup screen. */

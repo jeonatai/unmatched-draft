@@ -11,9 +11,10 @@ const CHANGELOG = {
     versions: [
         {
             version: 'V0.9.8',
-            rev: 7, // aumente este número para a janela aparecer de novo para quem já viu esta versão
+            rev: 9, // aumente este número para a janela aparecer de novo para quem já viu esta versão
             items: [
-                { icon: '📱', text: 'A exportação do BG Stats agora ajusta automaticamente o arquivo para Android ou iPhone.' },
+                { icon: '👥', text: 'Novo ranking de jogadores no feed, ordenado pela porcentagem de vitórias e com vitórias, derrotas, empates e partidas registradas.' },
+                { icon: '📱', text: 'A exportação do BG Stats agora oferece botões separados para Android e iPhone, no fim da partida e no feed.' },
                 { icon: '📦', text: 'Os arquivos do BG Stats agora incluem as expansões correspondentes aos heróis usados, identificadas pelas caixas do site.' },
                 { icon: '📤', text: 'A exportação para o BG Stats agora também está disponível no feed. Em partidas Melhor de 3, o arquivo inclui cada combate como uma partida separada, com seu herói, vencedor, mapa e duração.' },
                 { icon: '🖼️', text: 'As artes dos heróis no confronto agora aparecem maiores e mostram mais da imagem nos celulares e computadores.' },

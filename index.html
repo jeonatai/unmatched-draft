@@ -24,7 +24,7 @@
     <meta name="twitter:title" content="Unmatched Draft — Sorteio e Draft Online para Unmatched">
     <meta name="twitter:description" content="Sorteie heróis, monte salas e organize partidas de Unmatched online, de graça, com amigos.">
 
-    <link rel="stylesheet" href="style.css?v=20261127d">
+    <link rel="stylesheet" href="style.css?v=20261127f">
 </head>
 <body class="is-home-screen">
 
@@ -53,6 +53,7 @@
             </section>
             <nav class="home-tools-nav" aria-label="Mais opções">
                 <button id="btn-go-rank" class="btn-secondary js-go-rank">🏅 Ranking</button>
+                <button id="btn-go-player-rank" class="btn-secondary">👥 Jogadores</button>
                 <button id="btn-go-tools" class="btn-secondary">🛠️ Ferramentas</button>
             </nav>
 
@@ -338,6 +339,17 @@
             <button id="btn-rank-back" class="btn-secondary">Voltar ao Início</button>
         </div>
 
+        <!-- TELA: Ranking de jogadores -->
+        <div id="screen-player-rank" class="screen" style="display: none;">
+            <h1>👥 Jogadores</h1>
+            <p>Ranking pelas partidas registradas no feed, agrupadas pelo nome usado no site.</p>
+            <input type="text" id="player-rank-filter" class="text-input rank-filter" placeholder="Buscar jogador..." autocomplete="off">
+            <p class="rank-note">Ordem pela porcentagem de vitórias. Empates não contam como vitória nem derrota; em caso de empate, quem tem mais vitórias fica na frente.</p>
+            <p id="player-rank-loading" class="waiting-text" style="display: none;">Carregando ranking...</p>
+            <div id="player-rank-list" class="rank-list"></div>
+            <button id="btn-player-rank-back" class="btn-secondary">Voltar ao Início</button>
+        </div>
+
         <!-- TELA: Entrar com código -->
         <div id="screen-enter-code" class="screen" style="display: none;">
             <h1>Entrar na Sala</h1>
@@ -571,7 +583,10 @@
             <p id="post-game-message">-</p>
             <p id="post-game-duration" class="post-game-duration"></p>
             <p id="post-game-auto-posted" class="waiting-text">📣 Partida postada automaticamente no feed!</p>
-            <button id="btn-export-bgstats" class="btn-secondary">📤 Enviar para o BG Stats</button>
+            <div class="bgstats-export-actions">
+                <button id="btn-export-bgstats-android" class="btn-secondary">🤖 BG Stats Android</button>
+                <button id="btn-export-bgstats-ios" class="btn-secondary">🍎 BG Stats iPhone</button>
+            </div>
             <button id="btn-rematch" style="background-color: #2ecc71;">Revanche</button>
             <button id="btn-close-room" class="btn-secondary">Fechar Sala</button>
         </div>
@@ -632,10 +647,11 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
     <script src="firebase-config.js"></script>
     <script src="boxes.js?v=1"></script>
-    <script src="app.js?v=20261127h"></script>
-    <script src="changelog.js?v=098i"></script>
+    <script src="app.js?v=20261127j"></script>
+    <script src="changelog.js?v=098k"></script>
 </body>
 </html>
+
 
 
 
