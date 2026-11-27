@@ -2345,6 +2345,150 @@ function renderPostGame() {
 
 }
 
+function createBgStatsPlayFile() {
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const localDate = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    const ymd = Number(`${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}`);
+    const uuid = () => 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+        const r = secureRandomInt(16);
+        return (c === 'x' ? r : (r & 3) | 8).toString(16).toUpperCase();
+    });
+
+    const teamMode = gameState.mode === 'team';
+    const slots = teamMode ? [1, 2, 3, 4] : [1, 2];
+    const players = slots.map((slot, i) => ({
+        id: i + 1,
+        isAnonymous: false,
+        metaData: '{"isNpc":0}',
+        modificationDate: localDate(now),
+        name: getPlayerDisplayName(slot),
+        uuid: uuid()
+    }));
+    let winner = gameState.winner || null;
+    if (gameState.mode === 'bestof3' && !winner && !gameState.isDraw) winner = (gameState.p1Score || 0) >= 2 ? 1 : 2;
+    const scores = slots.map((slot, i) => {
+        const team = teamMode ? ((slot === 1 || slot === 3) ? 'A' : 'B') : null;
+        const won = teamMode ? team === gameState.winnerTeam : (!gameState.isDraw && slot === winner);
+        let hero = '?';
+        if (gameState.mode === 'single') hero = (slot === 1 ? gameState.p1Pick : gameState.p2Pick)?.nome || '?';
+        else if (gameState.mode === 'bestof3') {
+            const finalHero = gameState.isDraw
+                ? (slot === 1 ? gameState.finalP1Hero : gameState.finalP2Hero)
+                : (slot === winner ? gameState.finalWinnerHero : gameState.finalLoserHero);
+            hero = finalHero?.nome || '?';
+        } else if (teamMode) hero = gameState.teamPicks?.[slot]?.nome || '?';
+        return {
+            metaData: '{}', newPlayer: false, playerRefId: i + 1,
+            rank: won ? 1 : 2, role: hero, score: '', seatOrder: i,
+            startPlayer: slot === gameState.startingPlayer,
+            winner: !!won,
+            ...(teamMode ? { team: team } : {})
+        };
+    });
+
+    const board = (gameState.combatLogs || []).map(c => c.mapName).filter(Boolean).at(-1) || '';
+    const gameRefId = 1;
+    const play = {
+        board,
+        durationMin: Math.max(0, Math.round((gameState.matchDurationMs || 0) / 60000)),
+        entryDate: localDate(now),
+        expansionPlays: [],
+        gameRefId,
+        ignored: false,
+        manualWinner: true,
+        modificationDate: localDate(now),
+        playDate: localDate(now),
+        playDateYmd: ymd,
+        playerScores: scores,
+        rounds: (gameState.combatLogs || []).length,
+        scoringSetting: 3,
+        usesTeams: teamMode,
+        uuid: uuid()
+    };
+    return {
+        about: 'This is a Play file that can be read by Board Game Stats.',
+        games: [{
+            bggId: 295564, bggName: 'Unmatched Game System', bggYear: 2019,
+            cooperative: false, designers: 'Rob Daviau, Justin D. Jacobson',
+            highestWins: true, id: gameRefId, isBaseGame: 1, isExpansion: 1,
+            maxPlayerCount: 4, maxPlayTime: 40, minAge: 9, minPlayerCount: 2,
+            minPlayTime: 20, modificationDate: localDate(now),
+            name: 'Unmatched Game System', noPoints: true, rating: 82,
+            urlImage: 'https://cf.geekdo-images.com/97szYRbiObtlL-DSnitRaQ__original/img/7wZqBRjBb83CSv8qYtqAUkRrSJM=/0x0/filters:format(png)/pic5088978.png',
+            urlThumb: 'https://cf.geekdo-images.com/97szYRbiObtlL-DSnitRaQ__small/img/08zuDwoW6TMANKitjEjN2H1IrYg=/fit-in/200x150/filters:strip_icc()/pic5088978.png',
+            usesTeams: false, uuid: '27F3DAD0-ADC0-4217-B998-C2C86D303688'
+        }],
+        locations: [], players,
+        plays: [play],
+        userInfo: { meRefId: Math.max(1, Math.min(players.length, (myRole || 1))) }
+    };
+}
+
+function createBgStatsPlayFileFromFeed(post) {
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const localDate = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    const ymd = Number(`${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}`);
+    const uuid = () => 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+        const r = secureRandomInt(16);
+        return (c === 'x' ? r : (r & 3) | 8).toString(16).toUpperCase();
+    });
+    const participants = post.participants || [];
+    const players = participants.map((p, i) => ({ id: i + 1, isAnonymous: false, metaData: '{"isNpc":0}', modificationDate: localDate(now), name: p.name || `Jogador ${i + 1}`, uuid: uuid() }));
+    const teams = post.mode === 'team';
+    const playerScores = participants.map((p, i) => ({
+        metaData: '{}', newPlayer: false, playerRefId: i + 1,
+        rank: p.won ? 1 : 2, role: p.hero || '?', score: '', seatOrder: i,
+        startPlayer: false, winner: !!p.won,
+        ...(teams ? { team: p.note?.replace('Equipe ', '') || (i % 2 ? 'B' : 'A') } : {})
+    }));
+    const combats = post.combats || [];
+    const play = {
+        board: combats.map(c => c.mapName).filter(Boolean).at(-1) || '',
+        durationMin: Math.max(0, Math.round((post.durationMs || 0) / 60000)),
+        entryDate: localDate(now), expansionPlays: [], gameRefId: 1,
+        ignored: false, manualWinner: true, modificationDate: localDate(now),
+        playDate: localDate(new Date(post.timestamp || now)), playDateYmd: ymd,
+        playerScores, rounds: combats.length, scoringSetting: 3,
+        usesTeams: teams, uuid: uuid()
+    };
+    return {
+        about: 'This is a Play file that can be read by Board Game Stats.',
+        games: [{
+            bggId: 295564, bggName: 'Unmatched Game System', bggYear: 2019,
+            cooperative: false, designers: 'Rob Daviau, Justin D. Jacobson', highestWins: true,
+            id: 1, isBaseGame: 1, isExpansion: 1, maxPlayerCount: 4, maxPlayTime: 40,
+            minAge: 9, minPlayerCount: 2, minPlayTime: 20, modificationDate: localDate(now),
+            name: 'Unmatched Game System', noPoints: true, rating: 82,
+            urlImage: 'https://cf.geekdo-images.com/97szYRbiObtlL-DSnitRaQ__original/img/7wZqBRjBb83CSv8qYtqAUkRrSJM=/0x0/filters:format(png)/pic5088978.png',
+            urlThumb: 'https://cf.geekdo-images.com/97szYRbiObtlL-DSnitRaQ__small/img/08zuDwoW6TMANKitjEjN2H1IrYg=/fit-in/200x150/filters:strip_icc()/pic5088978.png',
+            usesTeams: false, uuid: '27F3DAD0-ADC0-4217-B998-C2C86D303688'
+        }],
+        locations: [], players, plays: [play], userInfo: { meRefId: 1 }
+    };
+}
+
+function downloadBgStatsFile(data, filename) {
+    const file = new File([JSON.stringify(data, null, 2)], filename, { type: 'application/json' });
+    if (navigator.canShare?.({ files: [file] }) && navigator.share) {
+        return navigator.share({ files: [file], title: 'Partida do Unmatched', text: 'Importar partida no BG Stats' })
+            .catch(e => { if (e.name !== 'AbortError') download(); });
+    }
+    download();
+    function download() {
+        const url = URL.createObjectURL(file);
+        const link = document.createElement('a');
+        link.href = url; link.download = filename; link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+}
+
+document.getElementById('btn-export-bgstats')?.addEventListener('click', async () => {
+    if (!gameState || gameState.phase !== 'post-game') return;
+    await downloadBgStatsFile(createBgStatsPlayFile(), `Unmatched-partida-${Date.now()}.bgsplay`);
+});
+
 // ============================================================
 // FEED DE PARTIDAS
 // ============================================================
@@ -5054,6 +5198,16 @@ function renderFeed(posts) {
         time.className = 'feed-post-time';
         time.innerText = formatTimestamp(post.timestamp);
         div.appendChild(time);
+
+        const bgStatsBtn = document.createElement('button');
+        bgStatsBtn.type = 'button';
+        bgStatsBtn.className = 'btn-secondary feed-bgstats-btn';
+        bgStatsBtn.innerText = '📤 Enviar para o BG Stats';
+        bgStatsBtn.onclick = () => downloadBgStatsFile(
+            createBgStatsPlayFileFromFeed(post),
+            `Unmatched-partida-${postId}.bgsplay`
+        );
+        div.appendChild(bgStatsBtn);
 
         // Comentários: área recolhível, fechada por padrão
         const comments = post.comments

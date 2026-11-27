@@ -1888,6 +1888,7 @@ body.is-home-screen .container {
 .home-feed-section { border-color: #26262f; }
 .feed-heading > span { color: #2ecc71; background: rgba(46,204,113,.12); border-color: rgba(46,204,113,.3); }
 .home-feed-section .feed-post { border-color: #2f3542; background: #1e1e24; }
+.feed-bgstats-btn { width: auto; margin: 10px 0 2px; padding: 9px 14px; font-size: 12px; }
 button:focus-visible { outline-color: #ff6b81; }
 
 /* Larger full-art hero cards on the combat matchup screen. */
