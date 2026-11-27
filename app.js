@@ -2389,23 +2389,25 @@ function createBgStatsPlayFile() {
 
     const board = (gameState.combatLogs || []).map(c => c.mapName).filter(Boolean).at(-1) || '';
     const gameRefId = 1;
-    const play = {
-        board,
-        durationMin: Math.max(0, Math.round((gameState.matchDurationMs || 0) / 60000)),
-        entryDate: localDate(now),
-        expansionPlays: [],
-        gameRefId,
-        ignored: false,
-        manualWinner: true,
-        modificationDate: localDate(now),
-        playDate: localDate(now),
-        playDateYmd: ymd,
-        playerScores: scores,
-        rounds: (gameState.combatLogs || []).length,
-        scoringSetting: 3,
-        usesTeams: teamMode,
-        uuid: uuid()
-    };
+    const logs = gameState.combatLogs || [];
+    const playLogs = gameState.mode === 'bestof3' && logs.length ? logs : [null];
+    const plays = playLogs.map((combat, index) => {
+        const p1Won = combat ? combat.winnerName === getPlayerDisplayName(1) : (!gameState.isDraw && winner === 1);
+        const p2Won = combat ? combat.winnerName === getPlayerDisplayName(2) : (!gameState.isDraw && winner === 2);
+        const combatScores = teamMode || !combat ? scores : [
+            { ...scores[0], role: combat.p1Hero || '?', winner: p1Won, rank: p1Won ? 1 : 2 },
+            { ...scores[1], role: combat.p2Hero || '?', winner: p2Won, rank: p2Won ? 1 : 2 }
+        ];
+        return {
+            board: combat?.mapName || board,
+            durationMin: Math.max(0, Math.round(((combat?.durationMs ?? gameState.matchDurationMs) || 0) / 60000)),
+            entryDate: localDate(now), expansionPlays: [], gameRefId,
+            ignored: false, manualWinner: true, modificationDate: localDate(now),
+            playDate: localDate(now), playDateYmd: ymd,
+            playerScores: combatScores, rounds: 1, scoringSetting: 3,
+            usesTeams: teamMode, uuid: uuid()
+        };
+    });
     return {
         about: 'This is a Play file that can be read by Board Game Stats.',
         games: [{
@@ -2420,7 +2422,7 @@ function createBgStatsPlayFile() {
             usesTeams: false, uuid: '27F3DAD0-ADC0-4217-B998-C2C86D303688'
         }],
         locations: [], players,
-        plays: [play],
+        plays,
         userInfo: { meRefId: Math.max(1, Math.min(players.length, (myRole || 1))) }
     };
 }
@@ -2444,15 +2446,23 @@ function createBgStatsPlayFileFromFeed(post) {
         ...(teams ? { team: p.note?.replace('Equipe ', '') || (i % 2 ? 'B' : 'A') } : {})
     }));
     const combats = post.combats || [];
-    const play = {
-        board: combats.map(c => c.mapName).filter(Boolean).at(-1) || '',
-        durationMin: Math.max(0, Math.round((post.durationMs || 0) / 60000)),
-        entryDate: localDate(now), expansionPlays: [], gameRefId: 1,
-        ignored: false, manualWinner: true, modificationDate: localDate(now),
-        playDate: localDate(new Date(post.timestamp || now)), playDateYmd: ymd,
-        playerScores, rounds: combats.length, scoringSetting: 3,
-        usesTeams: teams, uuid: uuid()
-    };
+    const playLogs = post.mode === 'bestof3' && combats.length ? combats : [null];
+    const plays = playLogs.map(combat => {
+        const scores = combat && participants.length >= 2 ? [
+            { ...playerScores[0], role: combat.p1Hero || '?', winner: combat.winnerName === participants[0].name, rank: combat.winnerName === participants[0].name ? 1 : 2 },
+            { ...playerScores[1], role: combat.p2Hero || '?', winner: combat.winnerName === participants[1].name, rank: combat.winnerName === participants[1].name ? 1 : 2 },
+            ...playerScores.slice(2)
+        ] : playerScores;
+        return {
+            board: combat?.mapName || combats.map(c => c.mapName).filter(Boolean).at(-1) || '',
+            durationMin: Math.max(0, Math.round(((combat?.durationMs ?? post.durationMs) || 0) / 60000)),
+            entryDate: localDate(now), expansionPlays: [], gameRefId: 1,
+            ignored: false, manualWinner: true, modificationDate: localDate(now),
+            playDate: localDate(new Date(post.timestamp || now)), playDateYmd: ymd,
+            playerScores: scores, rounds: 1, scoringSetting: 3,
+            usesTeams: teams, uuid: uuid()
+        };
+    });
     return {
         about: 'This is a Play file that can be read by Board Game Stats.',
         games: [{
@@ -2465,7 +2475,7 @@ function createBgStatsPlayFileFromFeed(post) {
             urlThumb: 'https://cf.geekdo-images.com/97szYRbiObtlL-DSnitRaQ__small/img/08zuDwoW6TMANKitjEjN2H1IrYg=/fit-in/200x150/filters:strip_icc()/pic5088978.png',
             usesTeams: false, uuid: '27F3DAD0-ADC0-4217-B998-C2C86D303688'
         }],
-        locations: [], players, plays: [play], userInfo: { meRefId: 1 }
+        locations: [], players, plays, userInfo: { meRefId: 1 }
     };
 }
 
