@@ -1456,7 +1456,8 @@ button[style*="background-color"] { background-image: none; }
 .player-merge-hidden-list:empty { display: none; }
 .player-merge-hidden-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 5px; padding: 7px 9px; border: 1px solid #30303a; border-radius: 8px; font-size: 12px; }
 .player-merge-hidden-row button { width: auto; min-height: 34px; margin: 0; padding: 6px 10px; font-size: 11px; }
-.rank-pct { flex: 0 0 54px; text-align: right; font-weight: 800; font-size: 14px; }
+.rank-pct { flex: 0 0 58px; text-align: right; font-weight: 800; font-size: 14px; }
+.rank-real-pct { display: block; margin-top: 1px; color: #a4b0be; font-size: 9px; font-weight: 500; }
 .rank-bar { height: 4px; background: #2f3542; border-radius: 4px; margin-top: 3px; overflow: hidden; }
 .rank-bar i { display: block; height: 100%; }
 

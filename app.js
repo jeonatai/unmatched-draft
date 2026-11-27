@@ -2847,8 +2847,12 @@ function computePlayerRanking(posts) {
         });
     });
     const rows = [...stats.values()];
-    rows.forEach(r => { r.pct = r.games ? Math.round(r.wins / r.games * 100) : 0; });
-    rows.sort((a, b) => b.pct - a.pct || b.wins - a.wins || b.games - a.games || a.name.localeCompare(b.name, 'pt-BR'));
+    rows.forEach(r => {
+        const decisions = r.wins + r.losses;
+        r.pct = decisions ? Math.round(r.wins / decisions * 100) : 0;
+        r.rating = Math.round(((r.wins + 10) / (decisions + 20)) * 100);
+    });
+    rows.sort((a, b) => b.rating - a.rating || b.games - a.games || b.pct - a.pct || b.wins - a.wins || a.name.localeCompare(b.name, 'pt-BR'));
     rows.forEach((r, i) => { r.rank = i + 1; });
     return rows;
 }
@@ -2927,12 +2931,16 @@ function renderPlayerRanking() {
         info.append(name, record);
         const pct = document.createElement('div');
         pct.className = 'rank-pct';
-        pct.innerText = r.pct + '%';
+        pct.innerText = r.rating + '%';
+        const realPct = document.createElement('small');
+        realPct.className = 'rank-real-pct';
+        realPct.innerText = 'real ' + r.pct + '%';
+        pct.appendChild(realPct);
         const bar = document.createElement('div');
         bar.className = 'rank-bar';
         const fill = document.createElement('i');
-        fill.style.width = r.pct + '%';
-        fill.style.background = r.pct >= 60 ? '#2ecc71' : (r.pct >= 45 ? '#f1c40f' : '#ff4757');
+        fill.style.width = r.rating + '%';
+        fill.style.background = r.rating >= 60 ? '#2ecc71' : (r.rating >= 45 ? '#f1c40f' : '#ff4757');
         bar.appendChild(fill);
         pct.appendChild(bar);
         if (playerMergeModeActive) {

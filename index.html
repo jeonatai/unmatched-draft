@@ -24,7 +24,7 @@
     <meta name="twitter:title" content="Unmatched Draft — Sorteio e Draft Online para Unmatched">
     <meta name="twitter:description" content="Sorteie heróis, monte salas e organize partidas de Unmatched online, de graça, com amigos.">
 
-    <link rel="stylesheet" href="style.css?v=20261127i">
+    <link rel="stylesheet" href="style.css?v=20261127j">
 </head>
 <body class="is-home-screen">
 
@@ -333,7 +333,7 @@
             <h1>🏅 Ranking</h1>
             <p>Do herói mais forte ao mais fraco, pelas partidas registradas no site. Toque num herói para ver os confrontos dele.</p>
             <input type="text" id="rank-filter" class="text-input rank-filter" placeholder="Buscar herói..." autocomplete="off">
-            <p class="rank-note">Ordem pela porcentagem de vitória. Em caso de empate, quem tem mais jogos fica na frente. Sem jogos, ficam no final.</p>
+            <p class="rank-note">Ordem pela porcentagem de vitorias. Empates nao contam como vitoria nem derrota; em caso de empate, quem tem mais vitorias fica na frente.</p>
             <p id="rank-loading" class="waiting-text" style="display: none;">Carregando ranking...</p>
             <div id="rank-list" class="rank-list"></div>
             <button id="btn-rank-back" class="btn-secondary">Voltar ao Início</button>
@@ -357,7 +357,7 @@
                     <button id="btn-player-merge-cancel" class="btn-secondary">Bloquear mesclagem</button>
                 </div>
             </section>
-            <p class="rank-note">Ordem pela porcentagem de vitórias. Empates não contam como vitória nem derrota; em caso de empate, quem tem mais vitórias fica na frente.</p>
+            <p class="rank-note">Ordem pelo indice ajustado: com poucas partidas, o valor fica mais perto de 50% e se aproxima do aproveitamento real conforme o historico cresce. Empates nao contam; empates no indice sao decididos por quem tem mais partidas.</p>
             <p id="player-rank-loading" class="waiting-text" style="display: none;">Carregando ranking...</p>
             <div id="player-rank-list" class="rank-list"></div>
             <button id="btn-player-rank-back" class="btn-secondary">Voltar ao Início</button>
@@ -657,8 +657,8 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
     <script src="firebase-config.js"></script>
     <script src="boxes.js?v=1"></script>
-    <script src="app.js?v=20261127m"></script>
-    <script src="changelog.js?v=098n"></script>
+    <script src="app.js?v=20261127n"></script>
+    <script src="changelog.js?v=098o"></script>
 </body>
 </html>
 
