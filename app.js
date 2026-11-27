@@ -1,4 +1,4 @@
-﻿// Lista de personagens
+// Lista de personagens
 const PERSONAGENS = [
     { nome: "Alice | O Jaguadarte", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/UyRTRFSeylTWqKpnkSIus.png" },
     { nome: "Chapeuzinho Vermelho & O Caçador", img: "https://yptpnirqgfmxphjvsdjz.supabase.co/storage/v1/object/public/heroes/card-covers/xLyD7qzSKyz94f_F6QtEi.webp" },
@@ -2419,7 +2419,7 @@ function createBgStatsPlayFile() {
         games: [{
             bggId: 295564, bggName: 'Unmatched Game System', bggYear: 2019,
             cooperative: false, designers: 'Rob Daviau, Justin D. Jacobson',
-            highestWins: true, id: gameRefId, isBaseGame: 1, isExpansion: 1,
+            highestWins: true, id: gameRefId, isBaseGame: 1, isExpansion: 0,
             maxPlayerCount: 4, maxPlayTime: 40, minAge: 9, minPlayerCount: 2,
             minPlayTime: 20, modificationDate: localDate(now),
             name: 'Unmatched Game System', noPoints: true, rating: 82,
@@ -2434,6 +2434,9 @@ function createBgStatsPlayFile() {
 }
 
 function buildBgStatsExpansions(heroNames) {
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const modificationDate = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate()) + ' ' + pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds());
     // BGG item IDs for the boxes represented in boxes.js; the source names
     // remain the site’s Portuguese/English labels.
     const bggIds = {
@@ -2469,7 +2472,7 @@ function buildBgStatsExpansions(heroNames) {
         }
         heroToGame[hero] = expansion.id;
     });
-    return { heroToGame, games: used.map(g => ({ id: g.id, bggId: g.bggId, bggName: g.name.replace(/^Unmatched: /, 'Unmatched: '), name: g.name, uuid: uuidFromBoxId(g.boxId), isBaseGame: 1, isExpansion: 1, cooperative: false, highestWins: true, maxPlayerCount: 4, minPlayerCount: 2, maxPlayTime: 40, minPlayTime: 20, minAge: 9, noPoints: true, usesTeams: false })) };
+    return { heroToGame, games: used.map(g => ({ id: g.id, bggId: g.bggId, bggName: g.name, bggYear: 0, name: g.name, uuid: uuidFromBoxId(g.boxId), modificationDate, isBaseGame: 1, isExpansion: 1, cooperative: false, highestWins: true, maxPlayerCount: 4, minPlayerCount: 2, maxPlayTime: 40, minPlayTime: 20, minAge: 9, noPoints: true, usesTeams: false, designers: '', rating: 0, urlThumb: '', urlImage: '' })) };
 }
 
 function uuidFromBoxId(value) {
@@ -2520,7 +2523,7 @@ function createBgStatsPlayFileFromFeed(post) {
         games: [{
             bggId: 295564, bggName: 'Unmatched Game System', bggYear: 2019,
             cooperative: false, designers: 'Rob Daviau, Justin D. Jacobson', highestWins: true,
-            id: 1, isBaseGame: 1, isExpansion: 1, maxPlayerCount: 4, maxPlayTime: 40,
+            id: 1, isBaseGame: 1, isExpansion: 0, maxPlayerCount: 4, maxPlayTime: 40,
             minAge: 9, minPlayerCount: 2, minPlayTime: 20, modificationDate: localDate(now),
             name: 'Unmatched Game System', noPoints: true, rating: 82,
             urlImage: 'https://cf.geekdo-images.com/97szYRbiObtlL-DSnitRaQ__original/img/7wZqBRjBb83CSv8qYtqAUkRrSJM=/0x0/filters:format(png)/pic5088978.png',
@@ -2531,8 +2534,18 @@ function createBgStatsPlayFileFromFeed(post) {
     };
 }
 
-function downloadBgStatsFile(data, filename, platform) {
+function detectBgStatsPlatform() {
+    const ua = navigator.userAgent || '';
+    if (/Android/i.test(ua)) return 'android';
+    if (/iPhone|iPad|iPod/i.test(ua) || (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1)) return 'ios';
+    return 'ios';
+}
+
+function downloadBgStatsFile(data, filename) {
+    const platform = detectBgStatsPlatform();
     if (platform === 'android') data = adaptBgStatsForAndroid(data);
+    const label = platform === 'android' ? 'Android' : 'iPhone';
+    filename = filename.replace(/\.(bgsplay|json)$/i, '-' + label + '.bgsplay');
     const file = new File([JSON.stringify(data, null, 2)], filename, { type: 'application/json' });
     if (navigator.canShare?.({ files: [file] }) && navigator.share) {
         return navigator.share({ files: [file], title: 'Partida do Unmatched', text: 'Importar partida no BG Stats' })
@@ -2550,18 +2563,25 @@ function downloadBgStatsFile(data, filename, platform) {
 function adaptBgStatsForAndroid(data) {
     const result = JSON.parse(JSON.stringify(data));
     const uuidLower = value => typeof value === 'string' ? value.toLowerCase() : value;
-    (result.games || []).forEach(game => { game.uuid = uuidLower(game.uuid); });
-    (result.players || []).forEach(player => { player.uuid = uuidLower(player.uuid); });
-    (result.locations || []).forEach(location => { location.uuid = uuidLower(location.uuid); });
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const nowText = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate()) + ' ' + pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds());
+    (result.games || []).forEach(game => { game.uuid = uuidLower(game.uuid); game.modificationDate ||= nowText; });
+    (result.players || []).forEach(player => { player.uuid = uuidLower(player.uuid); player.modificationDate ||= nowText; });
+    (result.locations || []).forEach(location => { location.uuid = uuidLower(location.uuid); location.modificationDate ||= nowText; });
     (result.plays || []).forEach(play => {
         play.uuid = uuidLower(play.uuid);
+        play.modificationDate ||= nowText;
+        play.entryDate ||= play.modificationDate;
+        play.playDate ||= play.entryDate;
+        delete play.playDateYmd;
         play.metaData = JSON.stringify({
             playerRefId: result.userInfo?.meRefId || 1,
             playGameBggVersion: JSON.stringify({ versionId: 0, gameName: 'Unmatched Game System', versionName: '', imageUrl: '', thumbUrl: '', yearPublished: 0 }),
             playUsedGameCopy: 2
         });
         (play.playerScores || []).forEach(score => {
-            if (score.score === '') score.score = null;
+            if (score.score == null) score.score = '';
             score.teamRole = score.teamRole || '';
             score.startPosition = score.startPosition || '';
             if (score.anonymousName === undefined) score.anonymousName = '';
@@ -2570,14 +2590,9 @@ function adaptBgStatsForAndroid(data) {
     return result;
 }
 
-document.getElementById('btn-export-bgstats-android')?.addEventListener('click', async () => {
+document.getElementById('btn-export-bgstats')?.addEventListener('click', async () => {
     if (!gameState || gameState.phase !== 'post-game') return;
-    await downloadBgStatsFile(createBgStatsPlayFile(), `Unmatched-Android-${Date.now()}.bgsplay`, 'android');
-});
-
-document.getElementById('btn-export-bgstats-ios')?.addEventListener('click', async () => {
-    if (!gameState || gameState.phase !== 'post-game') return;
-    await downloadBgStatsFile(createBgStatsPlayFile(), `Unmatched-iPhone-${Date.now()}.bgsplay`, 'ios');
+    await downloadBgStatsFile(createBgStatsPlayFile(), 'Unmatched-partida-' + Date.now() + '.bgsplay');
 });
 
 // ============================================================
@@ -5365,24 +5380,12 @@ function renderFeed(posts) {
         time.innerText = formatTimestamp(post.timestamp);
         div.appendChild(time);
 
-        const bgStatsActions = document.createElement('div');
-        bgStatsActions.className = 'bgstats-export-actions feed-bgstats-actions';
-        [
-            { platform: 'android', label: '🤖 BG Stats Android' },
-            { platform: 'ios', label: '🍎 BG Stats iPhone' }
-        ].forEach(option => {
-            const button = document.createElement('button');
-            button.type = 'button';
-            button.className = 'btn-secondary feed-bgstats-btn';
-            button.innerText = option.label;
-            button.onclick = () => downloadBgStatsFile(
-                createBgStatsPlayFileFromFeed(post),
-                `Unmatched-${option.platform === 'android' ? 'Android' : 'iPhone'}-${postId}.bgsplay`,
-                option.platform
-            );
-            bgStatsActions.appendChild(button);
-        });
-        div.appendChild(bgStatsActions);
+        const bgStatsBtn = document.createElement('button');
+        bgStatsBtn.type = 'button';
+        bgStatsBtn.className = 'btn-secondary feed-bgstats-btn';
+        bgStatsBtn.innerText = 'Enviar para o BG Stats';
+        bgStatsBtn.onclick = () => downloadBgStatsFile(createBgStatsPlayFileFromFeed(post), 'Unmatched-partida-' + postId + '.bgsplay');
+        div.appendChild(bgStatsBtn);
 
         // Comentários: área recolhível, fechada por padrão
         const comments = post.comments

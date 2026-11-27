@@ -1836,16 +1836,23 @@ button:focus-visible { outline: 2px solid #e0bd7e; outline-offset: 3px; }
 }
 @media (max-width: 520px) {
     body.is-home-screen { padding: 18px 12px; }
-    body.is-home-screen .container { padding: 22px 16px; border-radius: 18px; }
-    .home-hero { padding-bottom: 20px; }
-    .home-hero p { font-size: 13px; }
-    .home-play-panel { padding: 14px; }
-    .home-play-panel .btn-row { gap: 8px; }
-    .home-play-panel .btn-row button { min-height: 76px; gap: 8px; padding: 11px 9px; font-size: 18px; }
-    .home-play-panel strong { font-size: 13px; }
-    .home-play-panel small { font-size: 10px; line-height: 1.3; }
-    .home-quick-btn { padding: 12px; }
-    .feed-heading h3 { font-size: 22px; }
+    body.is-home-screen .container { padding: 18px 14px; border-radius: 16px; }
+    .home-hero { padding: 4px 0 16px; }
+    .home-hero h1 { font-size: clamp(32px, 9vw, 42px); }
+    .home-hero p { font-size: 12px; }
+    .home-play-panel { padding: 12px; }
+    .home-play-panel .btn-row { grid-template-columns: 1fr; gap: 7px; }
+    .home-play-panel .btn-row button { min-height: 52px; gap: 10px; padding: 8px 12px; font-size: 14px; border-radius: 10px; }
+    .home-play-panel strong { font-size: 14px; }
+    .home-play-panel small { font-size: 10px; line-height: 1.2; }
+    .home-quick-btn { min-height: 48px; padding: 8px 12px; margin-top: 7px; }
+    .home-tools-nav { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 8px; }
+    .home-tools-nav button { min-height: 44px; padding: 7px 3px; font-size: 11px; line-height: 1.15; border-radius: 8px; }
+    .home-feed-section { margin-top: 20px; padding-top: 16px; }
+    .feed-heading h3 { font-size: 20px; }
+    .feed-post { padding: 12px; }
+    .feed-bgstats-btn { min-height: 40px; padding: 8px 12px; font-size: 12px; }
+    .feed-toggle-comments { min-height: 40px; padding: 8px 12px; font-size: 12px; }
 }
 
 /* Keep the refreshed layout, restore the original Unmatched Draft palette. */
@@ -1889,9 +1896,9 @@ body.is-home-screen .container {
 .home-feed-section { border-color: #26262f; }
 .feed-heading > span { color: #2ecc71; background: rgba(46,204,113,.12); border-color: rgba(46,204,113,.3); }
 .home-feed-section .feed-post { border-color: #2f3542; background: #1e1e24; }
-.bgstats-export-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 2px; }
-.bgstats-export-actions > button { width: auto; flex: 1 1 180px; margin: 0; padding: 9px 14px; font-size: 12px; }
-.feed-bgstats-btn { width: auto; }
+.bgstats-export-button { margin-top: 10px; }
+.feed-bgstats-btn { width: auto !important; margin: 10px 0 2px; padding: 10px 14px; font-size: 13px; }
+.feed-toggle-comments { min-height: 44px; padding: 10px 14px; font-size: 13px; }
 button:focus-visible { outline-color: #ff6b81; }
 
 /* Larger full-art hero cards on the combat matchup screen. */
