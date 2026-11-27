@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -24,9 +24,9 @@
     <meta name="twitter:title" content="Unmatched Draft — Sorteio e Draft Online para Unmatched">
     <meta name="twitter:description" content="Sorteie heróis, monte salas e organize partidas de Unmatched online, de graça, com amigos.">
 
-    <link rel="stylesheet" href="style.css?v=20261111t">
+    <link rel="stylesheet" href="style.css?v=20261127a">
 </head>
-<body>
+<body class="is-home-screen">
 
     <!-- Código da sala (visível quando dentro de uma sala) -->
     <div id="room-code-header" class="room-code-header" style="display: none;">
@@ -38,20 +38,26 @@
 
         <!-- TELA: Início -->
         <div id="screen-home" class="screen">
-            <h1>⚔️ Unmatched Draft ⚔️</h1>
-            <p>Crie uma nova sala ou entre em uma existente com o código.</p>
+            <header class="home-hero">
+                <div class="home-eyebrow"><span></span> MESA PRONTA. ESCOLHA SEU HERÓI.</div>
+                <h1>Unmatched <em>Draft</em></h1>
+                <p>Monte a partida, escolha seus heróis e descubra quem vence.</p>
+            </header>
+            <section class="home-play-panel" aria-label="Começar uma partida">
+                <div class="home-section-label">COMECE A JOGAR</div>
             <div class="btn-row">
-                <button id="btn-go-create" style="background-color: #2ecc71;">Criar Sala</button>
-                <button id="btn-go-join" style="background-color: #3498db;">Entrar em Sala</button>
+                <button id="btn-go-create">⚔️ <span><strong>Criar sala</strong><small>Convide alguém para jogar</small></span></button>
+                <button id="btn-go-join">↗️ <span><strong>Entrar em sala</strong><small>Tenho um código de partida</small></span></button>
             </div>
-            <button id="btn-go-quick" style="margin-top: 10px;">🎲 Sorteio Rápido</button>
-            <div class="btn-row">
+                <button id="btn-go-quick" class="home-quick-btn">🎲 <span><strong>Sorteio rápido</strong><small>Escolha heróis sem criar sala</small></span><b>→</b></button>
+            </section>
+            <nav class="home-tools-nav" aria-label="Mais opções">
                 <button id="btn-go-rank" class="btn-secondary js-go-rank">🏅 Ranking</button>
                 <button id="btn-go-tools" class="btn-secondary">🛠️ Ferramentas</button>
-            </div>
+            </nav>
 
             <div id="home-feed-section" class="home-feed-section">
-                <h3>📰 Últimas Partidas</h3>
+                <div class="feed-heading"><div><div class="home-section-label">DA COMUNIDADE</div><h3>Últimas partidas</h3></div><span>AO VIVO</span></div>
                 <div id="home-feed-list" class="feed-list"></div>
                 <div id="home-feed-pagination" class="feed-pagination"></div>
             </div>
@@ -625,7 +631,8 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
     <script src="firebase-config.js"></script>
     <script src="boxes.js?v=1"></script>
-    <script src="app.js?v=20261111u"></script>
+    <script src="app.js?v=20261127a"></script>
     <script src="changelog.js?v=098d"></script>
 </body>
 </html>
+

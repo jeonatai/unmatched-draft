@@ -460,6 +460,7 @@ function showScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
     const el = document.getElementById(id);
     if (el) el.style.display = 'block';
+    document.body.classList.toggle('is-home-screen', id === 'screen-home');
 
     if (suppressHistoryPush || !BACK_TRACKED_SCREENS.has(id)) return;
     if (navStack[navStack.length - 1] === id) return;
