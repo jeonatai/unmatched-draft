@@ -24,7 +24,7 @@
     <meta name="twitter:title" content="Unmatched Draft — Sorteio e Draft Online para Unmatched">
     <meta name="twitter:description" content="Sorteie heróis, monte salas e organize partidas de Unmatched online, de graça, com amigos.">
 
-    <link rel="stylesheet" href="style.css?v=20261127h">
+    <link rel="stylesheet" href="style.css?v=20261127i">
 </head>
 <body class="is-home-screen">
 
@@ -347,11 +347,13 @@
             <section class="player-merge-admin" aria-label="Mesclar jogadores">
                 <button id="btn-player-merge-enable" class="btn-secondary">🔒 Mesclar nomes (admin)</button>
                 <div id="player-merge-panel" class="player-merge-panel" style="display:none;">
-                    <p>Selecione pelo menos dois nomes no ranking e escolha o nome que vai permanecer.</p>
+                    <p>Para mesclar, selecione dois ou mais nomes e escolha o nome final. Para remover alguem do ranking sem apagar partidas, selecione o nome e use o botao de remocao.</p>
                     <label for="player-merge-canonical">Nome final</label>
                     <input id="player-merge-canonical" class="text-input" type="text" maxlength="40" placeholder="Ex.: Alison" autocomplete="off">
                     <p id="player-merge-selected-count" class="rank-note">0 nomes selecionados</p>
                     <button id="btn-player-merge-apply" class="btn-secondary" disabled>Mesclar nomes selecionados</button>
+                    <button id="btn-player-merge-hide" class="btn-secondary" disabled>Remover selecionados do ranking</button>
+                    <div id="player-merge-hidden-list" class="player-merge-hidden-list"></div>
                     <button id="btn-player-merge-cancel" class="btn-secondary">Bloquear mesclagem</button>
                 </div>
             </section>
@@ -655,8 +657,8 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
     <script src="firebase-config.js"></script>
     <script src="boxes.js?v=1"></script>
-    <script src="app.js?v=20261127l"></script>
-    <script src="changelog.js?v=098m"></script>
+    <script src="app.js?v=20261127m"></script>
+    <script src="changelog.js?v=098n"></script>
 </body>
 </html>
 

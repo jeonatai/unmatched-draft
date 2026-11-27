@@ -2801,18 +2801,32 @@ function submitAddMatch() {
 }
 
 let feedRef = null;
+let playerRankHiddenRef = null;
+let playerRankingHiddenNames = new Set();
 let allPostsData = {};
 
 function attachFeedListener() {
-    if (feedRef) return; // já conectado
-    feedRef = db.ref('posts');
-    feedRef.on('value', snapshot => {
-        allPostsData = snapshot.val() || {};
-        renderFeed(allPostsData);
-        if (document.getElementById('screen-player-rank')?.style.display === 'block') renderPlayerRanking();
-    });
+    if (!feedRef) {
+        feedRef = db.ref('posts');
+        feedRef.on('value', snapshot => {
+            allPostsData = snapshot.val() || {};
+            renderFeed(allPostsData);
+            if (document.getElementById('screen-player-rank')?.style.display === 'block') renderPlayerRanking();
+        });
+    }
+    if (!playerRankHiddenRef) {
+        playerRankHiddenRef = db.ref('playerRankingHidden');
+        playerRankHiddenRef.on('value', snapshot => {
+            playerRankingHiddenNames = new Set(
+                Object.values(snapshot.val() || {}).filter(name => typeof name === 'string').map(name => name.trim())
+            );
+            if (document.getElementById('screen-player-rank')?.style.display === 'block') {
+                renderPlayerRanking();
+                if (playerMergeModeActive) renderHiddenPlayerNames();
+            }
+        });
+    }
 }
-
 function computePlayerRanking(posts) {
     const stats = new Map();
     Object.values(posts || {}).filter(post => post && !post.hidden).forEach(post => {
@@ -2823,6 +2837,7 @@ function computePlayerRanking(posts) {
         participants.forEach(p => {
             if (!p || !String(p.name || '').trim()) return;
             const name = String(p.name).trim();
+            if (playerRankingHiddenNames.has(name)) return;
             const row = stats.get(name) || { name, wins: 0, losses: 0, draws: 0, games: 0 };
             row.games++;
             if (isDraw) row.draws++;
@@ -2845,12 +2860,44 @@ function updatePlayerMergeSelectionCount() {
     const selected = [...playerMergeSelectedNames];
     const count = document.getElementById("player-merge-selected-count");
     const mergeButton = document.getElementById("btn-player-merge-apply");
+    const hideButton = document.getElementById("btn-player-merge-hide");
     const canonicalInput = document.getElementById("player-merge-canonical");
     if (count) count.innerText = selected.length + (selected.length === 1 ? " nome selecionado" : " nomes selecionados");
     if (mergeButton) mergeButton.disabled = selected.length < 2 || !canonicalInput?.value.trim();
+    if (hideButton) hideButton.disabled = selected.length < 1;
     if (canonicalInput && !canonicalInput.value.trim() && selected.length) canonicalInput.value = selected[0];
 }
 
+function renderHiddenPlayerNames() {
+    const list = document.getElementById("player-merge-hidden-list");
+    if (!list || !playerMergeModeActive) return;
+    list.innerHTML = "";
+    const names = [...playerRankingHiddenNames].sort((a, b) => a.localeCompare(b, "pt-BR"));
+    const heading = document.createElement("p");
+    heading.className = "rank-note";
+    heading.innerText = names.length ? "Removidos do ranking (as partidas continuam no feed):" : "Nao ha jogadores removidos do ranking.";
+    list.appendChild(heading);
+    names.forEach(name => {
+        const row = document.createElement("div");
+        row.className = "player-merge-hidden-row";
+        const label = document.createElement("span");
+        label.innerText = name;
+        const restore = document.createElement("button");
+        restore.type = "button";
+        restore.className = "btn-secondary";
+        restore.innerText = "Restaurar";
+        restore.onclick = async () => {
+            if (!ensureAdmin() || !window.confirm("Restaurar " + name + " ao ranking?")) return;
+            try {
+                await db.ref("playerRankingHidden/" + heroKey(name)).remove();
+            } catch (error) {
+                alert("Nao foi possivel restaurar o jogador. " + (error?.message || ""));
+            }
+        };
+        row.append(label, restore);
+        list.appendChild(row);
+    });
+}
 function renderPlayerRanking() {
     const list = document.getElementById('player-rank-list');
     if (!list) return;
@@ -2925,6 +2972,7 @@ document.getElementById("btn-player-merge-enable")?.addEventListener("click", ()
     document.getElementById("btn-player-merge-enable").style.display = "none";
     document.getElementById("player-merge-panel").style.display = "block";
     renderPlayerRanking();
+    renderHiddenPlayerNames();
 });
 
 document.getElementById("btn-player-merge-cancel")?.addEventListener("click", () => {
@@ -2939,6 +2987,31 @@ document.getElementById("btn-player-merge-cancel")?.addEventListener("click", ()
 
 document.getElementById("player-merge-canonical")?.addEventListener("input", updatePlayerMergeSelectionCount);
 
+document.getElementById("btn-player-merge-hide")?.addEventListener("click", async () => {
+    if (!playerMergeModeActive || !ensureAdmin()) return;
+    const names = [...playerMergeSelectedNames];
+    if (!names.length) {
+        alert("Selecione pelo menos um jogador.");
+        return;
+    }
+    const message = "Remover " + names.join(", ") + " do ranking? As partidas permanecem no feed, mas esse(s) nome(s) deixa(m) de aparecer na lista de jogadores.";
+    if (!window.confirm(message)) return;
+    const updates = {};
+    names.forEach(name => { updates["playerRankingHidden/" + heroKey(name)] = name; });
+    const hideButton = document.getElementById("btn-player-merge-hide");
+    hideButton.disabled = true;
+    try {
+        await db.ref().update(updates);
+        names.forEach(name => playerRankingHiddenNames.add(name));
+        playerMergeSelectedNames.clear();
+        renderPlayerRanking();
+        renderHiddenPlayerNames();
+    } catch (error) {
+        alert("Nao foi possivel remover o jogador do ranking. As partidas nao foram alteradas. " + (error?.message || ""));
+    } finally {
+        updatePlayerMergeSelectionCount();
+    }
+});
 document.getElementById("btn-player-merge-apply")?.addEventListener("click", async () => {
     if (!playerMergeModeActive || !ensureAdmin()) return;
     const sourceNames = [...playerMergeSelectedNames];
@@ -2999,7 +3072,9 @@ document.getElementById("btn-player-merge-apply")?.addEventListener("click", asy
 
 function detachFeedListener() {
     if (feedRef) feedRef.off();
+    if (playerRankHiddenRef) playerRankHiddenRef.off();
     feedRef = null;
+    playerRankHiddenRef = null;
 }
 
 // ============================================================
